@@ -10,6 +10,9 @@ Aufrufbeispiele:
 
 from __future__ import annotations
 
+import time
+import yaml
+
 import argparse
 import json
 from pathlib import Path
@@ -35,6 +38,7 @@ from src.config import (
 
 # Strikter YAML-Loader (liefert typisierte cfg ohne Fallbacks)
 from src.utils.config_loader import load_trainer_cfg
+from src.utils.json_results import export_run_jsons_from_metrics
 
 
 def _load_dataset_from_spec(processed_dir: Path):
@@ -101,6 +105,10 @@ def main():
     # -----------------------------
     cfg = load_trainer_cfg(args.config)
 
+    config_path = Path(args.config)
+    with open(config_path, "r", encoding="utf-8") as f:
+        cfg_dict = yaml.safe_load(f)
+
     # -----------------------------
     # Determinismus / Reproduzierbarkeit
     # -----------------------------
@@ -133,7 +141,6 @@ def main():
 
     from pytorch_forecasting.models import TemporalFusionTransformer
 
-    loss_fn = QuantileLoss()
     logging_metrics = [MAE(), RMSE(), MAPE(), SMAPE()]
 
     model = TemporalFusionTransformer.from_dataset(
@@ -184,7 +191,6 @@ def main():
     print(f"[trainer_tft] Run-ID: {run_id}")
     print(f"[trainer_tft] Checkpoints: {ckpt_dir}")
     print(f"[trainer_tft] Logs: {(Path('logs') / 'tft' / run_id).resolve()}")
-    print(f"[trainer_tft] Logs: {Path('logs') / 'tft' / run_id}")
 
     # -----------------------------
     # Trainer (alle Werte aus cfg)
@@ -217,9 +223,58 @@ def main():
     })
 
     # -----------------------------
+    # Zeitmessung
+    # -----------------------------
+    tfit_start = time.perf_counter()
+
+
+    # -----------------------------
     # Training
     # -----------------------------
     trainer.fit(model, train_loader, val_loader)
+
+    # Fit-Zeit stoppen
+    fit_time_sec = round(time.perf_counter() - tfit_start, 2)
+    epochs_trained = int(trainer.current_epoch) + 1  # 0-basiert -> +1
+
+    # Meta-Infos für summary.json zusammenstellen
+    meta = {
+        "seed": cfg_dict.get("seed"),
+        "config_file": str(config_path),
+        "config_values": cfg_dict,  # komplette YAML als normales Dict
+        "fit_time_sec": fit_time_sec,
+        "epochs_trained": epochs_trained,
+        "avg_epoch_time_sec": round(fit_time_sec / max(1, epochs_trained), 2),
+
+        # wichtige Hparams aus dem YAML-Dict (primitives!)
+        "learning_rate": cfg_dict.get("learning_rate"),
+        "batch_size": cfg_dict.get("batch_size"),
+        "max_epochs": cfg_dict.get("max_epochs"),
+        "early_stopping_patience": cfg_dict.get("early_stopping_patience"),
+        "gradient_clip_val": cfg_dict.get("gradient_clip_val"),
+        "accelerator": cfg_dict.get("accelerator"),
+        "devices": cfg_dict.get("devices"),
+        "model": cfg_dict.get("model"),  # <-- jetzt als Dict, nicht als ModelCfg-Objekt
+    }
+    try:
+        meta["best_checkpoint_path"] = str(checkpoint.best_model_path)
+    except NameError:
+        pass
+
+    logs_run_dir = Path(logger.log_dir)  # z. B. logs/tft/run_YYYYMMDD_HHMMSS
+    results_dir = Path("results") / "evaluation" / run_id  # <— dein gewünschter Zielordner
+
+    results_path, summary_path = export_run_jsons_from_metrics(
+        run_id=run_id,
+        logs_run_dir=logs_run_dir,
+        results_dir=results_dir,
+        meta=meta,
+    )
+
+    print("[trainer_tft] JSON-Export abgeschlossen:")
+    print(f"  - {results_path}")
+    print(f"  - {summary_path}")
+
 
     # Hinweis auf bestes Checkpoint
     if checkpoint.best_model_path:
