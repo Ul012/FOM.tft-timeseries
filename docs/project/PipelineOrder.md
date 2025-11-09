@@ -1,39 +1,34 @@
 # Pipeline Overview – FOM.tft-timeseries
 
 ## Ziel
-Diese Übersicht beschreibt die logische Ausführungsreihenfolge aller zentralen Module im Projekt **FOM.tft-timeseries**.  
-Sie dient als Orientierung für den Workflow von der Datenbasis bis zur Evaluation, ohne dass Nummern in Dateinamen erforderlich sind.
+Diese Übersicht beschreibt die **Ausführungsreihenfolge** der zentralen Module – von Rohdaten bis Evaluation.  
+Hinweis: Schritt **3** kann auf zwei Arten erfolgen: **(A) getrennte Skripte** oder **(B) integriertes Sammelskript**.
 
 ---
 
 ## Projektlogik
 
 | Ebene | Ordner | Aufgabe |
-|--------|---------|----------|
-| **data** | `src/data/` | Laden und Bereinigen der Rohdaten, Feature-Erzeugung (zeitliche, zyklische, lag-basierte Merkmale) |
-| **modeling** | `src/modeling/` | Aufbau und Training der Modelle (z. B. Temporal Fusion Transformer) |
-| **evaluation** | `src/evaluation/` | Bewertung und Visualisierung der Ergebnisse |
+|------|--------|---------|
+| **data** | `src/data/` | Laden/Bereinigen, Feature-Erzeugung (Kalender, Feiertage, Lags, zyklische Merkmale) |
+| **modeling** | `src/modeling/` | Datensatz für TFT aufbereiten, TFT trainieren |
+| **evaluation** | `src/evaluation/` | Auswertung, Visualisierung, Artefakte/JSONs schreiben |
 
 ---
 
-## Pipeline-Reihenfolge
+## Pipeline-Reihenfolge (präzise)
 
-| Schritt | Modul | Beschreibung | Input | Output |
-|---|---|---|---|---|
-| 1 | `data_alignment.py` *(optional)* | Skaliert historische Verkaufszahlen oder Zeitreihen auf ein einheitliches Vergleichsniveau. | `train.csv` | `train_aligned.parquet` |
-| 2 | `data_cleaning.py` *(optional)* | Bereinigt Ausreißer und imputiert fehlende Werte. | `train_aligned.parquet` oder `train.csv` | `train_cleaned.parquet` |
-| 3 | `features.py` | Erstellt **alle Features** in einem Lauf: Zeit-Features, Lag/Rolling-Werte (intern), sowie zyklische Sin/Cos-Kodierungen. Unterstützt zwei Dateien (*train/test*) oder eine Gesamtdatei mit internem Split. | `train.csv`/`test.csv` **oder** `dataset.csv` | `features_train.parquet`, `features_test.parquet` |
-| 4 | `model_dataset.py` | Führt den zeitbasierten Split auf **Train/Valid** durch und leitet Testdaten harmonisiert weiter. Erstellt `meta.json` mit Datensatz-Infos. | `features_train.parquet`, `features_test.parquet` | `train.parquet`, `valid.parquet`, `test.parquet`, `meta.json` |
-| 5 | `dataset_tft.py` | Bereitet die Daten modellgerecht auf: kategorische Kodierung (Mapping aus Train), numerische Skalierung (fit auf Train, transform auf Valid/Test). Speichert Artefakte wie Schema, Scaler und Kategorien. | `train/valid/test.parquet`, `meta.json` | `model_ready/{train,valid,test}.parquet`, `schema.json`, `scaler.json`, `categories.json` |
-| 6 | `trainer_tft.py` | Startet das Training des Temporal Fusion Transformer auf Basis der `model_ready`-Daten. Nutzt Parameter aus `configs/*.yaml` und Konstanten aus `config.py`. | `model_ready/*`, `configs/*.yaml` | `model.pt`, Logs |
-| 7 | `evaluate.py` | Berechnet Kennzahlen und erzeugt Plots auf Basis der Validierungs- und Testdaten. | `model.pt`, Valid/Test-Daten | `evaluation_results.json`, PNGs |
-| 8 | `viz_predictions.py` *(optional)* | Visualisiert Vorhersagen im Vergleich zu den Ist-Werten. | `evaluation_results.json` | PNGs |
+| # | Modul | Beschreibung | Input | Output | Hinweis |
+|---:|------|--------------|-------|--------|--------|
+| 1 | `data_alignment.py` *(optional)* | Skaliert/normalisiert Zeitreihen auf ein Vergleichsniveau. | `data/raw/*.csv` | `data/interim/train_aligned.parquet` | Nur falls nötig. |
+| 2 | `data_cleaning.py` *(optional)* | Bereinigt Ausreißer, imputiert fehlende Werte. | Schritt 1 oder `data/raw/*.csv` | `data/interim/train_cleaned.parquet` | Optional. |
+| 3A | `feature_engineering.py` | **Kalender-Features**, **time_idx**, **deutsche Feiertage** erzeugen. | `data/interim/train_cleaned.parquet` | `data/processed/train_features.parquet` | Separates Basisskript. |
+| 3B | `cyclical_encoder.py` | **Zyklische Sin/Cos-Kodierungen** (z. B. dow/month/hour) hinzufügen. | `train_features.parquet` | `train_features_cyc.parquet` (oder in-place) | Nach 3A ausführen, falls getrennt gefahren. |
+| 3C | **ODER:** `features.py` | **Integrierter Weg**: führt 3A (**FeatureEngineer**) und 3B (**CyclicalEncoder**) sowie optionale **Lag/Rolling-Features** in **einem Lauf** aus. | `data/raw/train.csv` & `test.csv` **oder** `dataset.csv` | `data/processed/features_train.parquet`, `features_test.parquet` | Empfohlen, wenn du alles zentral steuern willst. |
+| 4 | `model_dataset.py` | Zeitbasierter Split (Train/Valid/Test), Metadaten schreiben. | Features aus 3A+3B **oder** 3C | `train.parquet`, `valid.parquet`, `test.parquet`, `meta.json` |  |
+| 5 | `dataset_tft.py` | TFT-Datensatz bauen (Encodings/Scaler fit auf Train, apply auf Val/Test). | Schritt 4 | `model_ready/{train,valid,test}.parquet`, `schema.json`, `scaler.json`, `categories.json` | Leakage-sicher. |
+| 6 | `trainer_tft.py` | TFT trainieren, Logs/Checkpoints schreiben; nach Fit: **results/evaluation/<run_id>/{results.json, summary.json}** erzeugen. | Schritt 5 + `configs/*.yaml` | `logs/…`, `checkpoints/…`, `results/evaluation/<run_id>/*` | JSON-Export integriert. |
+| 7 | `evaluate.py` | Kennzahlen/Plots/Test-Eval. | Modell + Daten | `results/evaluation/*` |  |
+| 8 | `viz_predictions.py` *(optional)* | Prognosen vs. Istwerte visualisieren. | Eval-Artefakte | PNGs |  |
 
 ---
-
-## Hinweise
-- Bis einschließlich Schritt 5 werden Artefakte im **Parquet-Format** und begleitende **JSON-Metadaten** erzeugt.  
-- `features.py` integriert alle Feature-Schritte: Zeit-, Lag- und zyklische Features. Separate Module wie `cyclical_encoding.py` oder `lag_features.py` sind nicht mehr erforderlich.  
-- Der **Trainer** liest zur Laufzeit YAML-Konfigurationen aus dem Ordner `configs/` und kombiniert sie mit Konstanten aus `src/config.py`.  
-- Alle Verarbeitungsschritte sind **leakage-sicher**: Transformationen und Parameter werden ausschließlich auf dem Trainings-Split bestimmt und anschließend auf Validierung und Test angewendet.  
-- Evaluations- und Visualisierungsroutinen befinden sich im Ordner `src/evaluation/` und speichern Ergebnisse in `results/` und `plots/`.
