@@ -1,0 +1,37 @@
+site_name: FOM.tft-timeseries – Notizen
+site_description: Projektdokumentation, Dev Notes und Konfiguration
+theme:
+  name: material
+  language: de
+  features:
+    - navigation.instant
+    - navigation.sections
+    - content.code.copy
+    - content.tabs.link
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.details
+  - attr_list
+
+nav:
+  - Übersicht: index.md
+  - Projektdetails:
+      - Data Alignment: project/DataAlignment.md
+      - Data Cleaning: project/DataCleaning.md
+      - Feature Engineering: project/FeatureEngineer.md
+      - Cyclical Encoder: project/CyclicalEncoder.md
+      - Features: project/Features.md
+      - Dataset TFT: project/DatasetTFT.md
+      - Model Dataset: project/ModelDatasetBuilder.md
+      - Pipeline & I/O: project/PipelineOrder.md
+      - Trainer & Evaluator Struktur: project/TrainerEvaluator_Stuktur.md
+      - Trainer TFT – Runprotokoll: project/TrainerTFT_Runprotokoll.md
+  - Allgemeine Dokumentation:
+      - Projektstruktur: shared/Projektstruktur.md
+      - Configs & Setup: shared/ConfigSetup.md
+      - MkDocs Nutzung: shared/MkDocsUsage.md

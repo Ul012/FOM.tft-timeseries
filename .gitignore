@@ -1,0 +1,50 @@
+# ===========================
+# GitIgnore – FOM.tft-timeseries
+# ===========================
+
+# --- Python & Environments ---
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.npy
+*.npz
+
+# --- IDE & OS ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+
+# --- Data & Intermediate Files ---
+data/raw/*
+!data/raw/.gitkeep
+data/interim/
+data/processed/
+logs/
+
+# --- Private Notes (außerhalb von docs) ---
+notes/
+
+# --- Temporary / Cache / Misc ---
+tmp/
+cache/
+*.log
+*.bak
+*.tmp
+
+# --- Exports ---
+exports/
+reports/
+results/
+
+# --- Sicherheit ---
+.env
+*.key
+*.token
+
