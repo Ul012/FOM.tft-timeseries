@@ -1,133 +1,107 @@
-# Projektstruktur-Erklärung: Verzeichnisaufbau im TFT-Booksales-Projekt
+# 📁 Projektstruktur – FOM.tft-timeseries
 
-**Datum:** 2025-11-08 17:05  
-**Ziel:** Übersicht und Bedeutung der wichtigsten Verzeichnisse im Projekt.
+**Stand:** November 2025  
+**Ziel:** Übersicht über Aufbau, Zuständigkeiten und künftige Erweiterungen des Projekts (TFT-, ARIMA- und Prophet-Pipelines).
 
 ---
 
-## 🗂️ 1. `src/` – Source Code
+## 🗂️ 1. `src/` – Hauptverzeichnis
 
-Das Verzeichnis `src/` (engl. *source*) enthält den **gesamten Python-Quellcode** des Projekts.
-Es ist die zentrale Arbeitsstruktur, in der jede Datei eine **klare Verantwortlichkeit** hat.
-
-Typischer Aufbau:
 ```
 src/
 ├── data/
 ├── modeling/
 ├── utils/
+├── visualization/
 └── config.py
 ```
 
 ---
 
-## 📊 2. `data/` – Datenstruktur
+## 📊 2. `data/` – Datenaufbereitung (Preprocessing)
 
-Hier liegen **alle Datensätze**, sowohl Rohdaten als auch verarbeitete Versionen.
+Beinhaltet alle Schritte bis zur Erstellung eines modellfertigen Datensatzes.
 
-| Unterordner | Zweck |
-|--------------|-------|
-| `raw/` | Originaldaten, unverändert. Werden nie überschrieben. |
-| `interim/` | Zwischenstände (z. B. nach Preprocessing oder Feature-Building). |
-| `processed/` | Modellfertige Daten, z. B. Trainings- und Validierungssets. |
+| Datei | Aufgabe |
+|-------|----------|
+| `data_alignment.py` | Harmonisierung und optionale Normalisierung der Zeitachsen. |
+| `data_cleaning.py` | Bereinigung, Imputation, Konsistenzprüfungen. |
+| `feature_engineering.py` | Erstellung von Kalender- und Feiertags-Features. |
+| `cyclical_encoder.py` | Zyklische Kodierung periodischer Variablen (sin/cos). |
+| `lag_features.py` | Erzeugt Lag- und Rolling-Features per `groupby().shift()`. |
+| `view_data.py` | Kurze visuelle Kontrolle der Roh- und Zwischendaten. |
 
-Beispiel:
-```
-data/
-├── raw/
-├── interim/
-└── processed/
-    └── model_dataset/
-        └── tft/
-            ├── train.parquet
-            ├── val.parquet
-            ├── checkpoints/
-            │   └── tft-00-15.9128.ckpt
-            └── dataset_spec.json
-```
+> **Hinweis:** Diese Module bilden die ersten Schritte der Pipeline und erzeugen den Input für `model_dataset.py`.
 
 ---
 
 ## 🤖 3. `modeling/` – Modellierung und Training
 
-Hier liegt alles, was sich auf **Modelle** und **Training** bezieht.
+Enthält alle Skripte zur Vorbereitung, Spezifikation und zum Training der Modelle.
 
-| Datei / Ordner | Beschreibung |
-|----------------|---------------|
-| `trainer_tft.py` | Startet das Training des Temporal Fusion Transformer (TFT). |
-| `load_trained_tft.py` | Lädt ein gespeichertes TFT-Modell aus einem `.ckpt`. |
-| `predict_tft.py` *(optional)* | Für spätere Vorhersagen auf neuen Daten. |
-| `evaluation_tft.py` *(optional)* | Bewertung der Vorhersagequalität. |
-
-➡️ **Ziel dieses Ordners:** alle Schritte, die direkt mit Modellarchitektur, Training oder Evaluation zu tun haben.
-
----
-
-## 🧰 4. `utils/` – Werkzeuge & Hilfsfunktionen
-
-`utils` enthält **allgemeine Helfer** und kleine Tools, die unabhängig vom Modell sind.
-
-| Datei | Zweck |
-|--------|--------|
-| `inspect_checkpoint.py` | Liest `.ckpt`-Dateien aus und zeigt ihre Inhalte an. |
-| `file_utils.py` *(optional)* | Hilfsfunktionen zum Lesen/Schreiben von Dateien. |
-| `checkpoint_utils.py` *(optional)* | Automatische Suche nach dem neuesten Checkpoint. |
-
-➡️ Diese Module sind **modellunabhängig** und können in mehreren Projekten wiederverwendet werden.
+| Datei | Aufgabe |
+|-------|----------|
+| `model_dataset.py` | Split in Train/Validation/Test, Metadaten erzeugen. |
+| `dataset_tft.py` | Leitet Feature-Listen (known/unknown/static) ab, erstellt `dataset_spec.json`. |
+| `trainer_tft.py` | Trainiert den Temporal Fusion Transformer, speichert Logs + Checkpoints. |
+| *(geplant)* `trainer_arima.py` | ARIMA-Modelltraining auf aggregierten oder einzelnen Zeitreihen. |
+| *(geplant)* `trainer_prophet.py` | Prophet-Training mit automatischer Saisonalitätserkennung. |
 
 ---
 
-## ⚙️ 5. `config.py` – Zentrale Projektkonfiguration
+## 🧰 4. `utils/` – Hilfsfunktionen & Werkzeuge (nicht Pipeline-Pflicht)
 
-Diese Datei ist das **Kontrollzentrum** des Projekts.
+Dient zur Wiederverwendung und modularen Wartung.
 
-Sie enthält:
-- allgemeine Pfadangaben (`DATA_DIR`, `PROCESSED_DIR`, …),
-- Konstanten für Spaltennamen (`TARGET_COL`, `GROUP_COLS`),
-- Parameter für Split-Logik,
-- und Hyperparameter für das TFT-Training (`TRAINER_TFT`-Dictionary).
+| Datei | Aufgabe |
+|-------|----------|
+| `config_loader.py` | Lädt und validiert die Projekt-Konfiguration. |
+| `json_results.py` | Zusammenfassung, Konvertierung und Export von Ergebnis-JSONs. |
+| `load_trained_tft.py` | Lädt das zuletzt trainierte oder beste TFT-Checkpoint-Modell (optional). |
+| `__init__.py` | Kennzeichnung als Paket; ggf. globale Utility-Imports. |
 
-Beispiel:
-```python
-TRAINER_TFT = {
-    "max_epochs": 30,
-    "batch_size": 128,
-    "learning_rate": 1e-3,
-    "limit_train_batches": 1.0,
-}
-```
-
-➡️ Vorteil: Du steuerst dein gesamtes Projekt zentral, **ohne Code zu ändern**.
+> Utils-Skripte können **importiert** oder **manuell ausgeführt** werden, erzeugen aber keine neuen Datenstufen.
 
 ---
 
-## 🧩 6. Empfehlung für eigene Erweiterungen
+## 📈 5. `visualization/` – Plots und Diagnosen (Evaluationsebene)
 
-| Neues Modul | Empfohlener Ort | Beispiel |
-|--------------|----------------|-----------|
-| Neue Modellklasse | `src/modeling/` | `trainer_lstm.py` |
-| Feature Engineering | `src/data/` | `features.py` |
-| Preprocessing-Skripte | `src/data/` | `preprocess.py` |
-| Logging oder Utility-Skripte | `src/utils/` | `logger.py` |
-| Zentrale Konfiguration | `src/config.py` | bleibt dort |
+Fasst alle Visualisierungen zusammen, die nach oder während des Trainings benötigt werden.
 
----
-
-## 🧠 Zusammenfassung
-
-| Ordner | Zweck | Beispiel |
-|---------|--------|-----------|
-| `src/data` | Datenverarbeitung und Feature Engineering | `features.py`, `split_data.py` |
-| `src/modeling` | Modellarchitektur, Training, Laden, Evaluation | `trainer_tft.py`, `load_trained_tft.py` |
-| `src/utils` | Hilfsfunktionen, Diagnose, Logging | `inspect_checkpoint.py` |
-| `data/raw` | Rohdaten (unverändert) | `book_sales_raw.csv` |
-| `data/interim` | Zwischenstände | `aligned_features.parquet` |
-| `data/processed` | fertige Datasets und Modelle | `tft/checkpoints/*.ckpt` |
+| Datei | Aufgabe |
+|-------|----------|
+| `data_alignment_plot.py` | Visualisierung der Datenharmonisierung. |
+| `data_cleaning_plot.py` | Darstellung bereinigter Werte, Vergleich Vorher/Nachher. |
+| `plot_learning_rate.py` | Verläufe der Learning-Rate und der Loss-Kurven. |
+| `view_data_plot.py` | Allgemeine Explorations-Plots für Datenverständnis. |
+| *(geplant)* `evaluation_plot.py` | Darstellung der finalen Modellvergleiche (TFT vs. ARIMA vs. Prophet). |
 
 ---
 
-**Kurz gesagt:**  
-- 🔹 `data` = alles rund um Daten.  
-- 🔹 `modeling` = alles rund um Modelle.  
-- 🔹 `utils` = universelle Werkzeuge.  
-- 🔹 `config.py` = das Gehirn, das alles steuert.
+## 📊 6. Evaluierung (geplant)
+
+Geplant ist ein eigener Ordner `src/evaluation/`, der folgende Skripte enthalten wird:
+
+| Datei | Aufgabe |
+|-------|----------|
+| `evaluate_tft.py` | Evaluation der TFT-Runs (Metriken, Fehlermaße, JSON-Reports). |
+| `evaluate_comparison.py` | Cross-Modell-Vergleich (TFT vs. ARIMA vs. Prophet). |
+
+---
+
+## ⚙️ 7. `config.py` – Zentrale Steuerung
+
+- Globale Konstanten: `TIME_COL`, `TARGET_COL`, `GROUP_COLS`  
+- Pfade: `RAW_DIR`, `PROCESSED_DIR`, `MODEL_DIR`  
+- Parameter: `LAG_CONF`, `TFT_TRAIN_CONF`, u. a.  
+- Keine Hardcodierung in Skripten – jede Komponente importiert Konfigurationswerte.
+
+---
+
+## ✅ 8. Einordnung
+
+- **Pipeline-relevant:** `src/data/` → `src/modeling/`  
+- **Unterstützend, optional:** `src/utils/`, `src/visualization/`, später `src/evaluation/`  
+- **Erweiterbar:** Zusätzliche Trainer-Module (`trainer_arima.py`, `trainer_prophet.py`) folgen demselben Muster wie `trainer_tft.py`.
+
+---

@@ -153,44 +153,31 @@ class CyclicalEncoder:
         return self.fit(df).transform(df)
 
 
-# --- Mini-Self-Test (nur bei direkter Ausführung) ---------------------------------
-if __name__ == "__main__":
-    # Smoke-Test: 72 Stunden ab 2024-12-28, Europe/Berlin
-    rng = pd.date_range("2024-12-28", periods=72, freq="h", tz="Europe/Berlin")
-    df = pd.DataFrame({"date": rng, "y": np.random.randn(len(rng))})
+# --- Pipeline-IO: erzeugt train_features_cyc.parquet -------------------------------
+def main() -> None:
+    """Liest train_features.parquet, kodiert zyklisch und speichert train_features_cyc.parquet."""
+    from src.config import PROCESSED_DIR
+    import pandas as pd
+    from pathlib import Path
 
-    # Encoder automatisch mit Config (falls vorhanden) instanziieren
-    if _HAS_CONFIG and _CYCLICAL_CONF is not None:
-        enc = CyclicalEncoder(CyclicalEncoderConfig(**_CYCLICAL_CONF))
-    else:
-        enc = CyclicalEncoder()
+    base_dir = Path(__file__).resolve().parents[2]
+    in_path = base_dir / "data" / "processed" / "train_features.parquet"
+    out_path = base_dir / "data" / "processed" / "train_features_cyc.parquet"
 
+    print(f"[cyclical_encoder] Lade {in_path} ...")
+    df = pd.read_parquet(in_path)
+
+    enc = CyclicalEncoder()
     out = enc.fit_transform(df)
 
-    print("\n[TEST] Prüfe erzeugte Spalten ...")
-    required = {
-        "cyc_dow_sin", "cyc_dow_cos",
-        "cyc_month_sin", "cyc_month_cos",
-        "cyc_doy_sin", "cyc_doy_cos",
-        "cyc_week_sin", "cyc_week_cos",
-        "cyc_hour_sin", "cyc_hour_cos",
-    }
-    missing = required.difference(out.columns)
-    assert not missing, f"Fehlende Spalten: {missing}"
-    print("→ OK")
+    out.to_parquet(out_path, index=False)
+    print(f"[cyclical_encoder] geschrieben: {out_path}")
 
-    print("[TEST] Prüfe Wertebereich ...")
-    cyc = out.filter(like="cyc_")
-    assert float(cyc.abs().max().max()) <= 1.0 + 1e-9, "Sin/Cos außerhalb [-1,1]"
-    print("→ OK")
 
-    print("[TEST] Prüfe NaT-Handling ...")
-    df_nan = pd.concat([df, pd.DataFrame({"date": [pd.NaT], "y": [0.0]})], ignore_index=True)
-    out_nan = enc.fit_transform(df_nan)
-    assert out_nan.filter(like="cyc_").iloc[-1].isna().any(), "NaT wurde nicht als NaN behandelt"
-    print("→ OK")
+if __name__ == "__main__":
+    main()
 
-    print(f"[CyclicalEncoder] Alle Tests bestanden (Config genutzt: {_HAS_CONFIG})")
+
 
 
 # python -m src.data.cyclical_encoder

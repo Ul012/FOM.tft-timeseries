@@ -46,6 +46,18 @@ SPLIT_RATIOS: tuple[float, float, float] = (0.80, 0.10, 0.10)
 SCALE_COLS: list[str] = []
 
 # -----------------------------------------------------------------------------
+# Lag-Features (für Zeitbezug des TFT und anderer Modelle)
+# -----------------------------------------------------------------------------
+
+LAG_CONF: dict = {
+    "target_col": "num_sold",        # Zielspalte
+    "lags": [1, 7, 14],              # zeitliche Rückblicke
+    "roll_windows": [7],             # optionale Rolling-Fenster
+    "roll_stats": ["mean"],          # z. B. Mittelwert über 7 Tage
+    "prefix": "lag_",                # muss zu dataset_tft.py passen
+}
+
+# -----------------------------------------------------------------------------
 # TFT-Dataset-Metadaten (für Feature-Pipeline / Dataset-Bau)
 # -----------------------------------------------------------------------------
 TFT_DATASET: dict = {

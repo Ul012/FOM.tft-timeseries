@@ -110,7 +110,5 @@ if __name__ == "__main__":
     df_aligned.to_parquet(OUT, index=False)
     print(f"\n✓ Gespeichert: {OUT}  (Zeilen: {len(df_aligned):,})")
 
-# Script starten mit
-# .venv\Scripts\python.exe src\data\data_alignment.py
-# cd C:\Users\ulrik\Projekte\TFT-Booksales
+
 # python -m src.data.data_alignment

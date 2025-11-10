@@ -61,11 +61,11 @@ def _load_config_safe() -> Dict[str, Any]:
         return cfg
     except Exception:
         # Schlanke Defaults, falls keine config.py vorliegt
-        cfg["DATA_PROCESSED_PATH"] = Path("data/processed/booksales.parquet")
+        cfg["DATA_PROCESSED_PATH"] = Path("data/processed/train_features_cyc_lag.parquet")
         cfg["DATASETS_DIR"] = Path("data/sets")
         cfg["TIME_COL"] = "date"
-        cfg["ID_COLS"] = ["group_id"]       # bei Bedarf in config.py überschreiben
-        cfg["TARGET_COL"] = "sales"
+        cfg["ID_COLS"] = ["country", "store", "product"]  # an dein Projekt angepasst
+        cfg["TARGET_COL"] = "num_sold"
         cfg["VAL_START"] = None
         cfg["TEST_START"] = None
         cfg["SPLIT_RATIOS"] = (0.7, 0.15, 0.15)  # nur, wenn keine festen Datumsgrenzen
