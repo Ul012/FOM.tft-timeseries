@@ -1,4 +1,4 @@
-# src/visualization/data_cleaning_plot.py
+# src/visualization/data_cleaning_plot_compare.py
 # Zweck: Visuelle Prüfung der bereinigten (cleaned) Verkaufsdaten
 # Quelle: data/interim/train_cleaned.parquet
 
@@ -55,3 +55,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# python -m src.visualization.data_cleaning_plot_compare

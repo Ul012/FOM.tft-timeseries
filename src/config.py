@@ -19,7 +19,11 @@ PROCESSED_DIR = DATA_DIR / "processed"
 # -----------------------------------------------------------------------------
 DATETIME_COLUMN: str = "date"
 GROUP_COLS: list[str] = ["country", "store", "product"]
-TARGET_COL: str = "num_sold_y"  # aus Merge erzeugt (num_sold_y)
+
+# Einheitliche Zielspalte im gesamten Projekt.
+# Hinweis: Falls durch einen Merge temporär num_sold_y entsteht,
+# bitte direkt wieder auf num_sold zurückbenennen (df.rename(columns={"num_sold_y": "num_sold"})).
+TARGET_COL: str = "num_sold"
 
 # Aliase für Konsistenz im Code
 TIME_COL: str = DATETIME_COLUMN
@@ -45,12 +49,12 @@ SPLIT_RATIOS: tuple[float, float, float] = (0.80, 0.10, 0.10)
 # Optional: gruppenweise Skalierung (falls in der Pipeline genutzt)
 SCALE_COLS: list[str] = []
 
+
 # -----------------------------------------------------------------------------
 # Lag-Features (für Zeitbezug des TFT und anderer Modelle)
 # -----------------------------------------------------------------------------
-
 LAG_CONF: dict = {
-    "target_col": "num_sold",        # Zielspalte
+    "target_col": TARGET_COL,        # übernimmt die globale Zielspalte
     "lags": [1, 7, 14],              # zeitliche Rückblicke
     "roll_windows": [7],             # optionale Rolling-Fenster
     "roll_stats": ["mean"],          # z. B. Mittelwert über 7 Tage

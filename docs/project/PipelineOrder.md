@@ -19,12 +19,12 @@ Alle Schritte können einzeln getestet werden. Schritte 1 – 6 bilden die Haupt
 
 ---
 
-## Pipeline-Reihenfolge (präzise)
+## Pipeline-Reihenfolge
 
 | # | Modul | Beschreibung | Input | Output | Hinweis |
 |---:|------|--------------|-------|--------|--------|
 | 1 | `data_alignment.py` *(optional)* | Skaliert/normalisiert Zeitreihen auf ein Vergleichsniveau. | `data/raw/*.csv` | `data/interim/train_aligned.parquet` | Nur falls nötig. Visualisierung zur Kontrolle: `src/visualization/data_alignment_plot.py`. |
-| 2 | `data_cleaning.py` *(optional)* | Bereinigt Ausreißer, imputiert fehlende Werte. | Schritt 1 oder `data/raw/*.csv` | `data/interim/train_cleaned.parquet` | Optional. |
+| 2 | `data_cleaning.py` *(optional)* | Bereinigt Ausreißer und glättet den Lockdown-Zeitraum (Daily-Imputation je Zeitreihe). | Schritt 1 oder `data/raw/*.csv` | `data/interim/train_cleaned.parquet` | Optionale Visualisierung: `data_cleaning_overview.py`, `data_cleaning_compare.py`, `data_cleaning_diff.py`. |
 | 3A | `feature_engineering.py` | **Kalender-Features**, `time_idx`, **deutsche Feiertage**. | `data/interim/train_cleaned.parquet` | `data/processed/train_features.parquet` | Basis-Feature-Set. |
 | 3B | `cyclical_encoder.py` | **Zyklische Sin/Cos-Kodierungen** (z. B. dow, month). | `train_features.parquet` | `train_features_cyc.parquet` | Nach 3A ausführen. |
 | 3C | `lag_features.py` | **Lag- und Rolling-Features** (`lag_1`, `lag_7`, …) per `groupby().shift()`. | `train_features_cyc.parquet` | `train_features_cyc_lag.parquet` | Ersetzt das frühere `features.py`. |
@@ -34,6 +34,7 @@ Alle Schritte können einzeln getestet werden. Schritte 1 – 6 bilden die Haupt
 | 7 | `load_trained_tft.py` *(optional)* | Lädt bestes Checkpoint zur Inferenz oder Analyse. | Checkpoint aus 6 | – | Werkzeug-Skript aus `src/utils/`. |
 | 8 | `evaluate.py` *(optional)* | Bewertet Ergebnisse, berechnet Kennzahlen, aggregiert JSONs. | Resultate aus 6/7 | `results/evaluation/*` | Optional für Vergleiche. |
 | 9 | `viz_predictions.py` *(optional)* | Visualisiert Prognosen vs. Istwerte. | Eval-Artefakte | PNGs | Optional. |
+
 
 ---
 """

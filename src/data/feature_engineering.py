@@ -3,14 +3,9 @@
 
 from pathlib import Path
 import pandas as pd
-import numpy as np
+import holidays
 
-try:
-    import holidays
-except ImportError as e:
-    raise ImportError(
-        "Das Paket 'holidays' fehlt. Bitte installieren mit: pip install holidays"
-    ) from e
+from src.config import INTERIM_DIR, PROCESSED_DIR
 
 
 class FeatureEngineer:
@@ -79,9 +74,8 @@ class FeatureEngineer:
 
 
 def main() -> None:
-    base_dir = Path(__file__).resolve().parents[2]
-    inp = base_dir / "data" / "interim" / "train_cleaned.parquet"
-    outp = base_dir / "data" / "processed" / "train_features.parquet"
+    inp = INTERIM_DIR / "train_cleaned.parquet"
+    outp = PROCESSED_DIR / "train_features.parquet"
     outp.parent.mkdir(parents=True, exist_ok=True)
 
     if not inp.exists():
