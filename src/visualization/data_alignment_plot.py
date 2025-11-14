@@ -54,5 +54,4 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-# cd C:\Users\ulrik\Projekte\TFT-Booksales
 # python -m src.visualization.data_alignment_plot

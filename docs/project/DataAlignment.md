@@ -70,6 +70,14 @@ Das Ergebnis wird als **Parquet-Datei** gespeichert, da dieses Format im Verglei
 
 ---
 
+Optionale Visualisierung
+
+Zur qualitativen Überprüfung des Angleichungsschritts existiert im Ordner
+`src/visualization/` das Skript `data_alignment_plot.py`.
+Es ist nicht Bestandteil der Datenpipeline, sondern dient ausschließlich der visuellen Kontrolle und dem besseren Verständnis des Effekts der Skalierung. Das Skript lädt die Datei `data/interim/train_aligned.parquet` und stellt die auf 2020-Niveau skalierten Verkaufszahlen als Liniendiagramm dar.
+
+---
+
 ## Ergebnis und Nutzen
 Nach der Skalierung sind die durchschnittlichen Verkaufsniveaus aller Jahre pro Land nahezu identisch (Verhältnis ≈ 1,0). Dadurch:
 - werden die Zeitreihen **direkt vergleichbar**,
@@ -77,3 +85,5 @@ Nach der Skalierung sind die durchschnittlichen Verkaufsniveaus aller Jahre pro 
 - kann der TFT **stabiler trainieren**, da Wertebereiche konsistent sind.
 
 Diese Normalisierung entspricht inhaltlich einer Form der **Skalenharmonisierung** – sie eliminiert globale Niveauunterschiede und fokussiert das Modell auf die **zeitliche Dynamik** der Daten.
+
+Dieser Schritt verändert zwar die absoluten Verkaufsniveaus, erhält jedoch alle relativen Muster und saisonalen Strukturen. Für Modelle wie den Temporal Fusion Transformer, die empfindlich auf unterschiedliche Skalen reagieren, führt diese Harmonisierung erfahrungsgemäß zu einer stabileren Konvergenz und reproduzierbareren Trainingsergebnissen.

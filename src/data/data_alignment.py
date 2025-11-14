@@ -1,15 +1,14 @@
 # src/data/data_alignment.py
 # Zweck: Jahresmittel je (country, year) berechnen, 2017–2019 auf 2020-Niveau skalieren, als Parquet speichern.
 
-from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.config import RAW_DIR, INTERIM_DIR
 
-# Projektroot automatisch bestimmen
-BASE_DIR = Path(__file__).resolve().parents[2]
-RAW = BASE_DIR / "data" / "raw" / "tabular-playground-series-sep-2022" / "train.csv"
-OUT = BASE_DIR / "data" / "interim" / "train_aligned.parquet"
+# Rohdaten-Input (Kaggle Booksales) und Output nach zentraler Config
+RAW = RAW_DIR / "tabular-playground-series-sep-2022" / "train.csv"
+OUT = INTERIM_DIR / "train_aligned.parquet"
 
 
 def align_yearly_sales(df: pd.DataFrame) -> pd.DataFrame:
@@ -35,24 +34,18 @@ def align_yearly_sales(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns={"mean_year": "mean_2020"})
     )
 
-    # Faktor = mean_2020 / mean_year  (2020 selbst → 1.0; ungültig/0 → 1.0)
-    factors = means.merge(ref2020, on="country", how="left")
-    factors["factor"] = factors["mean_2020"] / factors["mean_year"]
-
-    # Bereinigen: Divisionen durch 0/NaN/Inf → 1.0; 2020 nie skalieren
-    factors.loc[factors["year"] == 2020, "factor"] = 1.0
-    invalid = (
-        factors["mean_year"].isna()
-        | factors["mean_2020"].isna()
-        | (factors["mean_year"] == 0)
-        | (factors["mean_2020"] == 0)
-        | ~np.isfinite(factors["factor"])
+    # Faktor = mean_2020 / mean_year  (2020 selbst → 1.0; unbekannt → 1.0)
+    means = means.merge(ref2020, on="country", how="left", validate="many_to_one")
+    means["factor"] = np.where(
+        means["year"] == 2020,
+        1.0,
+        means["mean_2020"] / means["mean_year"],
     )
-    factors.loc[invalid, "factor"] = 1.0
 
-    # Faktor zurück zum Zeilenlevel
+    # Faktoren wieder an Originaldaten mergen
+    factors = means[["country", "year", "factor"]]
     out = out.merge(
-        factors[["country", "year", "factor"]],
+        factors,
         on=["country", "year"],
         how="left",
         validate="many_to_one",
@@ -66,49 +59,51 @@ def align_yearly_sales(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _print_sanity(before: pd.DataFrame, after: pd.DataFrame) -> None:
-    """Kleine Plausibilisierung: Verhältnis (2017–2019) zu 2020 vor/nach Skalierung."""
-    def _yr(df):
-        d = df.copy()
-        d["year"] = pd.to_datetime(d["date"]).dt.year
-        return (
-            d.groupby(["country", "year"])["num_sold"]
+def _print_sanity(df_raw: pd.DataFrame, df_aligned: pd.DataFrame) -> None:
+    """Kleine Sanity-Checks: Jahresmittel vorher/nachher."""
+    def _year_means(df: pd.DataFrame, label: str) -> pd.DataFrame:
+        tmp = (
+            df.assign(year=df["date"].dt.year)
+            .groupby(["country", "year"], as_index=False)["num_sold"]
             .mean()
-            .unstack("year")
-            .filter([2017, 2018, 2019, 2020], axis=1)
         )
+        tmp["variant"] = label
+        return tmp
 
-    b = _yr(before)
-    a = _yr(after)
+    raw_means = _year_means(df_raw, "raw")
+    aligned_means = _year_means(df_aligned, "aligned")
 
-    with np.errstate(divide="ignore", invalid="ignore"):
-        ratio_before = b[[2017, 2018, 2019]].div(b[2020], axis=0)
-        ratio_after = a[[2017, 2018, 2019]].div(a[2020], axis=0)
+    combined = (
+        pd.concat([raw_means, aligned_means], ignore_index=True)
+        .pivot_table(
+            index=["country", "year"],
+            columns="variant",
+            values="num_sold",
+        )
+        .reset_index()
+    )
 
-    print("\nSanity-Check (Durchschnitt num_sold Verhältnis zu 2020):")
-    print("Vorher (soll ≠ 1.0 sein, typ. abweichend):")
-    print(ratio_before.round(3).head())
-    print("\nNachher (soll ≈ 1.0 sein):")
-    print(ratio_after.round(3).head())
+    print("\n--- Jahresmittel num_sold pro Land/Jahr (raw vs. aligned) ---")
+    print(combined.head(12).to_string(index=False))
 
 
-if __name__ == "__main__":
-    # Einfache, pragmatische Pfade (kein Over-Engineering)
-    RAW = Path("data/raw/tabular-playground-series-sep-2022/train.csv")
-    OUT = Path("data/interim/train_aligned.parquet")
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-
+def main() -> None:
+    print(f"[data_alignment] Lade Rohdaten: {RAW}")
     df_raw = pd.read_csv(RAW)
     df_raw["date"] = pd.to_datetime(df_raw["date"], errors="coerce")
 
     df_aligned = align_yearly_sales(df_raw)
 
-    # Mini-Sanity (optional, schnell & hilfreich)
+    # Mini-Sanity
     _print_sanity(df_raw, df_aligned)
 
     # Parquet speichern
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     df_aligned.to_parquet(OUT, index=False)
     print(f"\n✓ Gespeichert: {OUT}  (Zeilen: {len(df_aligned):,})")
 
+
+if __name__ == "__main__":
+    main()
 
 # python -m src.data.data_alignment

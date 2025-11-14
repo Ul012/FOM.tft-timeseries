@@ -1,4 +1,6 @@
-# 📘 Pipeline Overview – FOM.tft-timeseries
+from pathlib import Path
+
+content = """# 📘 Pipeline Overview – FOM.tft-timeseries
 
 ## Ziel
 Diese Übersicht beschreibt die **Ausführungsreihenfolge** der zentralen Module – von Rohdaten bis Training und Evaluation.  
@@ -21,7 +23,7 @@ Alle Schritte können einzeln getestet werden. Schritte 1 – 6 bilden die Haupt
 
 | # | Modul | Beschreibung | Input | Output | Hinweis |
 |---:|------|--------------|-------|--------|--------|
-| 1 | `data_alignment.py` *(optional)* | Skaliert/normalisiert Zeitreihen auf ein Vergleichsniveau. | `data/raw/*.csv` | `data/interim/train_aligned.parquet` | Nur falls nötig. |
+| 1 | `data_alignment.py` *(optional)* | Skaliert/normalisiert Zeitreihen auf ein Vergleichsniveau. | `data/raw/*.csv` | `data/interim/train_aligned.parquet` | Nur falls nötig. Visualisierung zur Kontrolle: `src/visualization/data_alignment_plot.py`. |
 | 2 | `data_cleaning.py` *(optional)* | Bereinigt Ausreißer, imputiert fehlende Werte. | Schritt 1 oder `data/raw/*.csv` | `data/interim/train_cleaned.parquet` | Optional. |
 | 3A | `feature_engineering.py` | **Kalender-Features**, `time_idx`, **deutsche Feiertage**. | `data/interim/train_cleaned.parquet` | `data/processed/train_features.parquet` | Basis-Feature-Set. |
 | 3B | `cyclical_encoder.py` | **Zyklische Sin/Cos-Kodierungen** (z. B. dow, month). | `train_features.parquet` | `train_features_cyc.parquet` | Nach 3A ausführen. |
@@ -34,3 +36,9 @@ Alle Schritte können einzeln getestet werden. Schritte 1 – 6 bilden die Haupt
 | 9 | `viz_predictions.py` *(optional)* | Visualisiert Prognosen vs. Istwerte. | Eval-Artefakte | PNGs | Optional. |
 
 ---
+"""
+
+file_path = Path("/mnt/data/PipelineOrder.md")
+file_path.write_text(content, encoding="utf-8")
+
+file_path
