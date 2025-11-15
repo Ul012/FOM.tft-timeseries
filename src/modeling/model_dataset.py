@@ -1,7 +1,8 @@
 # src/modeling/model_dataset.py
 """
 Erstellt train/val/test-Datensätze für das TFT-Training aus einem bereits
-vorverarbeiteten DataFrame (z. B. Ergebnis aus preprocess.py + features.py).
+vorverarbeiteten DataFrame (z. B. Ergebnis aus feature_engineering,
+cyclical_encoder und lag_features).
 
 Philosophie:
 - Einfacher, deterministischer Zeit-Split.
@@ -12,65 +13,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple, Dict, Any
 
 import json
 import pandas as pd
 
+# ------------------------- Konfiguration -------------------------
 
-# ------------------------- Konfiguration laden (leichtgewichtig) -------------------------
-
-def _load_config_safe() -> Dict[str, Any]:
-    """
-    Versucht, src/config.py zu importieren und relevante Felder zu lesen.
-    Fällt auf sinnvolle Defaults zurück, falls nicht vorhanden.
-    Erwartete Keys (falls vorhanden):
-      - DATA_PROCESSED_PATH: str | Path  -> Pfad zur verarbeiteten Datei (csv/parquet)
-      - DATASETS_DIR: str | Path         -> Ausgabeordner für train/val/test
-      - TIME_COL: str                    -> Zeitspaltenname (z. B. 'date')
-      - ID_COLS: list[str]               -> Gruppenidentifikatoren (z. B. ['store_id','item_id'])
-      - TARGET_COL: str                  -> Zielvariable (z. B. 'sales')
-      - VAL_START: str (YYYY-MM-DD)      -> Optional, explizite Startdate der Validation
-      - TEST_START: str (YYYY-MM-DD)     -> Optional, explizite Startdate des Tests
-      - SPLIT_RATIOS: tuple[float,float,float] -> Optional, z. B. (0.7,0.15,0.15), wenn keine festen Daten
-      - SCALE_COLS: list[str]            -> Optional, Spalten für einfache Z-Standardisierung (group-wise)
-    """
-    cfg: Dict[str, Any] = {}
-    try:
-        # kein harter Import oben – schlank halten
-        from src.config import (  # type: ignore
-            DATA_PROCESSED_PATH,
-            DATASETS_DIR,
-            TIME_COL,
-            ID_COLS,
-            TARGET_COL,
-            VAL_START,
-            TEST_START,
-            SPLIT_RATIOS,
-            SCALE_COLS,
-        )
-        cfg["DATA_PROCESSED_PATH"] = Path(DATA_PROCESSED_PATH)
-        cfg["DATASETS_DIR"] = Path(DATASETS_DIR)
-        cfg["TIME_COL"] = TIME_COL
-        cfg["ID_COLS"] = list(ID_COLS)
-        cfg["TARGET_COL"] = TARGET_COL
-        cfg["VAL_START"] = VAL_START
-        cfg["TEST_START"] = TEST_START
-        cfg["SPLIT_RATIOS"] = tuple(SPLIT_RATIOS) if SPLIT_RATIOS else None
-        cfg["SCALE_COLS"] = list(SCALE_COLS) if SCALE_COLS else []
-        return cfg
-    except Exception:
-        # Schlanke Defaults, falls keine config.py vorliegt
-        cfg["DATA_PROCESSED_PATH"] = Path("data/processed/train_features_cyc_lag.parquet")
-        cfg["DATASETS_DIR"] = Path("data/sets")
-        cfg["TIME_COL"] = "date"
-        cfg["ID_COLS"] = ["country", "store", "product"]  # an dein Projekt angepasst
-        cfg["TARGET_COL"] = "num_sold"
-        cfg["VAL_START"] = None
-        cfg["TEST_START"] = None
-        cfg["SPLIT_RATIOS"] = (0.7, 0.15, 0.15)  # nur, wenn keine festen Datumsgrenzen
-        cfg["SCALE_COLS"] = []  # z. B. ["sales"] oder Feature-Spalten
-        return cfg
+from src.config import (
+    MODEL_INPUT_PATH,
+    PROCESSED_DIR,
+    TIME_COL,
+    ID_COLS,
+    TARGET_COL,
+    VAL_START,
+    TEST_START,
+    SPLIT_RATIOS,
+    SCALE_COLS,
+)
 
 
 # ------------------------- I/O-Helfer -------------------------
@@ -99,15 +59,19 @@ class TimeSplitPlan:
     ratios: Optional[Tuple[float, float, float]] = None  # Fallback, wenn keine Startdaten
 
     @classmethod
-    def from_config(cls, val_start: Optional[str], test_start: Optional[str],
-                    ratios: Optional[Tuple[float, float, float]]) -> "TimeSplitPlan":
+    def from_config(
+        cls,
+        val_start: Optional[str],
+        test_start: Optional[str],
+        ratios: Optional[Tuple[float, float, float]],
+    ) -> "TimeSplitPlan":
         vs = pd.to_datetime(val_start) if val_start else None
         ts = pd.to_datetime(test_start) if test_start else None
         return cls(val_start=vs, test_start=ts, ratios=ratios)
 
     def compute_boundaries(self, df: pd.DataFrame, time_col: str) -> Tuple[pd.Timestamp, pd.Timestamp]:
         """
-        Liefert (val_start, test_start). Wenn in config Datumswerte gegeben sind, nutzt diese.
+        Liefert (val_start, test_start). Wenn in der Config Datumswerte gegeben sind, nutzt diese.
         Ansonsten bestimmt es Grenzen über Ratios (global, nicht pro Gruppe).
         """
         if self.val_start is not None and self.test_start is not None:
@@ -138,8 +102,12 @@ class TimeSplitPlan:
         return val_start, test_start
 
 
-def time_split(df: pd.DataFrame, time_col: str, val_start: pd.Timestamp, test_start: pd.Timestamp
-               ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def time_split(
+    df: pd.DataFrame,
+    time_col: str,
+    val_start: pd.Timestamp,
+    test_start: pd.Timestamp,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df = df.copy()
     df[time_col] = pd.to_datetime(df[time_col])
 
@@ -147,18 +115,6 @@ def time_split(df: pd.DataFrame, time_col: str, val_start: pd.Timestamp, test_st
     val = df[(df[time_col] >= val_start) & (df[time_col] < test_start)]
     test = df[df[time_col] >= test_start]
     return train, val, test
-
-
-# ------------------------- Optionale Skalierung (einfach, gruppenweise) -------------------------
-
-def zscore_groupwise(df: pd.DataFrame, group_cols: List[str], cols: Iterable[str]) -> pd.DataFrame:
-    """
-    Einfache Z-Standardisierung je Gruppe (Mittel=0, Std=1). Keine SciKit-Abhängigkeit.
-    Achtung: Nur für Trainingsdaten fitten und auf val/test anwenden → hier:
-    - Wir berechnen pro Gruppe mean/std aus TRAIN
-    - Wenden dieselben Parameter auf val/test an
-    """
-    return df  # Platzhalter – echte Anwendung erfolgt in Builder (siehe unten)
 
 
 # ------------------------- Builder -------------------------
@@ -238,7 +194,7 @@ class ModelDatasetBuilder:
             "train": self.output_dir / "train.parquet",
             "val": self.output_dir / "val.parquet",
             "test": self.output_dir / "test.parquet",
-            "manifest": self.output_dir / "manifest.json",
+            "manifest": self.output_dir / "meta.json",
         }
         train.to_parquet(paths["train"], index=False)
         val.to_parquet(paths["val"], index=False)
@@ -278,18 +234,14 @@ class ModelDatasetBuilder:
             raise ValueError("Mindestens eine Split-Teilmenge ist leer – prüfe Grenzen/Datenbasis.")
 
         # Zeitliche Ordnung
-        t_min, t_max = train[self.time_col].min(), train[self.time_col].max()
-        v_min, v_max = val[self.time_col].min(), val[self.time_col].max()
-        s_min, s_max = test[self.time_col].min(), test[self.time_col].max()
+        t_max = train[self.time_col].max()
+        v_min = val[self.time_col].min()
+        s_min = test[self.time_col].min()
 
-        if not (t_max < v_min <= v_max < s_min or t_max < s_min):
-            # Weniger streng: Hauptsache train endet vor val/test beginnt.
-            if not (t_max < v_min and t_max < s_min):
-                raise ValueError("Zeitliche Trennung verletzt (Train überlappt).")
+        if not (t_max < v_min and t_max < s_min):
+            raise ValueError("Zeitliche Trennung verletzt (Train überlappt mit Val/Test).")
 
         # ID-Konsistenz (optional, pragmatisch)
-        # Warnen, wenn IDs in val/test vorkommen, die nie in train waren – kann gewollt sein,
-        # ist aber für TFT oft unerwünscht.
         train_ids = set(map(tuple, train[self.id_cols].drop_duplicates().values))
         val_ids = set(map(tuple, val[self.id_cols].drop_duplicates().values))
         test_ids = set(map(tuple, test[self.id_cols].drop_duplicates().values))
@@ -304,22 +256,20 @@ class ModelDatasetBuilder:
 # ------------------------- CLI -------------------------
 
 def main() -> None:
-    cfg = _load_config_safe()
     builder = ModelDatasetBuilder(
-        data_path=Path(cfg["DATA_PROCESSED_PATH"]),
-        output_dir=Path(cfg["DATASETS_DIR"]),
-        time_col=cfg["TIME_COL"],
-        id_cols=cfg["ID_COLS"],
-        target_col=cfg["TARGET_COL"],
-        val_start=cfg.get("VAL_START"),
-        test_start=cfg.get("TEST_START"),
-        split_ratios=cfg.get("SPLIT_RATIOS"),
-        scale_cols=cfg.get("SCALE_COLS", []),
+        data_path=MODEL_INPUT_PATH,
+        output_dir=PROCESSED_DIR,
+        time_col=TIME_COL,
+        id_cols=list(ID_COLS),
+        target_col=TARGET_COL,
+        val_start=VAL_START,
+        test_start=TEST_START,
+        split_ratios=SPLIT_RATIOS,
+        scale_cols=list(SCALE_COLS),
     )
     builder.run()
 
 
 if __name__ == "__main__":
+    # python -m src.modeling.model_dataset
     main()
-
-# python -m src.modeling.model_dataset

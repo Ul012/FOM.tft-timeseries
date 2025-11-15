@@ -1,11 +1,12 @@
 # src/modeling/dataset_tft.py
 """
-Erzeugt eine Datensatz-Spezifikation für Temporal Fusion Transformer (TFT):
-- Liest train/val/test aus DATASETS_DIR (config.py)
-- Leitet Feature-Listen heuristisch ab (static_categoricals, known/unknown reals)
-- Schreibt dataset_spec.json für nachgelagerte Trainer
+Erzeugt eine Datensatz-Spezifikation für den Temporal Fusion Transformer (TFT).
 
-Keine Abhängigkeiten zu PyTorch/FastAI/pytorch-forecasting – reine Datenspezifikation.
+- Liest train/val/test aus PROCESSED_DIR (config.py)
+- Leitet Feature-Listen heuristisch ab (static_categoricals, known/unknown reals)
+- Schreibt dataset_spec.json für den nachgelagerten Trainer
+
+Kein Training, keine PyTorch-Abhängigkeit – reine Datenspezifikation.
 """
 
 from __future__ import annotations
@@ -17,64 +18,19 @@ from typing import Any, Dict, List
 import json
 import pandas as pd
 
+from src.config import (
+    PROCESSED_DIR,
+    TIME_COL,
+    ID_COLS,
+    TARGET_COL,
+    TFT_DATASET,
+)
 
-# ------------------------- Konfiguration laden -------------------------
-
-def _load_config_safe() -> Dict[str, Any]:
-    """
-    Erwartete Keys (aus src/config.py):
-      - DATASETS_DIR: str|Path
-      - TIME_COL: str
-      - ID_COLS: list[str]
-      - TARGET_COL: str
-      - TFT_DATASET: dict (optional) mit u.a.:
-          * max_encoder_length: int
-          * max_prediction_length: int
-          * known_real_prefixes: list[str] (z. B. ["cyc_"])
-          * lag_prefixes: list[str] (z. B. ["lag_"])
-          * treat_calendar_as_known: bool
-          * flag_cols: list[str] (z. B. ["is_lockdown_period"])
-    """
-    cfg: Dict[str, Any] = {}
-    try:
-        from src.config import (  # type: ignore
-            DATASETS_DIR,
-            TIME_COL,
-            ID_COLS,
-            TARGET_COL,
-            TFT_DATASET,  # optional
-        )
-        cfg["DATASETS_DIR"] = Path(DATASETS_DIR)
-        cfg["TIME_COL"] = TIME_COL
-        cfg["ID_COLS"] = list(ID_COLS)
-        cfg["TARGET_COL"] = TARGET_COL
-        cfg["TFT_DATASET"] = dict(TFT_DATASET) if "TFT_DATASET" in locals() else {}
-        return cfg
-    except Exception:
-        # Fallbacks (typisch)
-        cfg["DATASETS_DIR"] = Path("data/processed/model_dataset")
-        cfg["TIME_COL"] = "date"
-        cfg["ID_COLS"] = ["country", "store", "product"]
-        cfg["TARGET_COL"] = "num_sold"
-        cfg["TFT_DATASET"] = {}
-        return cfg
-
-
-# ------------------------- Heuristiken/Defaults (nur module-scope) -------------------------
+# ------------------------- Heuristiken -------------------------
 
 CALENDAR_COLS = {"year", "month", "day", "dayofweek", "weekofyear", "is_weekend"}
 HOLIDAY_PREFIXES = ("is_holiday",)  # z. B. is_holiday_de, is_holiday_*
-CYCLICAL_DEFAULT_PREFIXES = ["cyc_"]
-LAG_DEFAULT_PREFIXES = ["lag_"]
-FLAG_COLS_DEFAULT = {"is_lockdown_period"}  # Default-Flags; über config erweiterbar
-
-DEFAULT_TFT_CFG = {
-    "max_encoder_length": 28,
-    "max_prediction_length": 7,
-    "known_real_prefixes": CYCLICAL_DEFAULT_PREFIXES,
-    "lag_prefixes": LAG_DEFAULT_PREFIXES,
-    "treat_calendar_as_known": True,
-}
+# Hinweis: weitere Präfixe/Flags werden ausschließlich über TFT_DATASET gesteuert.
 
 
 # ------------------------- Builder -------------------------
@@ -88,6 +44,7 @@ class TFTDatasetSpecBuilder:
     tft_cfg: Dict[str, Any]
 
     def run(self) -> Dict[str, Any]:
+        # 1) Pfade für train/val/test
         paths = {
             "train": self.datasets_dir / "train.parquet",
             "val": self.datasets_dir / "val.parquet",
@@ -97,7 +54,7 @@ class TFTDatasetSpecBuilder:
             if not p.exists():
                 raise FileNotFoundError(f"{name}.parquet nicht gefunden: {p}")
 
-        # Trainingssatz einlesen
+        # 2) Trainingssatz einlesen und prüfen
         train = pd.read_parquet(paths["train"])
         self._basic_checks(train)
 
@@ -105,18 +62,14 @@ class TFTDatasetSpecBuilder:
         # numerisch + bool zulassen (0/1-Flags können als bool gespeichert sein)
         numeric_cols = train.select_dtypes(include=["number", "bool"]).columns.tolist()
 
-        # 1) Static categoricals: ID-Spalten
+        # 3) Static categoricals: ID-Spalten
         static_categoricals = [c for c in self.id_cols if c in all_cols]
 
-        # 2) Known reals: zyklisch / Kalender / Feiertage / Flags / time_idx
-        known_real_prefixes = self.tft_cfg.get(
-            "known_real_prefixes", DEFAULT_TFT_CFG["known_real_prefixes"]
-        )
-        treat_calendar = self.tft_cfg.get(
-            "treat_calendar_as_known", DEFAULT_TFT_CFG["treat_calendar_as_known"]
-        )
-        # Flag-Spalten: aus config oder Default
-        flag_cols = set(self.tft_cfg.get("flag_cols", list(FLAG_COLS_DEFAULT)))
+        # 4) Known reals: zyklische Features / Kalender / Feiertage / Flags / time_idx
+        known_real_prefixes: List[str] = list(self.tft_cfg["known_real_prefixes"])
+        lag_prefixes: List[str] = list(self.tft_cfg["lag_prefixes"])
+        treat_calendar: bool = bool(self.tft_cfg["treat_calendar_as_known"])
+        flag_cols_cfg: List[str] = list(self.tft_cfg["flag_cols"])
 
         known_reals: List[str] = []
 
@@ -127,6 +80,7 @@ class TFTDatasetSpecBuilder:
 
         # Kalender und Feiertage
         if treat_calendar:
+            # einfache Kalenderfeatures
             for c in CALENDAR_COLS:
                 if c in numeric_cols:
                     known_reals.append(c)
@@ -135,7 +89,7 @@ class TFTDatasetSpecBuilder:
                 if c.startswith(HOLIDAY_PREFIXES) and c in numeric_cols:
                     known_reals.append(c)
             # explizite Flags (nicht an numeric_cols binden -> auch bool erlauben)
-            for c in flag_cols:
+            for c in flag_cols_cfg:
                 if c in all_cols:
                     known_reals.append(c)
 
@@ -143,13 +97,15 @@ class TFTDatasetSpecBuilder:
         if "time_idx" in numeric_cols:
             known_reals.append("time_idx")
 
-        # Reihenfolge stabilisieren, Duplikate entfernen (order-preserving)
+        # Duplikate entfernen, Reihenfolge beibehalten
         seen = set()
         known_reals = [x for x in known_reals if not (x in seen or seen.add(x))]
 
-        # 3) Unknown reals: target + lags + sonstige numerische, die nicht known/IDs sind
-        lag_prefixes = self.tft_cfg.get("lag_prefixes", DEFAULT_TFT_CFG["lag_prefixes"])
-        lag_cols = [c for c in all_cols if any(c.startswith(pref) for pref in lag_prefixes) and c in numeric_cols]
+        # 5) Unknown reals: target + Lags + sonstige numerische, die nicht known/IDs sind
+        lag_cols = [
+            c for c in all_cols
+            if any(c.startswith(pref) for pref in lag_prefixes) and c in numeric_cols
+        ]
 
         unknown_reals: List[str] = []
         if self.target_col in numeric_cols:
@@ -169,14 +125,12 @@ class TFTDatasetSpecBuilder:
         # Lags ans Ende (nur für Übersicht)
         unknown_reals.extend(lag_cols)
 
-        # 4) Sequenzlängen
-        max_encoder_length = int(self.tft_cfg.get("max_encoder_length", DEFAULT_TFT_CFG["max_encoder_length"]))
-        max_prediction_length = int(self.tft_cfg.get("max_prediction_length", DEFAULT_TFT_CFG["max_prediction_length"]))
+        # 6) Sequenzlängen (müssen in TFT_DATASET konfiguriert sein)
+        max_encoder_length = int(self.tft_cfg["max_encoder_length"])
+        max_prediction_length = int(self.tft_cfg["max_prediction_length"])
 
-        # 5) Speichern
-        out_dir = self.datasets_dir / "tft"
-        out_dir.mkdir(parents=True, exist_ok=True)
-        spec_path = out_dir / "dataset_spec.json"
+        # 7) Spezifikation schreiben
+        spec_path = self.datasets_dir / "dataset_spec.json"
 
         spec: Dict[str, Any] = {
             "time_col": self.time_col,
@@ -199,7 +153,7 @@ class TFTDatasetSpecBuilder:
                     "known_real_prefixes": known_real_prefixes,
                     "lag_prefixes": lag_prefixes,
                     "holiday_prefixes": list(HOLIDAY_PREFIXES),
-                    "flag_cols": list(flag_cols),
+                    "flag_cols": flag_cols_cfg,
                 },
             },
         }
@@ -227,18 +181,16 @@ class TFTDatasetSpecBuilder:
 # ------------------------- CLI -------------------------
 
 def main() -> None:
-    cfg = _load_config_safe()
     builder = TFTDatasetSpecBuilder(
-        datasets_dir=Path(cfg["DATASETS_DIR"]),
-        time_col=cfg["TIME_COL"],
-        id_cols=cfg["ID_COLS"],
-        target_col=cfg["TARGET_COL"],
-        tft_cfg=cfg.get("TFT_DATASET", {}),
+        datasets_dir=PROCESSED_DIR,
+        time_col=TIME_COL,
+        id_cols=list(ID_COLS),
+        target_col=TARGET_COL,
+        tft_cfg=TFT_DATASET,
     )
     builder.run()
 
 
 if __name__ == "__main__":
+    # python -m src.modeling.dataset_tft
     main()
-
-# python -m src.modeling.dataset_tft

@@ -32,11 +32,12 @@ ID_COLS: list[str] = GROUP_COLS
 # -----------------------------------------------------------------------------
 # Pfade für Feature-/Dataset-Erzeugung
 # -----------------------------------------------------------------------------
-# Upstream-Features (falls deine Pipeline diese Datei erzeugt/nutzt)
-FEATURES_TRAIN_PATH: Path = PROCESSED_DIR / "features_train.parquet"
 
-# Zielordner für train/val/test & spätere Artefakte
-DATASETS_DIR: Path = PROCESSED_DIR / "model_dataset"
+# Upstream-Features aus Schritt 3A (optional genutzt)
+FEATURES_TRAIN_PATH: Path = PROCESSED_DIR / "train_features.parquet"
+
+# Input für model_dataset.py (Ergebnis aus 3C: lag_features)
+MODEL_INPUT_PATH: Path = PROCESSED_DIR / "train_features_cyc_lag.parquet"
 
 # -----------------------------------------------------------------------------
 # Split-Parameter (zeitbasiert)

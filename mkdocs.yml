@@ -20,18 +20,24 @@ markdown_extensions:
 
 nav:
   - Übersicht: index.md
-  - Projektdetails:
-      - Data Alignment: project/DataAlignment.md
-      - Data Cleaning: project/DataCleaning.md
-      - Feature Engineering: project/FeatureEngineer.md
-      - Cyclical Encoder: project/CyclicalEncoder.md
-      - Features: project/Features.md
-      - Dataset TFT: project/DatasetTFT.md
-      - Model Dataset: project/ModelDatasetBuilder.md
+  - Projekt Pipeline:
       - Pipeline & I/O: project/PipelineOrder.md
-      - Trainer & Evaluator Struktur: project/TrainerEvaluator_Stuktur.md
-      - Trainer TFT – Runprotokoll: project/TrainerTFT_Runprotokoll.md
+
+  - Projekt Schritte:
+      - Data Preprocessing:
+        - Data Alignment: project/DataAlignment.md
+        - Data Cleaning: project/DataCleaning.md
+        - Data Cleaning Plot: project/DataCleaningPlot.md
+        - Feature Engineering: project/FeatureEngineer.md
+        - Cyclical Encoder: project/CyclicalEncoder.md
+        - Lag Features: project/LagFeatures.md
+      - Modeling:
+        - Dataset TFT: project/DatasetTFT.md
+        - Model Dataset: project/ModelDataset.md
+        - Trainer TFT: project/TrainerTFT.md
+        - Trainer TFT – Runprotokoll: project/TrainerTFT_Runprotokoll.md
   - Allgemeine Dokumentation:
       - Projektstruktur: shared/Projektstruktur.md
       - Configs & Setup: shared/ConfigSetup.md
+      - Trainer & Evaluator Struktur: project/TrainerEvaluator_Stuktur.md
       - MkDocs Nutzung: shared/MkDocsUsage.md

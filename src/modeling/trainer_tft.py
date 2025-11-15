@@ -44,18 +44,16 @@ from src.utils.json_results import export_run_jsons_from_metrics
 def _load_dataset_from_spec(processed_dir: Path):
     """
     Lädt train/val Parquet anhand der dataset_spec.json und baut TimeSeriesDataSet-Objekte.
-    Nutzt – wie die alte x_-Version – die tatsächlichen Pfade aus der JSON.
+    Nutzt die Pfade aus der JSON-Spezifikation.
     """
-    base = processed_dir / "model_dataset" / "tft"
-    spec_path = base / "dataset_spec.json"
+    spec_path = processed_dir / "dataset_spec.json"
 
     if not spec_path.exists():
         raise FileNotFoundError(f"dataset_spec.json nicht gefunden: {spec_path}")
 
-    # <-- Änderung: Pfade aus der JSON nutzen
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     train_pq = Path(spec["paths"]["train"])
-    val_pq   = Path(spec["paths"]["val"])
+    val_pq = Path(spec["paths"]["val"])
 
     if not train_pq.exists() or not val_pq.exists():
         raise FileNotFoundError(f"Parquet-Dateien nicht gefunden: {train_pq} oder {val_pq}")
@@ -64,7 +62,7 @@ def _load_dataset_from_spec(processed_dir: Path):
     max_prediction_length = spec["lengths"]["max_prediction_length"]
 
     df_train = pd.read_parquet(train_pq)
-    df_val   = pd.read_parquet(val_pq)
+    df_val = pd.read_parquet(val_pq)
 
     # Zielvariable auf float32 casten
     for df in (df_train, df_val):
@@ -84,7 +82,6 @@ def _load_dataset_from_spec(processed_dir: Path):
 
     val_ds = TimeSeriesDataSet.from_dataset(train_ds, df_val, predict=False)
     return train_ds, val_ds
-
 
 
 def main():
@@ -161,7 +158,7 @@ def main():
     # -----------------------------
     run_id = f"run_{datetime.now():%Y%m%d_%H%M%S}"
 
-    ckpt_dir = PROCESSED_DIR / "model_dataset" / "tft" / "checkpoints" / run_id
+    ckpt_dir = Path("results") / "tft" / "checkpoints" / run_id
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     early_stop = EarlyStopping(
@@ -180,7 +177,7 @@ def main():
         auto_insert_metric_name=False,
     )
 
-    lr_monitor = LearningRateMonitor(logging_interval="step")  # oder "epoch", wenn dir das lieber ist
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
     logger = CSVLogger(
         save_dir="logs",               # EIN Log-Wurzelordner
@@ -227,7 +224,6 @@ def main():
     # -----------------------------
     tfit_start = time.perf_counter()
 
-
     # -----------------------------
     # Training
     # -----------------------------
@@ -262,7 +258,7 @@ def main():
         pass
 
     logs_run_dir = Path(logger.log_dir)  # z. B. logs/tft/run_YYYYMMDD_HHMMSS
-    results_dir = Path("results") / "evaluation" / run_id  # <— dein gewünschter Zielordner
+    results_dir = Path("results") / "evaluation" / run_id
 
     results_path, summary_path = export_run_jsons_from_metrics(
         run_id=run_id,
@@ -275,13 +271,11 @@ def main():
     print(f"  - {results_path}")
     print(f"  - {summary_path}")
 
-
     # Hinweis auf bestes Checkpoint
     if checkpoint.best_model_path:
         print(f"[trainer_tft] Bestes Checkpoint: {checkpoint.best_model_path}")
 
 
 if __name__ == "__main__":
+    # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
     main()
-
-# python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
