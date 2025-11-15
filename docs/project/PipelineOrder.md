@@ -1,4 +1,9 @@
-# 📘 Pipeline Overview – FOM.tft-timeseries
+# Pipeline Overview – FOM.tft-timeseries
+
+**Datum:** 2025-11-15  
+**Script:** –  
+**Ziel & Inhalt:** Gibt eine vollständige Übersicht über die Pipeline-Reihenfolge des Projekts. Beschreibt Input, Output und Zweck aller Module von Alignment bis Training und optionaler Evaluation.
+
 
 ## Ziel
 Diese Übersicht beschreibt die **Ausführungsreihenfolge** der zentralen Module – von Rohdaten bis Training und Evaluation.  

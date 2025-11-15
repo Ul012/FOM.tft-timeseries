@@ -1,5 +1,10 @@
 # ModelDataset – Erstellung eines modellfertigen Datensatzes
 
+**Datum:** 2025-11-15  
+**Script:** src/modeling/model_dataset.py  
+**Ziel & Inhalt:** Erklärt den zeitbasierten Split in Train/Val/Test, Metadaten-Erzeugung und die Vorbereitung des Datensatzes für das Modelltraining. Enthält Konfigurationsparameter, Ablauf und Prüfhinweise.
+
+
 ## Zweck
 Das Modul `model_dataset.py` erstellt aus der durch `features.py` vorbereiteten Tabelle ein modellfertiges Datenset.  
 Die Daten werden dabei **zeitlich sortiert** und in drei Abschnitte unterteilt: **Training**, **Validation** und **Test**.  

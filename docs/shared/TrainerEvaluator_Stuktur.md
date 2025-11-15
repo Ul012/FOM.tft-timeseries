@@ -1,7 +1,8 @@
 # Struktur und Verantwortlichkeiten: Trainer – Evaluator – Visualizer
 
-**Projektkontext:** *TFT-TimeSeries*  
-Ziel ist eine saubere Trennung von Verantwortlichkeiten zwischen den Komponenten des Projekts, um die Nachvollziehbarkeit, Erweiterbarkeit und Wartbarkeit zu sichern.
+**Datum:** 2025-11-15  
+**Script:** –  
+**Ziel & Inhalt:** Definiert die rollenbasierte Trennung zwischen Trainer, Evaluator und Visualizer. Beschreibt ihre Aufgaben, Ordnerstrukturen, Artefakte und den sequenziellen Workflow. Dient als Leitlinie für saubere Zuständigkeiten und reproduzierbare Ergebnisse.
 
 ---
 

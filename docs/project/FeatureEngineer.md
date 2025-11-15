@@ -1,5 +1,10 @@
 # FeatureEngineer – Zweck und Funktionsweise
 
+**Datum:** 2025-11-15  
+**Script:** src/data/feature_engineering.py  
+**Ziel & Inhalt:** Beschreibt die Erstellung von Kalender-, Feiertags- und Zeitindex-Features. Ziel ist die Erweiterung der Zeitreihen um maschinenlesbare zeitliche Strukturen für den späteren TFT-Einsatz.
+
+
 ## Überblick
 Die Klasse **FeatureEngineer** bereitet den Datensatz so vor, dass er vom **Temporal Fusion Transformer (TFT)** zeitlich verstanden werden kann. Sie erweitert den DataFrame um zusätzliche Spalten (Features), die zeitliche und strukturelle Informationen enthalten – z. B. Kalendermerkmale, Wochenendkennzeichnung, Feiertage und einen fortlaufenden Zeitindex. 
 

@@ -1,7 +1,9 @@
-# 📁 Projektstruktur – FOM.tft-timeseries (aktualisiert)
+# Projektstruktur – FOM.tft-timeseries
 
-**Stand:** November 2025  
-**Ziel:** Übersicht über Aufbau, Zuständigkeiten und künftige Erweiterungen des Projekts (TFT-, ARIMA- und Prophet-Pipelines).
+**Datum:** 2025-11-15  
+**Script:** –  
+**Ziel & Inhalt:** Gibt eine vollständige Übersicht über die Struktur des gesamten Projekts. Erklärt die Rollen der Ordner `data`, `modeling`, `utils`, `visualization` sowie geplante Evaluation. Beschreibt Datenfluss, Zuständigkeiten und Erweiterbarkeit der Pipeline.
+
 
 ---
 

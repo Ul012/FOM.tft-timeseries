@@ -1,6 +1,9 @@
 # Integration von ARIMA und Prophet in die TFT-TimeSeries-Pipeline
 
-Dieses Dokument beschreibt, wie klassische Zeitreihenmodelle (ARIMA und Prophet) in das bestehende Projekt integriert werden sollen. Ziel ist ein späterer Modellvergleich zwischen **TFT**, **ARIMA** und **Prophet** auf Basis derselben Datengrundlage.
+**Datum:** 2025-11-15  
+**Script:** –  
+**Ziel & Inhalt:** Beschreibt, wie ARIMA und Prophet als zusätzliche Modelle in die bestehende TFT-Pipeline integriert werden sollen. Definiert Trainer-Skripte, Datenbasis, Ordnerstruktur, Konfiguration sowie die geplante Evaluationslogik für den späteren Modellvergleich.
+
 
 Die Integration erfolgt so, dass:
 

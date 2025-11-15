@@ -1,5 +1,10 @@
 # DataCleaning – Visuelle Überprüfung
 
+**Datum:** 2025-11-15  
+**Script:** –
+**Ziel & Inhalt:** Beschreibt drei optionale Visualisierungsskripte zur Kontrolle der Bereinigung: Gesamtüberblick, Vorher-Nachher-Vergleich und Analyse der stärksten Änderungen. Dient der Validierung von Cleaning-Ergebnissen.
+
+
 ## Zweck
 
 Die Cleaning-Komponente (`data_cleaning.py`) korrigiert:

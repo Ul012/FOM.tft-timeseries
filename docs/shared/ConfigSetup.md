@@ -1,7 +1,8 @@
 # Konfigurationen – Zusammenspiel von `config.py` und `configs/*.yaml`
 
-Dieses Dokument beschreibt die Trennung zwischen **statischen Projektkonstanten** in `src/config.py` und **variablen Trainingsparametern** in den YAML-Konfigurationen unter `configs/`.  
-Die klare Aufgabenteilung stellt sicher, dass die Pipeline reproduzierbar, konfigurierbar und schlank bleibt.
+**Datum:** 2025-11-15  
+**Script:** –  
+**Ziel & Inhalt:** Beschreibt die Trennung zwischen statischen Projektkonstanten (`config.py`) und variablen Trainingsparametern in YAML-Dateien. Erläutert Pfade, Spalten, Feature-Konfigurationen, Split-Parameter sowie den Ablauf eines Trainingslaufs und Best Practices für experimentelle YAML-Konfigurationen.
 
 ---
 

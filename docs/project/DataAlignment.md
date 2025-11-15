@@ -1,5 +1,10 @@
 # DataAlignment – Zweck und Funktionsweise
 
+**Datum:** 2025-11-15  
+**Script:** src/data/data_alignment.py  
+**Ziel & Inhalt:** Erklärt die Normalisierung der Verkaufsniveaus auf ein gemeinsames Referenzjahr (2020). Beschreibt Motivation, mathematische Herleitung, Implementierungsschritte und Nutzen für stabile zeitreihenbasierte Modellierung.
+
+
 ## Überblick
 Das Modul **DataAlignment** gleicht die Verkaufszahlen der Jahre 2017–2019 auf das Niveau von 2020 an. Dieser Schritt ist notwendig, um die Daten für den **Temporal Fusion Transformer (TFT)** vergleichbar zu machen. Ohne diese Angleichung würde das Modell Unterschiede in der Höhe der Jahreswerte (z. B. generell höhere Absätze im Jahr 2020) als wichtiges Muster interpretieren, obwohl es sich nur um ein Skalierungsproblem handelt. 
 

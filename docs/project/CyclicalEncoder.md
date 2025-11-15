@@ -1,5 +1,10 @@
 # CyclicalEncoder – Zweck und Funktionsweise
 
+**Datum:** 2025-11-15  
+**Script:** src/data/cyclical_encoder.py  
+**Ziel & Inhalt:** Erläutert die Sinus-/Kosinus-Kodierung zyklischer Zeitmerkmale (dow, month, doy, week, hour). Beschreibt mathematische Grundlagen, Konfiguration, erzeugte Features sowie die Position des Encoders in der Pipeline.
+
+
 ## Überblick
 
 Der CyclicalEncoder wandelt zyklische Zeitmerkmale (z. B. Wochentag, Monat, Tag im Jahr) in Sinus- und Kosinuswerte um. Dadurch kann ein Modell wie der Temporal Fusion Transformer (TFT) die kreisförmige Struktur zeitlicher Merkmale korrekt erfassen.

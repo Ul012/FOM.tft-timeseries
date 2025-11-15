@@ -1,5 +1,10 @@
 # LagFeatures – Zweck und Funktionsweise
 
+**Datum:** 2025-11-15  
+**Script:** src/data/lag_features.py  
+**Ziel & Inhalt:** Dokumentiert die Erstellung konfigurierbarer Lag- und Rolling-Features. Zeigt Vorgehen, Konfiguration (LAG_CONF), Implementierungsdetails und Pipeline-Position.
+
+
 ## Überblick
 
 Das Modul `lag_features.py` erzeugt auf Basis der bestehenden Zeitreihen zusätzliche **Lag- und Rolling-Features**.  

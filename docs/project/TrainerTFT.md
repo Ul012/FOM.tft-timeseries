@@ -1,241 +1,217 @@
-# Trainer_TFT – Lauf erklärt (aktuelle Version)
+# Trainer_TFT – Training, Artefakte & Ergebnisdateien
 
+**Datum:** 2025-11-15  
 **Script:** `src/modeling/trainer_tft.py`  
-**Kontext:** Trainingslauf eines Temporal Fusion Transformer (TFT) mit CSV-Logging und JSON-Export.
-
-Dieses Dokument beschreibt, was beim Start von `trainer_tft.py` passiert, welche Artefakte entstehen und wie die wichtigsten Logzeilen zu lesen sind.
+**Ziel & Inhalt:** Dieses Dokument beschreibt Aufbau, Ablauf und Ausgaben des TFT-Trainingsprozesses. Zusätzlich werden alle Kennzahlen der Datei `summary.json` erklärt und in den Kontext des Projekts eingeordnet.
 
 ---
 
-## 1. Aufruf und Konfiguration
+# 1. Aufgaben des Trainers
 
-Typischer Aufruf:
+Der Trainer übernimmt den vollständigen Trainingsprozess für das TFT-Modell:
 
-```bash
-python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
-```
+- Laden des vorbereiteten Datensatzes  
+- Erstellen des `TimeSeriesDataSet` (Encoder/Decoder-Fenster, Feature-Rollen, Lags)  
+- Initialisierung des Temporal Fusion Transformer  
+- Start und Steuerung der Trainingsschleife über PyTorch Lightning  
+- Logging aller relevanten Metriken pro Epoche  
+- Speichern des besten Modells (Checkpointing)  
+- Erstellen der konsolidierten Ergebnisdatei `summary.json`  
 
-- Die Datei unter `configs/*.yaml` enthält **alle Trainings- und Modell-Hyperparameter** (Learning Rate, Batch Size, Epochen, Modellgrößen, Device etc.).
-- `src/config.py` liefert nur **statische Projektkonstanten** wie Pfade (`PROCESSED_DIR`) und Spaltennamen (`TIME_COL`, `ID_COLS`, `TARGET_COL`).
-- Die YAML wird mit einem strikten Loader (`load_trainer_cfg`) eingelesen – **keine Fallbacks im Code**, fehlende Felder führen zu Fehlern.
-
-Wichtige Felder aus der YAML (Auszug):
-
-- `seed`
-- `batch_size`
-- `learning_rate`
-- `max_epochs`
-- `gradient_clip_val`
-- `early_stopping_patience`
-- `accelerator` (z. B. `"cpu"` oder `"gpu"`)
-- `devices` (z. B. `1`)
-- `limit_train_batches`, `limit_val_batches`
-- `num_workers`
-- `model.*` (z. B. `hidden_size`, `dropout`, `output_size`, `attention_head_size`)
+Die Architektur ist bewusst modular: Datensatz, Features, Modell und Training werden getrennt definiert und gesteuert.
 
 ---
 
-## 2. Datasets und DataLoader
+# 2. Eingaben des Trainers
 
-Der Trainer nutzt die zuvor erzeugten Dateien aus `data/processed/`:
+### 2.1 Konfigurationsdatei (`trainer_tft_*.yaml`)
+Enthält alle hyperparametrischen Einstellungen des Laufs:
 
-1. `model_dataset.py` hat `train.parquet`, `val.parquet`, `test.parquet` sowie `meta.json` erzeugt.
-2. `dataset_tft.py` hat daraus `dataset_spec.json` geschrieben.
+- Modellparameter  
+- Batchgröße  
+- Lernrate  
+- Fenstergrößen  
+- Early-Stopping, Gradient Clipping  
+- DataLoader-Parameter  
+- Logging-Optionen
 
-`trainer_tft.py` liest:
+### 2.2 Verarbeitete Datensätze (`data/processed/…`)
+Der Trainer lädt:
 
-- `data/processed/dataset_spec.json`
-- die darin referenzierten Pfade zu `train.parquet` und `val.parquet`
+- Training  
+- Validation  
+- Test  
 
-Daraus werden zwei `TimeSeriesDataSet`-Objekte erstellt:
+als Parquet-Dateien, erzeugt vom ModelDataset-Script.
 
-- `train_ds` für das Training
-- `val_ds` für die Validierung
-
-Wichtige Punkte:
-
-- Die Zielspalte (`TARGET_COL`, z. B. `num_sold`) wird als `float32` gecastet.
-- Als Zeitindex wird `time_idx` genutzt, falls vorhanden, sonst `TIME_COL` (z. B. `date`).
-- Für die Zielnormalisierung wird `GroupNormalizer` mit `groups=ID_COLS` verwendet.
-
-Die DataLoader:
-
-- `train_loader = train_ds.to_dataloader(train=True, batch_size=..., num_workers=...)`
-- `val_loader = val_ds.to_dataloader(train=False, ...)`
-
-**`num_workers`** steuert, wie viele Hintergrundprozesse Daten vorbereiten. Unter Windows sind typischerweise 2–8 sinnvoll.
+### 2.3 Projektweite Konstanten (`src/config.py`)
+Zentrale Pfade, Namen und Split-Grenzen.
 
 ---
 
-## 3. Modellinitialisierung
+# 3. Ausgaben des Trainers
 
-Das Modell wird mit `TemporalFusionTransformer.from_dataset(...)` aus `pytorch_forecasting` aufgebaut.  
-Die meisten Parameter stammen direkt aus der YAML-Konfiguration:
+Alle Artefakte eines Runs befinden sich unter:
 
-- `learning_rate = cfg.learning_rate`
-- `hidden_size`, `hidden_continuous_size`, `attention_head_size`
-- `dropout`
-- `reduce_on_plateau_patience`
-- `output_size` (bei QuantileLoss meist Anzahl der Quantile)
-
-Verlustfunktion:
-
-- Wenn `cfg.model.loss == "mse"`:
-  - `loss = torch.nn.MSELoss()`
-  - `output_size = 1`
-- Sonst:
-  - `loss = QuantileLoss()`
-  - `output_size` aus der YAML (z. B. 3 für P10/50/90)
-
-Zusätzlich werden Standardmetriken für das Logging aktiviert:
-
-- `MAE`, `RMSE`, `MAPE`, `SMAPE`
-
----
-
-## 4. Logging, Checkpoints und Run-ID
-
-Für jeden Lauf wird eine eindeutige **Run-ID** erzeugt, z. B.:
-
-```text
-run_20251114_162530
+```
+results/tft/<run_id>/
 ```
 
-Diese Run-ID steuert die Pfade für Logs und Checkpoints:
+Typische Verzeichnisstruktur:
 
-- **Checkpoints:**  
-  `results/tft/checkpoints/run_YYYYMMDD_HHMMSS/`
-- **Logs (CSV):**  
-  `logs/tft/run_YYYYMMDD_HHMMSS/`
-
-### 4.1 Logger
-
-Es wird ein `CSVLogger` verwendet:
-
-- `save_dir="logs"`
-- `name="tft"`
-- `version=run_id`
-
-Dadurch entsteht pro Run ein Ordner:
-
-```text
-logs/
-└─ tft/
-   └─ run_YYYYMMDD_HHMMSS/
-      ├─ metrics.csv
-      ├─ hparams.yaml
-      └─ (weitere Hilfsdateien)
 ```
-
-### 4.2 Checkpoints
-
-Checkpoints werden über `ModelCheckpoint` erstellt:
-
-- `dirpath = results/tft/checkpoints/run_YYYYMMDD_HHMMSS/`
-- `filename = "tft-{epoch:02d}-{val_loss:.4f}"`
-- `monitor = "val_loss"`
-- `mode = "min"`
-- `save_top_k = 1` (nur das beste Checkpoint pro Run)
-
-Im Log erscheint nach dem Training u. a.:
-
-```text
-[trainer_tft] Bestes Checkpoint: results/tft/checkpoints/run_.../tft-XX-YY.YYYY.ckpt
-```
-
-Dieses `.ckpt` kann später für Vorhersagen geladen werden.
-
----
-
-## 5. Trainingsphase und Konsolenausgabe
-
-Während des Trainings zeigt Lightning pro Epoche u. a. an:
-
-- aktuelle Epoche (`Epoch 1`, `Epoch 2`, …)
-- `train_loss_step` (Loss eines Batches)
-- `train_loss_epoch` (durchschnittlicher Trainings-Loss)
-- `val_loss` (Validierungs-Loss)
-
-Wichtige Punkte zur Interpretation:
-
-- **Tendenz wichtiger als Einzelwerte** – idealerweise sinken `train_loss_epoch` und `val_loss` im Verlauf.
-- Ein deutlich höherer `val_loss` im Vergleich zu `train_loss_epoch` kann auf Overfitting hindeuten.
-- Die absolute Höhe des Losses ist von der Lossdefinition abhängig (z. B. MSE vs. QuantileLoss).
-
----
-
-## 6. JSON-Export der Ergebnisse
-
-Nach Abschluss des Trainings ruft der Trainer:
-
-```python
-results_path, summary_path = export_run_jsons_from_metrics(...)
-```
-
-auf. Dieser Helper:
-
-- liest die `metrics.csv` des Runs aus `logs/tft/run_.../`
-- schreibt zwei JSON-Dateien nach:
-
-```text
-results/evaluation/run_YYYYMMDD_HHMMSS/results.json
-results/evaluation/run_YYYYMMDD_HHMMSS/summary.json
-```
-
-### Inhalt:
-
-- `results.json`: detaillierte Verläufe der Metriken (z. B. pro Epoche)
-- `summary.json`: Meta-Infos zum Run, z. B.:
-  - verwendete YAML-Konfiguration (`config_file`, `config_values`)
-  - Seed, Laufzeit, Anzahl der Epochen
-  - bestes Checkpoint
-  - zentrale Hyperparameter (Learning Rate, Batch Size, max_epochs, …)
-
-Die Konsole zeigt am Ende z. B.:
-
-```text
-[trainer_tft] JSON-Export abgeschlossen:
-  - results/evaluation/run_.../results.json
-  - results/evaluation/run_.../summary.json
+│
+├── checkpoints/
+│   └── best.ckpt
+│
+├── metrics.csv
+├── summary.json
+└── full_config.yaml
 ```
 
 ---
 
-## 7. Typischer Gesamtpfad eines Runs
+# 4. Beschreibung der Ausgabedateien
 
-Zusammengefasst entstehen bei einem vollständigen TFT-Training folgende Artefakte:
+## 4.1 metrics.csv
+CSV-Logger von PyTorch Lightning.  
+Pro Epoche wird gespeichert:
 
-```text
-data/
-  processed/
-    train.parquet
-    val.parquet
-    test.parquet
-    dataset_spec.json
+- `train_loss`  
+- `val_loss`  
+- optionale Lernrate (`lr-Adam`)  
+- Epochennummer  
 
-logs/
-  tft/
-    run_YYYYMMDD_HHMMSS/
-      metrics.csv
-      hparams.yaml
-      (weitere Log-Dateien)
+Diese Datei dient als Grundlage für:
 
-results/
-  tft/
-    checkpoints/
-      run_YYYYMMDD_HHMMSS/
-        tft-XX-YY.YYYY.ckpt
-
-  evaluation/
-    run_YYYYMMDD_HHMMSS/
-      results.json
-      summary.json
-```
+- Visualisierung (Loss-Plots)  
+- Evaluator-Skripte  
+- Vergleich zwischen verschiedenen Runs  
 
 ---
 
-## 8. Nächste sinnvolle Schritte
+## 4.2 summary.json  
+Konsolidierte Zusammenfassung eines gesamten Runs.  
+Sie enthält nur wenige, aber **entscheidende** Kennzahlen, mit denen Runs schnell miteinander verglichen werden können.
 
-- **Evaluator:** Skript schreiben bzw. nutzen, das alle `summary.json` in `results/evaluation/` einliest und eine Vergleichstabelle (z. B. `runs_summary.csv`) erzeugt.
-- **Visualizer:** Lernkurven und Vergleichsplots aus `metrics.csv` und `runs_summary.csv` erstellen.
-- **Hyperparameter-Studien:** Neue YAML-Dateien in `configs/` anlegen, um systematisch Varianten von Learning Rate, Fensterlängen oder Modellgrößen zu testen.
+Die Werte werden **automatisch** aus der `metrics.csv` abgeleitet.
+
+Die vollständige Erklärung der Metriken folgt unter Kapitel 5.
+
+---
+
+## 4.3 checkpoints/best.ckpt
+Ein binärer Snapshot des Modells, der jene Epoche enthält, in der der Validierungs-Loss minimal war.
+
+Wird verwendet für:
+
+- Vorhersage  
+- Evaluierung  
+- Reloading für neue Experimente  
+- Fine-Tuning  
+
+---
+
+## 4.4 full_config.yaml
+Persistierte vollständige Konfiguration des Laufs.  
+Wichtig für:
+
+- Reproduzierbarkeit  
+- vollständige Dokumentation  
+- Wiederherstellung von Laufbedingungen  
+
+---
+
+# 5. Erklärung der summary.json-Metriken
+
+Die Datei `summary.json` hat die Aufgabe, in kompakter Form darzustellen, wie gut ein Lauf insgesamt war.  
+Sie aggregiert alle wichtigen Informationen aus `metrics.csv` in einem leicht vergleichbaren Format.
+
+Die Werte sind generalisierbar und unabhängig von einem konkreten Run.
+
+---
+
+## 5.1 Loss-Werte – was sie bedeuten (je niedriger, desto besser)
+
+### **final_train_loss**
+- Durchschnittlicher Trainings-Loss der letzten vollständig durchlaufenen Epoche.  
+- Gibt an, wie gut das Modell **auf den bekannten Trainingsdaten** gelernt hat.  
+- Interpretation:  
+  - sehr weit unter dem Validierungs-Loss → Gefahr von Overfitting  
+  - ähnlich wie Validierungs-Loss → Training stabil, Lernverhalten stimmig
+
+---
+
+### **final_val_loss**
+- Validierungs-Loss der letzten Epoche.  
+- Zentrale Kennzahl dafür, wie gut das Modell auf **unbekannte Daten** generalisiert.  
+- Wird später für Modellvergleiche genutzt.
+
+---
+
+## 5.2 Bestes Validierungsergebnis
+
+### **best_val_loss**
+- Niedrigster Validierungs-Loss, der während des gesamten Trainings erreicht wurde.  
+- Dieser Wert bestimmt, welches Modell als „best.ckpt“ abgespeichert wird.  
+- Die wichtigste Vergleichsmetrik zwischen verschiedenen Läufen.
+
+---
+
+### **best_val_epoch**
+- Epoche, in der der beste Validierungs-Loss gemessen wurde.  
+- Interpretation:  
+  - sehr frühes Minimum → Modell lernt schnell, mögliche Gefahr von Overfitting  
+  - spätes Minimum → längeres Training ist hilfreich, gute Lernkurve  
+
+---
+
+## 5.3 Lernraten-Werte
+
+Diese Werte erscheinen nur, wenn ein Lernraten-Logger in den Trainer eingebunden ist.
+
+### **initial_lr**
+- Erste aufgezeichnete Lernrate des genutzten Optimizers.  
+- Hilfreich zur Dokumentation oder zum Vergleich von Hyperparameter-Runs.
+
+### **final_lr**
+- Letzte aufgezeichnete Lernrate im Training.  
+- Zeigt, ob ein Scheduler aktiv war (z. B. Reduktion bei schwacher Validierungsperformance).  
+- Kann `NaN` sein, wenn keine Lernrate geloggt wurde.  
+  → kein Fehler des Trainings, nur fehlendes Logging.
+
+---
+
+# 6. Schnellinterpretation der Loss-Werte
+
+| Verhalten | Bedeutung |
+|----------|-----------|
+| Train-Loss ≈ Val-Loss, beide niedrig | gutes Fit, stabile Generalisierung |
+| Train-Loss ≪ Val-Loss | Overfitting |
+| beide Loss-Werte hoch | Underfitting oder unzureichende Features |
+| best_val_epoch sehr früh | Modell lernt schnell, ggf. Early Stopping |
+| best_val_epoch spät | länger trainieren lohnt sich |
+
+---
+
+# 7. Ablauf des Trainings (Kurzfassung)
+
+1. Setzen des Seeds  
+2. Laden des Datensatzes  
+3. Erstellen des `TimeSeriesDataSet`  
+4. Initialisieren des TFT-Modells  
+5. Training:
+   - Train/Val-Loss pro Epoche  
+   - optional: Logging der Lernrate  
+6. Speichern des besten Modells  
+7. Export:
+   - `metrics.csv`  
+   - `summary.json`  
+   - `full_config.yaml`  
+8. Konsolenausgabe mit Best-Checkpoint und Abschlussinformationen  
+
+---
+
+*Diese Dokumentation beschreibt den Trainer, seine Konfiguration und die Bedeutung der erzeugten Artefakte.  
+Für eine zeilenweise Erklärung eines tatsächlichen Trainingslaufs siehe „Trainer_TFT_Runprotokoll.md“.*
+

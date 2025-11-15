@@ -1,5 +1,10 @@
 # DataCleaning – Bereinigung von Ausreißern und Lockdown-Zeiträumen
 
+**Datum:** 2025-11-15  
+**Script:** src/data/data_cleaning.py  
+**Ziel & Inhalt:** Dokumentiert die Korrektur eines Ausreißers sowie die Glättung der Lockdown-Monate 2020. Erläutert das gruppenweise Vorgehen, die Imputation und typische Fehlerquellen bei der täglichen Buchverkaufsreihe.
+
+
 ## Überblick
 
 Der Cleaning-Schritt bereinigt die durch das Alignment erzeugten Zeitreihen, indem er

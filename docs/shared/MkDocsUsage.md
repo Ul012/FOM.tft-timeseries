@@ -1,5 +1,10 @@
 # Verwendung von MkDocs
 
+**Datum:** 2025-11-15  
+**Script:** –  
+**Ziel & Inhalt:** Erläutert, wie die Projektdokumentation mit MkDocs aufgebaut, lokal gestartet und veröffentlicht wird. Beschreibt Ordnerstruktur, Navigation und Grundlagen des Build- und Serve-Prozesses.
+
+
 Die Projektdokumentation wird mit **MkDocs** erstellt.  
 Alle Inhalte liegen im Ordner `docs/` und werden automatisch aus den Markdown-Dateien generiert.
 

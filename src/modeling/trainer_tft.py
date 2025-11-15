@@ -292,4 +292,5 @@ def main():
 if __name__ == "__main__":
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_bs32.yaml
+    # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr0007.yaml
     main()
