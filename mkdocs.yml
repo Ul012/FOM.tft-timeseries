@@ -22,7 +22,6 @@ nav:
   - Übersicht: index.md
   - Projekt Pipeline:
       - Pipeline & I/O: project/PipelineOrder.md
-
   - Projekt Schritte:
       - Data Preprocessing:
         - Data Alignment: project/DataAlignment.md
@@ -36,8 +35,9 @@ nav:
         - Model Dataset: project/ModelDataset.md
         - Trainer TFT: project/TrainerTFT.md
         - Trainer TFT – Runprotokoll: project/TrainerTFT_Runprotokoll.md
+        - Trainer ARIMA und Prophet: project/ArimaProphetIntegration.md
   - Allgemeine Dokumentation:
       - Projektstruktur: shared/Projektstruktur.md
       - Configs & Setup: shared/ConfigSetup.md
-      - Trainer & Evaluator Struktur: project/TrainerEvaluator_Stuktur.md
+      - Trainer & Evaluator Struktur: shared/TrainerEvaluator_Stuktur.md
       - MkDocs Nutzung: shared/MkDocsUsage.md

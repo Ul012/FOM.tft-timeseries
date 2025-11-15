@@ -156,9 +156,20 @@ def main():
     # -----------------------------
     # Run-ID, Checkpoints und Logger
     # -----------------------------
-    run_id = f"run_{datetime.now():%Y%m%d_%H%M%S}"
+    ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    ckpt_dir = Path("results") / "tft" / "checkpoints" / run_id
+    # Konfigurationsname als Suffix
+    cfg_stem = config_path.stem
+    suffix = cfg_stem.replace("trainer_tft_", "") or cfg_stem
+
+    run_id = f"run_{ts_str}_{suffix}"
+
+    # NEU: ein gemeinsamer Run-Ordner
+    run_dir = Path("results") / "tft" / run_id  # <<< geändert
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    # NEU: Checkpoints im Run-Ordner
+    ckpt_dir = run_dir / "checkpoints"  # <<< geändert
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     early_stop = EarlyStopping(
@@ -169,20 +180,20 @@ def main():
     )
 
     checkpoint = ModelCheckpoint(
-        dirpath=str(ckpt_dir),
+        dirpath=str(ckpt_dir),  # <<< geändert
         filename="tft-{epoch:02d}-{val_loss:.4f}",
         monitor="val_loss",
         mode="min",
-        save_top_k=1,                  # nur bester pro Lauf; alternativ: -1 + every_n_epochs=1
+        save_top_k=1,
         auto_insert_metric_name=False,
     )
 
     lr_monitor = LearningRateMonitor(logging_interval="step")
 
     logger = CSVLogger(
-        save_dir="logs",               # EIN Log-Wurzelordner
+        save_dir="logs",
         name="tft",
-        version=run_id,                # logs/tft/run_YYYYMMDD_HHMMSS/
+        version=run_id,
     )
 
     print(f"[trainer_tft] Run-ID: {run_id}")
@@ -258,7 +269,9 @@ def main():
         pass
 
     logs_run_dir = Path(logger.log_dir)  # z. B. logs/tft/run_YYYYMMDD_HHMMSS
-    results_dir = Path("results") / "evaluation" / run_id
+
+    # NEU: Evaluation + summary.json im selben Run-Ordner
+    results_dir = run_dir
 
     results_path, summary_path = export_run_jsons_from_metrics(
         run_id=run_id,
@@ -278,4 +291,5 @@ def main():
 
 if __name__ == "__main__":
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
+    # python -m src.modeling.trainer_tft --config configs/trainer_tft_bs32.yaml
     main()

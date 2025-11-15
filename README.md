@@ -34,7 +34,7 @@ Es wird empfohlen, die Rohdaten nicht im Repository zu versionieren.
 
 ### 2.1 Python-Version
 
-Python **3.10 oder 3.11** wird empfohlen.
+Python **3.12.0** wird empfohlen.
 
 ### 2.2 Virtuelle Umgebung erstellen
 
@@ -261,5 +261,5 @@ docs/
 
 ## 9. Zusammenarbeit
 
-Die Pipeline wurde so gestaltet, dass alle Teammitglieder jederzeit reproduzierbare Ergebnisse erzeugen können.  
+Die Pipeline wurde so gestaltet, dass alle Nutzer jederzeit reproduzierbare Ergebnisse erzeugen können.  
 Durch klare Konfiguration, modulare Skripte und dokumentierte Abläufe ist ein gemeinsames Arbeiten problemlos möglich.

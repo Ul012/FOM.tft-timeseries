@@ -1,6 +1,4 @@
-from pathlib import Path
-
-content = """# 📘 Pipeline Overview – FOM.tft-timeseries
+# 📘 Pipeline Overview – FOM.tft-timeseries
 
 ## Ziel
 Diese Übersicht beschreibt die **Ausführungsreihenfolge** der zentralen Module – von Rohdaten bis Training und Evaluation.  
@@ -37,9 +35,3 @@ Alle Schritte können einzeln getestet werden. Schritte 1 – 6 bilden die Haupt
 
 
 ---
-"""
-
-file_path = Path("/mnt/data/PipelineOrder.md")
-file_path.write_text(content, encoding="utf-8")
-
-file_path
