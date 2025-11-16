@@ -1,6 +1,6 @@
 # LagFeatures – Zweck und Funktionsweise
 
-**Datum:** 2025-11-15  
+**Datum:** 2025-11-16  
 **Script:** src/data/lag_features.py  
 **Ziel & Inhalt:** Dokumentiert die Erstellung konfigurierbarer Lag- und Rolling-Features. Zeigt Vorgehen, Konfiguration (LAG_CONF), Implementierungsdetails und Pipeline-Position.
 
@@ -93,6 +93,29 @@ Beispiel (gleitender Mittelwert über 7 Tage):
 \]
 
 Fehlende Werte am Anfang eines Fensters werden durch `min_periods=1` abgefedert, so dass auch am Serienanfang aussagekräftige Werte entstehen.
+
+
+### 4. Hinweis zur Jahres-Saisonalität (lag_365)
+
+In diesem Projekt wird der Jahres-Lag (`lag_365`) **nicht** über den internen `lags=`-Mechanismus des `TimeSeriesDataSet` definiert.
+
+**Stattdessen** wird `lag_365` als **fertige Feature-Spalte** im DataFrame erzeugt und anschließend im TFT-Dataset als reguläres `time_varying_real`-Feature verwendet.
+
+#### Grund
+Der interne Lag-Mechanismus von PyTorch Forecasting erfordert, dass für **alle Serien** in Train/Val/Test genug Historie für *Encoderlänge + Laglänge + Predictionlänge* vorhanden ist.  
+Mit `lag=365` würden viele Serien im Validierungsbereich vollständig herausgefiltert werden.  
+Dies führt zu Fehlern wie:
+
+```
+filters should not remove all entries – check encoder/decoder lengths and lags
+```
+
+#### Vorteil der gewählten Methode
+- `lag_365` bleibt als vollwertiges Feature verfügbar  
+- funktioniert auch bei kurzen Validierungs- und Testfenstern  
+- vermeidet leere Datensätze  
+- liefert dennoch eine starke jährliche Saisonalitätsinformation an das Modell
+
 
 ---
 

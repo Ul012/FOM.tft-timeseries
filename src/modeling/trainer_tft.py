@@ -70,6 +70,9 @@ def _load_dataset_from_spec(processed_dir: Path):
             df[TARGET_COL] = pd.to_numeric(df[TARGET_COL], errors="coerce").astype("float32")
 
     time_idx_col = "time_idx" if "time_idx" in df_train.columns else TIME_COL
+
+    print("[DEBUG] Beginne TimeSeriesDataSet (train)...")
+
     train_ds = TimeSeriesDataSet(
         df_train,
         time_idx=time_idx_col,
@@ -80,8 +83,15 @@ def _load_dataset_from_spec(processed_dir: Path):
         target_normalizer=GroupNormalizer(groups=ID_COLS, transformation="softplus"),
     )
 
+    print("[DEBUG] Train-Dataset OK.")
+
+    print("[DEBUG] Beginne TimeSeriesDataSet (val)...")
+
     val_ds = TimeSeriesDataSet.from_dataset(train_ds, df_val, predict=False)
+    print("[DEBUG] Val-Dataset OK.")
+
     return train_ds, val_ds
+
 
 
 def main():
@@ -118,12 +128,17 @@ def main():
     # -----------------------------
     train_ds, val_ds = _load_dataset_from_spec(PROCESSED_DIR)
 
+    print("[DEBUG] Erzeuge train_loader...")
     train_loader = train_ds.to_dataloader(
         train=True, batch_size=cfg.batch_size, num_workers=cfg.num_workers
     )
+    print("[DEBUG] Train-loader OK.")
+
+    print("[DEBUG] Erzeuge val_loader...")
     val_loader = val_ds.to_dataloader(
         train=False, batch_size=cfg.batch_size, num_workers=cfg.num_workers
     )
+    print("[DEBUG] Val-loader OK.")
 
     # -----------------------------
     # Modell aus YAML-Parametern
@@ -212,8 +227,8 @@ def main():
         limit_train_batches=cfg.limit_train_batches,
         limit_val_batches=cfg.limit_val_batches,
         log_every_n_steps=50,
-        enable_progress_bar=True,
         logger=logger,
+        enable_progress_bar=True, # neu hinzugefügt, um Historie je Epoche zu sehen
     )
 
     # Optionale Protokollierung der Hyperparameter im Logger
@@ -291,6 +306,7 @@ def main():
 
 if __name__ == "__main__":
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml
+    # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline02.yaml
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_bs32.yaml
-    # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr0007.yaml
+    # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr001.yaml
     main()

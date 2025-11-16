@@ -356,7 +356,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.evaluation.evaluate_tft --run-id run_20251115_132824_baseline
+    # python -m src.evaluation.evaluate_tft --run-id run_20251116_183848_baseline02
     # python -m src.evaluation.evaluate_tft --run-id run_20251115_160147_bs32
     # python -m src.evaluation.evaluate_tft --run-id run_20251115_161234_lr0007
     main()

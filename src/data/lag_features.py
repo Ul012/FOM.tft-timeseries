@@ -15,9 +15,18 @@ def add_lag_features(df: pd.DataFrame) -> pd.DataFrame:
     # Nach Gruppe und Zeit sortieren
     df = df.sort_values(GROUP_COLS + [TIME_COL]).copy()
 
-    # Lag-Features
+    # Lag-Features aus der Config
     for lag in lags:
-        df[f"{prefix}{lag}"] = df.groupby(GROUP_COLS)[target].shift(lag)
+        df[f"{prefix}{lag}"] = (
+            df.groupby(GROUP_COLS)[target]
+            .shift(lag)
+        )
+
+        # 1b) optionaler Jahres-Lag für starke Saisonalität
+    df[f"{prefix}365"] = (
+        df.groupby(GROUP_COLS)[target]
+        .shift(365)
+    )
 
     # Rolling-Features (optional)
     for window in roll_windows:

@@ -56,7 +56,7 @@ SCALE_COLS: list[str] = []
 # -----------------------------------------------------------------------------
 LAG_CONF: dict = {
     "target_col": TARGET_COL,        # übernimmt die globale Zielspalte
-    "lags": [1, 7, 14],              # zeitliche Rückblicke
+    "lags": [1, 7, 14],         # zeitliche Rückblicke
     "roll_windows": [7],             # optionale Rolling-Fenster
     "roll_stats": ["mean"],          # z. B. Mittelwert über 7 Tage
     "prefix": "lag_",                # muss zu dataset_tft.py passen
@@ -66,7 +66,7 @@ LAG_CONF: dict = {
 # TFT-Dataset-Metadaten (für Feature-Pipeline / Dataset-Bau)
 # -----------------------------------------------------------------------------
 TFT_DATASET: dict = {
-    "max_encoder_length": 28,
+    "max_encoder_length": 90, # Baseline02: 28
     "max_prediction_length": 7,
     # bekannte reelle Features (typisch: Kalenderzyklen), werden als "known" behandelt
     "known_real_prefixes": ["cyc_"],        # z. B. cyc_dow_sin/cos, cyc_month_sin/cos
