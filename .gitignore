@@ -27,6 +27,7 @@ data/raw/*
 data/interim/
 data/processed/
 logs/
+lightning_logs/
 experimental/
 
 # --- Private Notes (außerhalb von docs) ---
