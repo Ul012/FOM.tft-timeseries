@@ -1,12 +1,12 @@
 # Struktur und Verantwortlichkeiten: Trainer – Evaluator – Visualizer
 
-**Datum:** 2025-11-15  
+**Datum:** 2025-11-16  
 **Script:** –  
 **Ziel & Inhalt:** Definiert die rollenbasierte Trennung zwischen Trainer, Evaluator und Visualizer. Beschreibt ihre Aufgaben, Ordnerstrukturen, Artefakte und den sequenziellen Workflow. Dient als Leitlinie für saubere Zuständigkeiten und reproduzierbare Ergebnisse.
 
 ---
 
-## 🎯 Grundprinzipien
+## 🎯 1. Grundprinzipien
 
 - Jede Komponente (Trainer, Evaluator, Visualizer) erfüllt **eine klar abgegrenzte Aufgabe**.  
 - Jede Komponente schreibt ihre Ergebnisse in **eindeutig definierte Ordner**.  
@@ -16,122 +16,167 @@ Diese Struktur folgt dem Prinzip der **Separation of Concerns** und dem **Single
 
 ---
 
-## ⚙️ Komponentenübersicht
+## ⚙️ 2. Komponentenübersicht
 
-| Komponente | Hauptaufgabe | Typische Datei | Verantwortlich für |
-|-------------|---------------|----------------|--------------------|
-| **Trainer** | Modell trainieren und Laufzeitmetriken erfassen | `src/modeling/trainer_tft.py` | Training, Logging, Checkpoints |
-| **Evaluator** | Ergebnisse bewerten und zusammenfassen | `src/evaluation/evaluate_tft.py` | Berechnung und Aggregation der Metriken |
-| **Visualizer** | Ergebnisse grafisch darstellen | `src/visualization/compare_runs.py` / `plot_learning_rate.py` | Plots, Reports, Trends |
+| Komponente | Hauptaufgabe | Typische Dateien | Verantwortlich für |
+|-----------|--------------|------------------|--------------------|
+| **Trainer** | Modelltraining, Checkpoints, Trainings-Summaries | `src/modeling/trainer_tft.py` | Training, Laufzeit-Artefakte |
+| **Evaluator** | Berechnung von Fehlermaßen für fertige Modelle | `src/evaluation/evaluate_tft.py`, `aggregate_tft_eval.py` | Val/Test-Metriken, Run-Übersichten |
+| **Visualizer** | Grafische Darstellung von Training und Evaluation | `src/visualization/plot_learning_rate.py`, `plot_tft_eval_comparison.py`, `plot_tft_forecast_series.py` | Plots für Dokumentation |
 
 ---
 
-## 🧩 1. Trainer
+## 🧩 3. Trainer
 
 **Aufgabe:**  
-Führt das Modelltraining aus, protokolliert Metriken und speichert alle laufzeitbezogenen Artefakte.
+Trainiert den Temporal Fusion Transformer auf Basis einer YAML-Config.  
 
 **Verantwortlichkeiten:**
-- Initialisierung des Modells (`TemporalFusionTransformer.from_dataset(...)`)
-- Definition von Verlust- und Bewertungsmetriken (`QuantileLoss`, `MAE`, `RMSE`, `MAPE`, `SMAPE`)
-- Logging (Loss, Metriken, Lernrate)
-- Speichern der Checkpoints
-- Ausgabe eines `metrics.csv`-Logs
 
-**Ordnerstruktur:**
-```
-logs/
+- Vorbereitung von Datensatz und Modell  
+- Ausführen des Trainings (Epochen, Batches)  
+- Speichern von Checkpoints (z. B. „best model“)  
+- Schreiben von Trainings-Summaries pro Run (z. B. Loss/MAE in der letzten Epoche)
+
+**Ordnerstruktur (relevant):**
+
+```text
+results/
 └─ tft/
-   └─ run_YYYYMMDD_HHMMSS/
-      ├─ metrics.csv              # Laufzeitmetriken (train/val/lr)
-      ├─ checkpoints/             # Beste Gewichte (ModelCheckpoint)
-      ├─ hparams.yaml             # Hyperparameter pro Run
-      └─ run_summary.csv          # Letzte Epoche zusammengefasst
+   └─ runs/
+      └─ run_YYYYMMDD_HHMMSS_suffix/
+         ├─ checkpoints/
+         │  └─ tft-*.ckpt
+         └─ training_summary.json   # oder vergleichbare Zusammenfassung je Run
 ```
 
-**Ausgabe:**  
-- `metrics.csv` → vollständige Metrikverläufe (Loss, MAE, RMSE, LR)  
-- `run_summary.csv` → letzte Epoche als Kurzreport  
-- `checkpoints/` → gespeicherte Modellgewichte  
+**Ausgabe:**
+- Modellgewichte (`*.ckpt`)
+- Kompakte Trainingsinformationen pro Run (JSON/CSV)
+
+Der Trainer führt **keine** finale Val/Test-Evaluation durch – dies übernimmt der Evaluator.
 
 ---
 
-## 🧮 2. Evaluator
+## 4. Evaluator
 
 **Aufgabe:**  
-Analysiert abgeschlossene Trainingsläufe und erzeugt standardisierte Auswertungen.  
+Der Evaluator bewertet ausschließlich bereits trainierte Modelle. Er führt kein Training durch, verändert keine Modellparameter und arbeitet rein lesend auf fertigen artefakten.  
+Er berechnet standardisierte Fehlermaße (MAE, RMSE, MAPE, SMAPE) für Validierung und Test.
 
-**Verantwortlichkeiten:**
-- Lesen aller `metrics.csv` aus `logs/tft/run_*`
-- Ermitteln der finalen Werte (z. B. letzte Zeile pro Run)
-- Erstellen von Vergleichstabellen (`runs_summary.csv`)
-- Optional: Berechnung zusätzlicher Kennzahlen aus gespeicherten Checkpoints
+### 4.1 `evaluate_tft.py`
 
-**Ordnerstruktur:**
+**Eingaben:**
+- TFT-Checkpoint:  
+  `results/tft/runs/<run_id>/checkpoints/*.ckpt`
+- Datensplits:  
+  `data/processed/val.parquet`  
+  `data/processed/test.parquet`
+
+**Bedeutende interne Logik:**
+- Berücksichtigung des sequentiellen TFT-Fensters:  
+  Encoder: `max_encoder_length`  
+  Decoder: `max_prediction_length`
+- Aus den Daten werden pro Zeitreihe nur die relevanten Forecast-Fenster ausgewählt.
+- Modellvorhersage via `model.predict(df)`.
+
+**Ausgabe:**
 ```
-results/
-└─ evaluation/
-   ├─ runs_summary.csv        # Kompakte Vergleichstabelle über alle Runs
-   ├─ eval_metrics.csv        # Ergebnisse aus geladenen Checkpoints (optional)
-   └─ reports/                # spätere Text-/PDF-Berichte
+results/tft/eval/<run_id>/eval_summary.json
 ```
 
-**Ausgabe:**  
-- `results/evaluation/runs_summary.csv` → konsolidierte Übersicht über alle Runs  
-- (optional) `results/evaluation/eval_metrics.csv` → nachträglich berechnete Kennzahlen
+Der Inhalt umfasst:
+- Metriken für Val und Test
+- Pfad zum verwendeten Checkpoint
+- Meta-Informationen zu Zeit- und ID-Spalten
 
 ---
 
-## 📊 3. Visualizer
+### 4.2 `aggregate_tft_eval.py`
 
 **Aufgabe:**  
-Erstellt aus Logs und Evaluationsergebnissen anschauliche Darstellungen (Lernkurven, Run-Vergleiche).
+Es werden alle vorhandenen `eval_summary.json` Dateien gesammelt, um eine zentrale Übersicht zu erstellen.
 
-**Verantwortlichkeiten:**
-- Plotten von Loss- und LR-Verläufen aus `metrics.csv`
-- Plotten von Balkendiagrammen aus `runs_summary.csv`
-- Speichern der Visualisierungen im Unterordner `results/plots/`
+**Ablauf:**  
+- rekursive Suche unter `results/tft/eval/`
+- Extraktion folgender Werte:
+  - `val_mae`, `val_rmse`, `val_mape`, `val_smape`
+  - `test_mae`, `test_rmse`, `test_mape`, `test_smape`
+- Zusammenführung in einer sortierten Tabelle
 
-**Ordnerstruktur:**
+**Ausgabe:**
 ```
-results/
-└─ plots/
-   ├─ learning_curve_with_params_bottom.png
-   ├─ runs_comparison.png
-   └─ weitere Visualisierungen
+results/tft/eval/eval_overview.csv
+results/tft/eval/eval_overview.json
 ```
 
-**Ausgabe:**  
-- Diagramme, die direkt aus CSV-Dateien erzeugt werden  
-- Bereitstellung für Dokumentation (z. B. MkDocs oder README)
+Diese Übersicht bildet die Grundlage für alle Run-Vergleiche.
 
 ---
 
-## 🧠 4. Gesamtfluss (Trainer → Evaluator → Visualizer)
+## 5. Visualizer
+
+Der Visualizer erzeugt grafische Darstellungen.  
+Er nutzt ausschließlich Daten aus dem Training (z. B. Trainingssummaries) oder aus der Evaluation (z. B. `eval_overview.csv`).  
+Er führt weder Training noch Bewertung durch.
+
+### Beispiele:
+
+#### `plot_learning_rate.py`
+- Visualisiert Lernkurven, Validierungsfehler (falls geloggt) und Lernrate pro Epoche.
+
+#### `plot_tft_eval_comparison.py`
+- Nutzt `eval_overview.csv`
+- Erzeugt Balkendiagramme eines gewählten Metrik-/Split-Paares (z. B. Test-SMAPE)
+
+Ablage:
+```
+results/tft/plots/eval/compare_<split>_<metric>.png
+```
+
+#### `plot_tft_forecast_series.py`
+- Zeigt Ist-Historie, Ist im Forecast-Bereich und Modellprognose für eine einzige Zeitreihe.
+- Ideal für qualitative Beispiele, z. B. Peak-Verhalten (Weihnachten).
+
+Ablage:
+```
+results/tft/plots/eval/<run_id>_<split>_forecast_series.png
+```
+
+---
+
+## 🧠 6. Gesamtfluss (Trainer → Evaluator → Visualizer)
 
 ```
 (1) Trainer
-     │
-     ├── trainiert Modell
-     ├── schreibt logs/tft/run_*/metrics.csv
-     └── speichert Checkpoints
-            ↓
+     trainiert TFT
+     speichert Checkpoints unter results/tft/runs/<run_id>/
+     schreibt Trainingssummaries
+
+          ▼
+
 (2) Evaluator
-     │
-     ├── liest alle metrics.csv
-     ├── extrahiert finale Metriken
-     └── schreibt results/evaluation/runs_summary.csv
-            ↓
+     lädt Checkpoints
+     liest val/test.parquet
+     berechnet MAE, RMSE, MAPE, SMAPE
+     schreibt eval_summary.json je Run
+
+          ▼
+
 (3) Visualizer
-     │
-     ├── liest runs_summary.csv & metrics.csv
-     ├── erstellt Plots
-     └── speichert in results/plots/
+     nutzt eval_overview.csv & training summaries
+     erstellt Plots (Lernkurven, Run-Vergleiche, Forecast-Zeitreihen)
+     speichert unter results/tft/plots/
 ```
+
+Diese Struktur stellt sicher, dass:
+- Training und Bewertung getrennt bleiben,
+- Visualisierungen reproduzierbar sind,
+- Modelle systematisch geprüft und verglichen werden können.
 
 ---
 
-## 🧭 5. Zuordnung der Dateitypen
+## 🧭 7. Zuordnung der Dateitypen
 
 | Dateityp | Inhalt | Herkunft | Ablage |
 |-----------|---------|-----------|---------|
@@ -143,7 +188,7 @@ results/
 
 ---
 
-## ✅ 6. Vorteile der Trennung
+## ✅ 8. Vorteile der Trennung
 
 | Vorteil | Beschreibung |
 |----------|---------------|
@@ -155,7 +200,7 @@ results/
 
 ---
 
-## 📚 7. Nächste Schritte
+## 📚 9. Nächste Schritte
 
 1. Sicherstellen, dass `LearningRateMonitor` im Trainer aktiv ist.  
 2. `evaluate_tft.py` erweitern, um finale Metriken automatisch aus allen Runs zu extrahieren.  

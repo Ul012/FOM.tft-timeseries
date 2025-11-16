@@ -92,4 +92,4 @@ def load_trainer_cfg(path: str | Path) -> TrainerCfg:
         ),
     )
 
-# python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
+# python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml

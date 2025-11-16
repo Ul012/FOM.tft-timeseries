@@ -4,7 +4,7 @@ Trainiert einen Temporal Fusion Transformer (TFT) ausschließlich gesteuert übe
 Keinerlei Hyperparameter-Fallbacks im Code – alles kommt aus der YAML.
 
 Aufrufbeispiele:
-    python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
+    python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml
     python -m src.modeling.trainer_tft  # nutzt Default-Pfad unten
 """
 
@@ -92,7 +92,7 @@ def main():
     ap.add_argument(
         "--config",
         type=str,
-        default="configs/trainer_tft_baseline.yaml",
+        default="configs/trainer_tft_baseline01.yaml",
         help="Pfad zur YAML-Konfiguration (ohne Fallbacks).",
     )
     args = ap.parse_args()
@@ -165,11 +165,11 @@ def main():
     run_id = f"run_{ts_str}_{suffix}"
 
     # NEU: ein gemeinsamer Run-Ordner
-    run_dir = Path("results") / "tft" / run_id  # <<< geändert
+    run_dir = Path("results") / "tft" / "runs" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
     # NEU: Checkpoints im Run-Ordner
-    ckpt_dir = run_dir / "checkpoints"  # <<< geändert
+    ckpt_dir = run_dir / "checkpoints"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     early_stop = EarlyStopping(
@@ -180,7 +180,7 @@ def main():
     )
 
     checkpoint = ModelCheckpoint(
-        dirpath=str(ckpt_dir),  # <<< geändert
+        dirpath=str(ckpt_dir),
         filename="tft-{epoch:02d}-{val_loss:.4f}",
         monitor="val_loss",
         mode="min",
@@ -290,7 +290,7 @@ def main():
 
 
 if __name__ == "__main__":
-    # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
+    # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_bs32.yaml
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr0007.yaml
     main()

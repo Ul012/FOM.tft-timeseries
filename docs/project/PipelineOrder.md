@@ -18,6 +18,7 @@ Alle Schritte können einzeln getestet werden. Schritte 1 – 6 bilden die Haupt
 | **data** | `src/data/` | Laden, Bereinigen und Feature-Erzeugung (Kalender, Feiertage, Lags, zyklische Merkmale) |
 | **modeling** | `src/modeling/` | TFT-spezifische Datenaufbereitung, Modelltraining |
 | **evaluation** | `src/evaluation/` | Ergebnisanalyse, Kennzahlen und Visualisierung |
+| **visualization** | `src/visualization/` | Plots für Daten, Training und Evaluation |
 | **utils** | `src/utils/` | Hilfsfunktionen (Checkpoint-Handling, Metriken, Visualisierung) – **nicht Teil der Pipeline** |
 
 ---
@@ -34,9 +35,12 @@ Alle Schritte können einzeln getestet werden. Schritte 1 – 6 bilden die Haupt
 | 4 | `model_dataset.py` | Zeitbasierter Split (Train/Val/Test), Metadaten schreiben. | Ergebnis aus 3C | `train.parquet`, `val.parquet`, `test.parquet`, `meta.json` | Pflichtschritt. |
 | 5 | `dataset_tft.py` | TFT-Datensatz erstellen (Featurelisten known/unknown/static automatisch). | Schritt 4 | `model_ready/{train,val,test}.parquet`, `dataset_spec.json` | Erkennt `lag_`-Spalten automatisch. |
 | 6 | `trainer_tft.py` | TFT-Training nach Config/YAML, Logs & Checkpoints. | Schritt 5 + `configs/*.yaml` | `logs/tft/...`, `checkpoints/...`, `results/evaluation/<run_id>/*.json` | Kerntraining. |
-| 7 | `load_trained_tft.py` *(optional)* | Lädt bestes Checkpoint zur Inferenz oder Analyse. | Checkpoint aus 6 | – | Werkzeug-Skript aus `src/utils/`. |
-| 8 | `evaluate.py` *(optional)* | Bewertet Ergebnisse, berechnet Kennzahlen, aggregiert JSONs. | Resultate aus 6/7 | `results/evaluation/*` | Optional für Vergleiche. |
-| 9 | `viz_predictions.py` *(optional)* | Visualisiert Prognosen vs. Istwerte. | Eval-Artefakte | PNGs | Optional. |
+| 7 | `evaluate_tft.py` *(optional)* | Berechnet Fehlermaße (MAE, RMSE, MAPE, SMAPE) für Val/Test anhand eines Checkpoints. | Checkpoint aus 6 + `val/test.parquet` | `results/tft/eval/<run_id>/eval_summary.json` | Pro Run ein Evaluations-JSON. |
+| 8 | `aggregate_tft_eval.py` *(optional)* | Aggregiert alle `eval_summary.json` zu einer Tabelle. | Ordner aus 7 | `results/tft/eval/eval_overview.{csv,json}` | Grundlage für Run-Vergleiche. |
+| 9 | `plot_tft_eval_comparison.py` *(optional)* | Balkendiagramm einer gewählten Metrik über mehrere Runs. | `eval_overview.csv` | `results/tft/plots/eval/compare_<split>_<metric>.png` | Vergleich z. B. der Test-SMAPE zwischen Runs. |
+| 10 | `plot_tft_forecast_series.py` *(optional)* | Linienplot Ist vs. Prognose für eine Beispiel-Zeitreihe. | Checkpoint + `val/test.parquet` | `results/tft/plots/eval/<run_id>_<split>_forecast_series.png` | Qualitative Beurteilung einzelner Runs. |
+
+Die Schritte 7–10 sind optional und können bei Bedarf nach dem Training ausgeführt werden, ohne die Modellartefakte zu verändern.
 
 
 ---

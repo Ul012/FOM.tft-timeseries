@@ -173,7 +173,7 @@ Typische veränderliche Parameter:
 Ablauf eines Trainingslaufs:
 
 ```bash
-python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
+python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml
 ```
 
 1. Laden der YAML-Konfiguration (Trainingseinstellungen)  

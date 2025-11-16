@@ -38,3 +38,5 @@ sns.lineplot(x="date", y="num_sold", hue="country", data=daily_sales_country, ax
 ax.set_title("Daily total sales per country")
 plt.tight_layout()
 plt.show()
+
+# python -m src.visualization.view_data_plot

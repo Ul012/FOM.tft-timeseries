@@ -36,8 +36,16 @@ nav:
         - Trainer TFT: project/TrainerTFT.md
         - Trainer TFT – Runprotokoll: project/TrainerTFT_Runprotokoll.md
         - Trainer ARIMA und Prophet: project/ArimaProphetIntegration.md
+      - Evaluation:
+        - Evaluation TFT: project/EvaluatorTFT.md
+        - Evaluation TFT Plot: project/EvaluatorTFTPlot.md
   - Allgemeine Dokumentation:
       - Projektstruktur: shared/Projektstruktur.md
+      - Projekt Arbeitsweise: shared/ProjektArbeitsweise.md
       - Configs & Setup: shared/ConfigSetup.md
       - Trainer & Evaluator Struktur: shared/TrainerEvaluator_Stuktur.md
       - MkDocs Nutzung: shared/MkDocsUsage.md
+  - Geplant:
+      - Erweiterung um ARIMA und Prophet: project/ArimaProphetIntegration.md
+      - Erweiterung um Hyperparameter Optimierung: project/Optuna.md
+      - Integration um MLFlow: project/MLFlow.md

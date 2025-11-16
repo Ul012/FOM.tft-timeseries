@@ -1,6 +1,6 @@
 # Projektstruktur – FOM.tft-timeseries
 
-**Datum:** 2025-11-15  
+**Datum:** 2025-11-16  
 **Script:** –  
 **Ziel & Inhalt:** Gibt eine vollständige Übersicht über die Struktur des gesamten Projekts. Erklärt die Rollen der Ordner `data`, `modeling`, `utils`, `visualization` sowie geplante Evaluation. Beschreibt Datenfluss, Zuständigkeiten und Erweiterbarkeit der Pipeline.
 
@@ -13,6 +13,7 @@
 src/
 ├── data/
 ├── modeling/
+├── evaluation/
 ├── utils/
 ├── visualization/
 └── config.py
@@ -69,12 +70,48 @@ Enthält alle Skripte zur Vorbereitung, Spezifikation und zum Training der Model
    - Eingabe: `dataset_spec.json` + YAML aus `configs/`
    - Ausgabe:
      - Logs: `logs/tft/run_YYYYMMDD_HHMMSS/metrics.csv`, `hparams.yaml`, …
-     - Checkpoints: `results/tft/checkpoints/run_YYYYMMDD_HHMMSS/*.ckpt`
-     - Evaluations-JSONs: `results/evaluation/run_YYYYMMDD_HHMMSS/{results,summary}.json`
+     - Checkpoints: `results/tft/runs/run_YYYYMMDD_HHMMSS/checkpoints/*.ckpt`
+     - Evaluations-JSONs: `results/tft/eval/run_YYYYMMDD_HHMMSS/{results,summary}.json`
 
 ---
 
-## 🧰 4. `utils/` – Hilfsfunktionen & Werkzeuge
+## 4. evaluation/ – Kennzahlen für fertige Modelle
+
+| Datei                   | Aufgabe                                                                |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `evaluate_tft.py`       | Lädt ein TFT-Checkpoint und berechnet Fehlermaße auf Val/Test.         |
+| `aggregate_tft_eval.py` | Aggregiert alle `eval_summary.json` zu einer tabellarischen Übersicht. |
+
+**Ablage:**
+
+results/
+└─ tft/
+   ├─ runs/              # Artefakte aus dem Training (Checkpoints, Summaries)
+   ├─ eval/              # Ausgaben der Evaluationsskripte
+   │  ├─ <run_id>/eval_summary.json
+   │  └─ eval_overview.{csv,json}
+   └─ plots/             # Plots für Training und Evaluation
+      └─ eval/...
+
+---
+
+## 📈 5. `visualization/` – Plots und Diagnosen (Evaluationsebene)
+
+Fasst alle Visualisierungen zusammen, die nach oder während des Trainings benötigt werden.
+
+| Datei                         | Aufgabe                                                             |
+| ----------------------------- | ------------------------------------------------------------------- |
+| `data_alignment_plot.py`      | Visualisierung der Datenharmonisierung.                             |
+| `data_cleaning_plot.py`       | Darstellung der Bereinigung (Vorher/Nachher).                       |
+| `plot_learning_rate.py`       | Lernkurven und ggf. Lernratenverlauf aus dem Training.              |
+| `plot_tft_eval_comparison.py` | Vergleich einer Kennzahl (z. B. Test-SMAPE) über mehrere Runs.      |
+| `plot_tft_forecast_series.py` | Ist vs. Prognose für eine Beispiel-Zeitreihe mit Forecast-Horizont. |
+
+Plots werden typischerweise unter `results/tft/plots/` abgelegt.
+
+---
+
+## 🧰 6. `utils/` – Hilfsfunktionen & Werkzeuge
 
 Dient zur Wiederverwendung und modularen Wartung.
 
@@ -89,37 +126,6 @@ Dient zur Wiederverwendung und modularen Wartung.
 
 ---
 
-## 📈 5. `visualization/` – Plots und Diagnosen (Evaluationsebene)
-
-Fasst alle Visualisierungen zusammen, die nach oder während des Trainings benötigt werden.
-
-| Datei | Aufgabe |
-|-------|---------|
-| `data_alignment_plot.py` | Visualisierung der Datenharmonisierung. |
-| `data_cleaning_plot.py` | Darstellung bereinigter Werte, Vergleich Vorher/Nachher. |
-| `plot_learning_rate.py` | Verläufe der Loss-Kurven und ggf. der Learning-Rate. |
-| `view_data_plot.py` | Allgemeine Explorations-Plots für das Datenverständnis. |
-| *(geplant)* `evaluation_plot.py` | Darstellung der finalen Modellvergleiche (TFT vs. ARIMA vs. Prophet). |
-
-Plots werden typischerweise unter `results/plots/` abgelegt.
-
----
-
-## 📊 6. Evaluierung (geplant)
-
-Geplant ist ein eigener Ordner `src/evaluation/`, der folgende Skripte enthalten wird:
-
-| Datei | Aufgabe |
-|-------|---------|
-| `evaluate_tft.py` | Evaluation der TFT-Runs auf Basis von `metrics.csv` und `summary.json` (Metriken, Fehlermaße, JSON/CSV-Reports). |
-| `evaluate_comparison.py` | Cross-Modell-Vergleich (TFT vs. ARIMA vs. Prophet) auf Basis der konsolidierten Resultate. |
-
-Typische Ausgaben:
-
-- `results/evaluation/runs_summary.csv`
-- ggf. weitere CSV/JSON-Dateien für die Seminararbeit.
-
----
 
 ## ⚙️ 7. `config.py` – Zentrale Steuerung
 
@@ -134,11 +140,11 @@ Typische Ausgaben:
 
 ## ✅ 8. Einordnung und Erweiterbarkeit
 
-- **Pipeline-relevant:**  
-  `src/data/` → `src/modeling/` (Datenaufbereitung bis Training)
+- **Hauptpipeline:**  
+  `src/data/` → `src/modeling/` → `src/evaluation/` (Datenaufbereitung bis Evaluation)
 
 - **Unterstützend, optional:**  
-  `src/utils/`, `src/visualization/`, später `src/evaluation/`  
+  `src/utils/`, `src/visualization/`
 
 - **Erweiterbar:**  
   Zusätzliche Trainer-Module (z. B. `trainer_arima.py`, `trainer_prophet.py`) können nach demselben Muster aufgebaut werden wie `trainer_tft.py`:
