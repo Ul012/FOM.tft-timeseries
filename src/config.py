@@ -66,7 +66,7 @@ LAG_CONF: dict = {
 # TFT-Dataset-Metadaten (für Feature-Pipeline / Dataset-Bau)
 # -----------------------------------------------------------------------------
 TFT_DATASET: dict = {
-    "max_encoder_length": 90, # Baseline02: 28
+    "max_encoder_length": 120, # Baseline02: 28. lr001: 90.
     "max_prediction_length": 7,
     # bekannte reelle Features (typisch: Kalenderzyklen), werden als "known" behandelt
     "known_real_prefixes": ["cyc_"],        # z. B. cyc_dow_sin/cos, cyc_month_sin/cos

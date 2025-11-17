@@ -22,7 +22,7 @@ def add_lag_features(df: pd.DataFrame) -> pd.DataFrame:
             .shift(lag)
         )
 
-        # 1b) optionaler Jahres-Lag für starke Saisonalität
+    # Jahres-Lag für starke Saisonalität
     df[f"{prefix}365"] = (
         df.groupby(GROUP_COLS)[target]
         .shift(365)

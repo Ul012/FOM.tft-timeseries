@@ -29,6 +29,7 @@ data/processed/
 logs/
 lightning_logs/
 experimental/
+archive/
 
 # --- Private Notes (außerhalb von docs) ---
 notes/

@@ -1,5 +1,7 @@
 # src/evaluation/evaluate_tft.py
 # Evaluation eines trainierten TFT-Modells für einen gegebenen Run.
+# Nutzung (Beispiel):
+#   python -m src.evaluation.evaluate_tft --run-id run_YYYYMMDD_HHMMSS_baseline
 
 from __future__ import annotations
 
@@ -11,12 +13,9 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-import torch
-from pytorch_forecasting import TimeSeriesDataSet
-from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.models import TemporalFusionTransformer
 
-from src.config import (
+from src.config import (  # type: ignore
     BASE_DIR,
     PROCESSED_DIR,
     TIME_COL,
@@ -84,11 +83,17 @@ class EvaluationResult:
 
 
 # ---------------------------------------------------------------------------
-# Logger
+# Einfacher Logger (später durch MLflow ersetzbar)
 # ---------------------------------------------------------------------------
 
 
 class EvalLogger:
+    """
+    Minimaler Logger für Evaluationsläufe.
+    Kümmert sich nur um das Schreiben einfacher Dateien (JSON/CSV).
+    Kann später durch MLflow ersetzt werden, ohne die Evaluationslogik zu ändern.
+    """
+
     def __init__(self, output_dir: Path) -> None:
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -100,11 +105,17 @@ class EvalLogger:
 
 
 # ---------------------------------------------------------------------------
-# Helfer
+# Kernlogik: Evaluierung eines TFT-Runs
 # ---------------------------------------------------------------------------
 
 
 def _find_best_checkpoint(model_cfg: Dict[str, Any]) -> Path:
+    """
+    Modellkonfiguration erwartet mindestens:
+      - 'checkpoint_root': Basisordner, z. B. results/tft/runs
+      - 'run_id'        : Run-ID
+      - optional 'checkpoint_pattern': z. B. '*.ckpt'
+    """
     checkpoint_root = Path(model_cfg["checkpoint_root"])
     run_id = model_cfg["run_id"]
     pattern = model_cfg.get("checkpoint_pattern", "*.ckpt")
@@ -125,6 +136,11 @@ def _find_best_checkpoint(model_cfg: Dict[str, Any]) -> Path:
 
 
 def _load_splits(data_cfg: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Datenkonfiguration erwartet:
+      - 'val_path': Pfad zur Validation-Datei
+      - 'test_path': Pfad zur Test-Datei
+    """
     val_path = Path(data_cfg["val_path"])
     test_path = Path(data_cfg["test_path"])
 
@@ -138,88 +154,61 @@ def _load_splits(data_cfg: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
     return df_val, df_test
 
 
-def _load_dataset_spec() -> Dict[str, Any]:
-    spec_path = PROCESSED_DIR / "dataset_spec.json"
-    if not spec_path.exists():
-        raise FileNotFoundError(f"dataset_spec.json nicht gefunden: {spec_path}")
-    return json.loads(spec_path.read_text(encoding="utf-8"))
-
-
-# ---------------------------------------------------------------------------
-# Evaluation
-# ---------------------------------------------------------------------------
-
-
 def _evaluate_split(
-        model: TemporalFusionTransformer,
-        df: pd.DataFrame,
-        dataset_spec: Dict[str, Any],
-        eval_cfg: Dict[str, Any],
+    model: TemporalFusionTransformer,
+    df: pd.DataFrame,
 ) -> SplitMetrics:
-    """FIX: Nutzt TimeSeriesDataSet mit Feature-Listen für korrekte Predictions."""
+    """
+    Führt Vorhersage für einen Split (Val oder Test) durch und berechnet Metriken.
 
+    Annahmen:
+    - df enthält die Spalte TARGET_COL.
+    - Es existieren ID_COLS und TIME_COL, wie in src.config definiert.
+    - Es wird nur der Vorhersagehorizont (max_prediction_length) jeder Zeitreihe bewertet.
+    """
     if TARGET_COL not in df.columns:
         raise KeyError(f"Zielspalte {TARGET_COL!r} fehlt im DataFrame.")
 
-    # Feature-Listen aus spec
-    fl = dataset_spec["feature_lists"]
-    lengths = dataset_spec["lengths"]
+    # 1) Modellvorhersage für den gesamten Split
+    preds = model.predict(df)
+    if hasattr(preds, "numpy"):
+        preds = preds.numpy()
+    y_pred = np.asarray(preds, dtype=float).reshape(-1)
 
-    # NaN-Handling für Lags
-    lag_cols = [col for col in df.columns if col.startswith("lag_")]
-    if lag_cols:
-        df = df.dropna(subset=lag_cols)
+    # 2) Ground Truth nur für den Vorhersagehorizont je Zeitreihe
+    prediction_length = int(TFT_DATASET["max_prediction_length"])
 
-    # Target auf float32
-    df[TARGET_COL] = pd.to_numeric(df[TARGET_COL], errors="coerce").astype("float32")
+    # Falls keine ID-Spalten definiert sind, wird der gesamte DataFrame als eine Serie behandelt.
+    if ID_COLS:
+        group_cols = list(ID_COLS)
+    else:
+        # Fallback: eine künstliche Gruppe, nutzt den gesamten df
+        group_cols = []
 
-    time_idx_col = "time_idx" if "time_idx" in df.columns else TIME_COL
+    y_true_list: list[float] = []
 
-    # TimeSeriesDataSet mit Feature-Listen (wie in trainer_tft.py)
-    dataset = TimeSeriesDataSet(
-        df,
-        time_idx=time_idx_col,
-        target=TARGET_COL,
-        group_ids=ID_COLS,
-        max_encoder_length=lengths["max_encoder_length"],
-        max_prediction_length=lengths["max_prediction_length"],
-        static_categoricals=fl["static_categoricals"],
-        time_varying_known_reals=fl["time_varying_known_reals"],
-        time_varying_unknown_reals=fl["time_varying_unknown_reals"],
-        time_varying_known_categoricals=fl.get("time_varying_known_categoricals", []),
-        target_normalizer=GroupNormalizer(groups=ID_COLS, transformation="softplus"),
-        allow_missing_timesteps=True,
-    )
+    if group_cols:
+        # Pro Zeitreihe nach Zeit sortieren und die letzten prediction_length Werte nehmen
+        grouped = df.groupby(group_cols, sort=False)
+        for _, g in grouped:
+            g_sorted = g.sort_values(TIME_COL)
+            tail = g_sorted.tail(prediction_length)
+            y_true_list.extend(tail[TARGET_COL].to_numpy(dtype=float))
+    else:
+        # Eine "globale" Serie: nach Zeit sortieren und die letzten prediction_length Werte nehmen
+        df_sorted = df.sort_values(TIME_COL)
+        tail = df_sorted.tail(prediction_length)
+        y_true_list.extend(tail[TARGET_COL].to_numpy(dtype=float))
 
-    # DataLoader (Parameter aus eval_cfg)
-    dataloader = dataset.to_dataloader(
-        train=False,
-        batch_size=eval_cfg["batch_size"],
-        num_workers=eval_cfg["num_workers"],
-    )
+    y_true = np.asarray(y_true_list, dtype=float).reshape(-1)
 
-    # Predictions + Ground Truth sammeln
-    predictions, actuals = [], []
-    model.eval()
-    with torch.no_grad():
-        for batch in dataloader:
-            pred = model.predict(batch, mode="prediction")
-            actual = batch[1][0][:, :, 0]  # (batch, prediction_length)
-            predictions.append(pred)
-            actuals.append(actual)
-
-    y_pred = torch.cat(predictions, dim=0).cpu().numpy()
-    y_true = torch.cat(actuals, dim=0).cpu().numpy()
-
-    # Falls Quantile: Median nehmen
-    if y_pred.ndim == 3:
-        y_pred = y_pred[:, :, y_pred.shape[2] // 2]
-
-    y_pred = y_pred.reshape(-1)
-    y_true = y_true.reshape(-1)
-
+    # 3) Plausibilitätscheck
     if y_true.shape != y_pred.shape:
-        raise ValueError(f"Shape-Mismatch: y_true={y_true.shape}, y_pred={y_pred.shape}")
+        raise ValueError(
+            f"Shapes passen nicht zusammen (nach Horizont-Auswahl): "
+            f"y_true={y_true.shape}, y_pred={y_pred.shape}. "
+            f"Prüfen, ob max_prediction_length und die Gruppierung zu den Modellvorhersagen passen."
+        )
 
     metrics_raw = _compute_metrics(y_true, y_pred)
 
@@ -232,25 +221,47 @@ def _evaluate_split(
 
 
 def evaluate_tft_run(
-        data_cfg: Dict[str, Any],
-        model_cfg: Dict[str, Any],
-        eval_cfg: Dict[str, Any],
+    data_cfg: Dict[str, Any],
+    model_cfg: Dict[str, Any],
+    eval_cfg: Dict[str, Any],
 ) -> Dict[str, Any]:
+    """
+    Zentrale Evaluationsfunktion für einen TFT-Run.
+
+    Erwartete Keys:
+      data_cfg:
+        - 'val_path'
+        - 'test_path'
+      model_cfg:
+        - 'checkpoint_root'
+        - 'run_id'
+        - optional 'checkpoint_pattern'
+      eval_cfg:
+        - 'eval_root' (Basisordner für Evaluation, z. B. results/tft/eval)
+        - optional weitere Einstellungen (z. B. batch_size, seeds, Tags)
+
+    Rückgabe:
+      Dictionary mit Metriken und Pfaden zu erzeugten Artefakten.
+    """
     run_id = model_cfg["run_id"]
 
-    dataset_spec = _load_dataset_spec()
+    # 1) Checkpoint + Modell laden
     ckpt_path = _find_best_checkpoint(model_cfg)
     model = TemporalFusionTransformer.load_from_checkpoint(str(ckpt_path))
 
+    # 2) Daten laden
     df_val, df_test = _load_splits(data_cfg)
 
-    metrics_val = _evaluate_split(model, df_val, dataset_spec, eval_cfg)
-    metrics_test = _evaluate_split(model, df_test, dataset_spec, eval_cfg)
+    # 3) Metriken berechnen
+    metrics_val = _evaluate_split(model, df_val)
+    metrics_test = _evaluate_split(model, df_test)
 
+    # 4) Eval-Ordner + Logger
     eval_root = Path(eval_cfg["eval_root"])
     eval_dir = eval_root / run_id
     logger = EvalLogger(eval_dir)
 
+    # 5) Ergebnis-Payload bauen
     payload: Dict[str, Any] = {
         "run_id": run_id,
         "checkpoint_path": str(ckpt_path),
@@ -267,6 +278,7 @@ def evaluate_tft_run(
 
     summary_path = logger.log_json(payload, filename="eval_summary.json")
 
+    # 6) Rückgabe mit Artefaktpfaden
     result: Dict[str, Any] = {
         "run_id": run_id,
         "metrics": payload["metrics"],
@@ -293,6 +305,7 @@ def _parse_args() -> argparse.Namespace:
         required=True,
         help="Run-ID wie in logs/tft/<run_id>/ und results/tft/runs/<run_id>/",
     )
+    # Optional: später --eval-config hinzufügen, um YAML einzulesen.
     return parser.parse_args()
 
 
@@ -300,6 +313,8 @@ def main() -> None:
     args = _parse_args()
     run_id = args.run_id
 
+    # Konfiguration zentral in Dicts sammeln.
+    # Diese Blöcke können später 1:1 aus einer YAML geladen werden.
     data_cfg: Dict[str, Any] = {
         "val_path": str(PROCESSED_DIR / "val.parquet"),
         "test_path": str(PROCESSED_DIR / "test.parquet"),
@@ -313,8 +328,9 @@ def main() -> None:
 
     eval_cfg: Dict[str, Any] = {
         "eval_root": str(BASE_DIR / "results" / "tft" / "eval"),
-        "batch_size": 128,
-        "num_workers": 0,
+        # Platzhalter für zukünftige Erweiterungen:
+        # "batch_size": 128,
+        # "num_workers": 0,
     }
 
     result = evaluate_tft_run(data_cfg=data_cfg, model_cfg=model_cfg, eval_cfg=eval_cfg)
@@ -340,9 +356,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # python -m src.evaluation.evaluate_tft --run-id run_20251116_183848_baseline02
+    # python -m src.evaluation.evaluate_tft --run-id run_20251115_160147_bs32
+    # python -m src.evaluation.evaluate_tft --run-id run_20251116_230357_lr001
+    # python -m src.evaluation.evaluate_tft --run-id run_20251117_091520_lr001_hs64_hcs32
     main()
-
-# python -m src.evaluation.evaluate_tft --run-id run_20251116_183848_baseline02
-# python -m src.evaluation.evaluate_tft --run-id run_20251115_160147_bs32
-# python -m src.evaluation.evaluate_tft --run-id run_20251116_230357_lr001
-# python -m src.evaluation.evaluate_tft --run-id run_20251117_091520_lr001_hs64_hcs32

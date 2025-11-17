@@ -1,9 +1,7 @@
-# src/modeling/trainer_tft.py
+# src/modeling/x_trainer_tft_OLD.py
 """
 Trainiert einen Temporal Fusion Transformer (TFT) ausschließlich gesteuert über eine YAML-Konfiguration.
 Keinerlei Hyperparameter-Fallbacks im Code – alles kommt aus der YAML.
-
-FIXED VERSION - mit korrekter Feature-Listen-Übergabe und NaN-Handling
 
 Aufrufbeispiele:
     python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml
@@ -47,8 +45,6 @@ def _load_dataset_from_spec(processed_dir: Path):
     """
     Lädt train/val Parquet anhand der dataset_spec.json und baut TimeSeriesDataSet-Objekte.
     Nutzt die Pfade aus der JSON-Spezifikation.
-
-    KRITISCH: Feature-Listen aus spec müssen an TimeSeriesDataSet übergeben werden!
     """
     spec_path = processed_dir / "dataset_spec.json"
 
@@ -65,27 +61,8 @@ def _load_dataset_from_spec(processed_dir: Path):
     max_encoder_length = spec["lengths"]["max_encoder_length"]
     max_prediction_length = spec["lengths"]["max_prediction_length"]
 
-    # ===== FIX 1: Feature-Listen aus spec extrahieren =====
-    feature_lists = spec["feature_lists"]
-    static_categoricals = feature_lists["static_categoricals"]
-    time_varying_known_reals = feature_lists["time_varying_known_reals"]
-    time_varying_unknown_reals = feature_lists["time_varying_unknown_reals"]
-    time_varying_known_categoricals = feature_lists.get("time_varying_known_categoricals", [])
-
     df_train = pd.read_parquet(train_pq)
     df_val = pd.read_parquet(val_pq)
-
-    # ===== FIX 2: NaN-Handling für Lag-Features =====
-    # Zeilen mit NaN in Lags filtern (erste N Zeilen pro Gruppe)
-    lag_cols = [col for col in df_train.columns if col.startswith("lag_")]
-    if lag_cols:
-        print(f"[INFO] Filtere Zeilen mit NaN in Lag-Features: {lag_cols}")
-        n_before_train = len(df_train)
-        n_before_val = len(df_val)
-        df_train = df_train.dropna(subset=lag_cols)
-        df_val = df_val.dropna(subset=lag_cols)
-        print(f"[INFO] Train: {n_before_train} → {len(df_train)} Zeilen (-{n_before_train - len(df_train)})")
-        print(f"[INFO] Val: {n_before_val} → {len(df_val)} Zeilen (-{n_before_val - len(df_val)})")
 
     # Zielvariable auf float32 casten
     for df in (df_train, df_val):
@@ -94,12 +71,8 @@ def _load_dataset_from_spec(processed_dir: Path):
 
     time_idx_col = "time_idx" if "time_idx" in df_train.columns else TIME_COL
 
-    print("[DEBUG] Beginne TimeSeriesDataSet (train) mit Feature-Listen...")
-    print(f"  - static_categoricals: {len(static_categoricals)}")
-    print(f"  - time_varying_known_reals: {len(time_varying_known_reals)}")
-    print(f"  - time_varying_unknown_reals: {len(time_varying_unknown_reals)}")
+    print("[DEBUG] Beginne TimeSeriesDataSet (train)...")
 
-    # ===== FIX 3: Feature-Listen explizit übergeben =====
     train_ds = TimeSeriesDataSet(
         df_train,
         time_idx=time_idx_col,
@@ -107,12 +80,7 @@ def _load_dataset_from_spec(processed_dir: Path):
         group_ids=ID_COLS,
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
-        static_categoricals=static_categoricals,
-        time_varying_known_reals=time_varying_known_reals,
-        time_varying_unknown_reals=time_varying_unknown_reals,
-        time_varying_known_categoricals=time_varying_known_categoricals,
         target_normalizer=GroupNormalizer(groups=ID_COLS, transformation="softplus"),
-        allow_missing_timesteps=True,  # wichtig für unregelmäßige Zeitreihen
     )
 
     print("[DEBUG] Train-Dataset OK.")
@@ -123,6 +91,7 @@ def _load_dataset_from_spec(processed_dir: Path):
     print("[DEBUG] Val-Dataset OK.")
 
     return train_ds, val_ds
+
 
 
 def main():
@@ -258,13 +227,13 @@ def main():
         max_epochs=cfg.max_epochs,
         gradient_clip_val=cfg.gradient_clip_val,
         callbacks=[early_stop, checkpoint, lr_monitor],
-        accelerator=cfg.accelerator,  # "cpu" | "gpu" – explizit aus YAML
+        accelerator=cfg.accelerator,   # "cpu" | "gpu" – explizit aus YAML
         devices=cfg.devices,
         limit_train_batches=cfg.limit_train_batches,
         limit_val_batches=cfg.limit_val_batches,
         log_every_n_steps=50,
         logger=logger,
-        enable_progress_bar=True,  # neu hinzugefügt, um Historie je Epoche zu sehen
+        enable_progress_bar=True, # neu hinzugefügt, um Historie je Epoche zu sehen
     )
 
     # Optionale Protokollierung der Hyperparameter im Logger
