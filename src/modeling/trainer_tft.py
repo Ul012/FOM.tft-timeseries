@@ -120,8 +120,13 @@ def main():
     # Determinismus / Reproduzierbarkeit
     # -----------------------------
     pl.seed_everything(cfg.seed, workers=True)
-    torch.use_deterministic_algorithms(True)
-    torch.backends.cudnn.benchmark = False
+
+    # Keine strikte Deterministik erzwingen – erlaubt schnellere/nichtdeterministische CUDA-Kernels
+    torch.use_deterministic_algorithms(False)
+
+    # GPU-Optimierungen aktivieren
+    torch.backends.cudnn.benchmark = True
+    torch.set_float32_matmul_precision("high")  # nutzt Tensor Cores besser aus
 
     # -----------------------------
     # Datasets + Dataloader
@@ -309,4 +314,5 @@ if __name__ == "__main__":
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline02.yaml
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_bs32.yaml
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr001.yaml
+    # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr001_hs64_hcs32.yaml
     main()

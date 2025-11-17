@@ -1,67 +1,79 @@
 # FeatureEngineer – Zweck und Funktionsweise
 
-**Datum:** 2025-11-15  
-**Script:** src/data/feature_engineering.py  
-**Ziel & Inhalt:** Beschreibt die Erstellung von Kalender-, Feiertags- und Zeitindex-Features. Ziel ist die Erweiterung der Zeitreihen um maschinenlesbare zeitliche Strukturen für den späteren TFT-Einsatz.
+**Datum:** 2025-11-17  
+**Script:** `src/data/feature_engineering.py`  
+**Ziel & Inhalt:** Beschreibung der Erstellung von Kalender-, Feiertags- und Zeitindex-Features als Grundlage für die spätere TFT-Modellierung.
 
+---
 
 ## Überblick
-Die Klasse **FeatureEngineer** bereitet den Datensatz so vor, dass er vom **Temporal Fusion Transformer (TFT)** zeitlich verstanden werden kann. Sie erweitert den DataFrame um zusätzliche Spalten (Features), die zeitliche und strukturelle Informationen enthalten – z. B. Kalendermerkmale, Wochenendkennzeichnung, Feiertage und einen fortlaufenden Zeitindex. 
+Der **FeatureEngineer** erweitert den bereinigten Datensatz um zusätzliche zeitliche Strukturmerkmale.  
+Auf Basis der täglichen Verkaufsdaten werden unter anderem Kalendermerkmale, Wochenendkennzeichnung, ein fortlaufender Zeitindex sowie deutsche Feiertage erzeugt.
 
-Das Modul arbeitet auf den bereinigten Daten (`train_cleaned.parquet`) und speichert das Ergebnis als `train_features.parquet` im Ordner `data/processed/`.
+Eingabe: `data/interim/train_cleaned.parquet`  
+Ausgabe: `data/processed/train_features.parquet`
 
 ---
 
 ## Ziel
-Ziel ist es, zeitliche Muster explizit und maschinenlesbar darzustellen, damit der TFT wiederkehrende Zusammenhänge erkennen kann, etwa:
-- **Saisonale Muster** (z. B. höhere Verkäufe im Dezember),
-- **Wochenmuster** (z. B. geringere Verkäufe am Wochenende),
-- **Kalenderabhängige Trends** (z. B. Feiertagseffekte),
-- **Zeitliche Abfolge** (über den numerischen Index `time_idx`).
+Ziel ist die explizite und maschinenlesbare Darstellung zeitlicher Muster, damit nachfolgende Modelle wiederkehrende Zusammenhänge erkennen können:
 
-Die Feature-Erweiterung stellt sicher, dass der TFT Zeitabhängigkeiten korrekt modelliert, auch wenn sie nicht direkt aus dem Datum ersichtlich sind.
+- saisonale Effekte (z. B. höhere Verkäufe im Dezember)  
+- Wochenmuster (z. B. Unterschiede zwischen Werktagen und Wochenende)  
+- kalenderabhängige Effekte (z. B. gesetzliche Feiertage)  
+- zeitliche Abfolge über einen numerischen Index (`time_idx`)
 
----
-
-## Hauptmethoden
-
-### `add_calendar_features(df)`
-- Fügt klassische Kalendermerkmale hinzu: `year`, `month`, `day`, `dayofweek`, `weekofyear`, `is_weekend`.
-- `is_weekend` = 1, wenn Wochentag Samstag (5) oder Sonntag (6) ist.
-- Grundlage für saisonale und wöchentliche Muster.
-
-### `add_time_index(df)`
-- Erstellt einen fortlaufenden numerischen Index (`time_idx`), beginnend mit 0 am frühesten Datum.
-- Wird für das Sequenzverständnis des TFT benötigt.
-
-### `add_holiday_features_de(df)`
-- Markiert bundesweite deutsche Feiertage (keine länderspezifischen Varianten) mit einem Flag `is_holiday_de`.
-- Verwendet die Bibliothek `holidays`, die die gesetzlichen Feiertage pro Jahr automatisch generiert.
-- Optional kann zusätzlich der Name des Feiertags (`holiday_name`) gespeichert werden (Parameter `include_holiday_name=True`).
-- Beispiele für berücksichtigte Feiertage:
-
-| Feiertag | Typisches Datum | Bedeutung |
-|-----------|----------------|------------|
-| Neujahr | 1. Januar | Jahresbeginn |
-| Karfreitag | variabel (März/April) | christlicher Feiertag |
-| Ostermontag | variabel (März/April) | christlicher Feiertag |
-| Tag der Arbeit | 1. Mai | gesetzlicher Feiertag |
-| Christi Himmelfahrt | variabel (Mai) | kirchlicher Feiertag |
-| Pfingstmontag | variabel (Mai/Juni) | christlicher Feiertag |
-| Tag der Deutschen Einheit | 3. Oktober | nationaler Feiertag |
-| 1. Weihnachtstag | 25. Dezember | Weihnachten |
-| 2. Weihnachtstag | 26. Dezember | Weihnachten |
-
-### `transform(df)`
-- Führt alle Schritte in sinnvoller Reihenfolge aus:
-  1. Kalendermerkmale hinzufügen,
-  2. Zeitindex erstellen,
-  3. Feiertagsmerkmale ergänzen.
-- Gibt den erweiterten DataFrame zurück.
+Damit wird die Basis für das spätere TimeSeriesDataSet und den Temporal Fusion Transformer geschaffen.
 
 ---
 
-## Beispielnutzung
+## Vorgehen
+
+### 1. Kalendermerkmale (`add_calendar_features`)
+Es werden klassische Kalender-Spalten ergänzt, zum Beispiel:
+
+- `year`, `month`, `day`  
+- `dayofweek` (0–6)  
+- `weekofyear`  
+- `is_weekend` (1 bei Samstag oder Sonntag, sonst 0)
+
+Diese Merkmale beschreiben grobe saisonale und wöchentliche Strukturen.
+
+---
+
+### 2. Zeitindex (`add_time_index`)
+Zusätzlich wird ein fortlaufender numerischer Index `time_idx` erstellt:
+
+- Start bei 0 am frühesten Datum  
+- aufsteigende Nummerierung je Zeitschritt  
+
+Der Index dient als konsistente Zeitachse für das spätere TFT-Setup.
+
+---
+
+### 3. Deutsche Feiertage (`add_holiday_features_de`)
+Mit Hilfe der Bibliothek `holidays` werden bundesweite deutsche Feiertage markiert:
+
+- Flag-Spalte `is_holiday_de` (1/0)  
+- optional: `holiday_name` (bei `include_holiday_name=True`)
+
+Berücksichtigt werden gesetzliche Feiertage wie Neujahr, Karfreitag, Ostermontag, Tag der Arbeit, Tag der Deutschen Einheit sowie der 1. und 2. Weihnachtstag.
+
+---
+
+### 4. Gesamte Transformation (`transform`)
+Die Methode `transform(df)` führt alle Schritte in definierter Reihenfolge durch:
+
+1. Kalendermerkmale hinzufügen  
+2. Zeitindex erzeugen  
+3. Feiertagsmerkmale ergänzen  
+
+Das Ergebnis ist ein erweiterter DataFrame mit allen relevanten Zeitmerkmalen.
+
+---
+
+## Beispielaufruf
+
 ```python
 from src.data.feature_engineering import FeatureEngineer
 import pandas as pd
@@ -69,28 +81,14 @@ import pandas as pd
 df = pd.read_parquet("data/interim/train_cleaned.parquet")
 fe = FeatureEngineer(date_col="date", include_holiday_name=False)
 df_feats = fe.transform(df)
+df_feats.to_parquet("data/processed/train_features.parquet")
 ```
-
-Die erzeugte Datei wird typischerweise als `data/processed/train_features.parquet` gespeichert.
 
 ---
 
-## Designprinzipien
-- **Kleine, klar abgegrenzte Methoden** – jede erfüllt genau eine Aufgabe.
-- **Keine Seiteneffekte** – Originaldaten bleiben unverändert.
-- **Erweiterbarkeit** – zusätzliche Features (z. B. Lag- oder Rolling-Features, Promotions) können später ergänzt werden.
-- **Kompatibilität mit TFT** – erzeugt genau die Struktur, die `TimeSeriesDataSet` benötigt.
-- **Klarer Datenfluss:** `train_cleaned.parquet → FeatureEngineer → train_features.parquet`
+## Ergebnis und Nutzen
 
----
-
-## Beispielausgabe
-Nach der Transformation enthält der Datensatz u. a. folgende Spalten:
-```
-['date', 'country', 'store', 'book', 'num_sold',
- 'year', 'month', 'day', 'dayofweek', 'weekofyear', 'is_weekend',
- 'time_idx', 'is_holiday_de']
-```
-Optional (bei Aktivierung): zusätzlich `holiday_name`.
-
-Diese Struktur bildet die Grundlage für die Erstellung des `TimeSeriesDataSet` und ermöglicht dem TFT, saisonale und kalendarische Effekte korrekt zu modellieren.
+- strukturierte zeitliche Beschreibung der Daily-Daten  
+- explizite Kodierung von Kalender-, Wochenend- und Feiertagseffekten  
+- einheitlicher Zeitindex für die spätere Sequenzmodellierung  
+- konsistenter Input für das nachfolgende TFT- und Dataset-Setup  

@@ -1,68 +1,76 @@
 # ModelDataset – Erstellung eines modellfertigen Datensatzes
 
-**Datum:** 2025-11-15  
-**Script:** src/modeling/model_dataset.py  
-**Ziel & Inhalt:** Erklärt den zeitbasierten Split in Train/Val/Test, Metadaten-Erzeugung und die Vorbereitung des Datensatzes für das Modelltraining. Enthält Konfigurationsparameter, Ablauf und Prüfhinweise.
+**Datum:** 2025-11-17  
+**Script:** `src/modeling/model_dataset.py`  
+**Ziel & Inhalt:** Zeitbasierte Aufteilung der aufbereiteten Daten in Train-, Validation- und Testbereiche sowie Erzeugung eines Metadatenmanifests.
 
+---
 
-## Zweck
-Das Modul `model_dataset.py` erstellt aus der durch `features.py` vorbereiteten Tabelle ein modellfertiges Datenset.  
-Die Daten werden dabei **zeitlich sortiert** und in drei Abschnitte unterteilt: **Training**, **Validation** und **Test**.  
-Dieser Schritt dient ausschließlich der strukturierten Datenaufteilung – ohne Modellabhängigkeiten oder Training.
+## Überblick
+`model_dataset.py` strukturiert die vorbereiteten Zeitreihen in drei zeitlich sortierte Teilmengen. Der Schritt erzeugt keine neuen Features, sondern organisiert die Daten für ein reproduzierbares Modelltraining.
 
-## Eingaben und Ausgaben
-- **Eingabe:**  
-  `data/processed/features_train.parquet` (oder eine vergleichbare, aufbereitete Datei)
-- **Ausgabe:**  
-  - `data/processed/model_dataset/train.parquet`  
-  - `data/processed/model_dataset/val.parquet`  
-  - `data/processed/model_dataset/test.parquet`  
-  - `data/processed/model_dataset/manifest.json` (enthält Spaltennamen, Zeitgrenzen, Zeilenzahlen)
+---
 
-## Konfiguration (aus `config.py`)
-- `DATA_PROCESSED_PATH`: Pfad zur verarbeiteten Eingabedatei  
-- `DATASETS_DIR`: Zielordner für die Teilmengen  
-- `TIME_COL`: Zeitspalte (z. B. `date`)  
-- `ID_COLS`: Gruppenspalten, z. B. `["country", "store", "product"]`  
-- `TARGET_COL`: Zielvariable, z. B. `num_sold`  
-- Optionale Parameter:  
-  - `VAL_START`, `TEST_START`: feste Datumsgrenzen für Validation/Test  
-  - `SPLIT_RATIOS`: Verhältnis bei automatischem Split (z. B. `(0.8, 0.1, 0.1)`)  
-  - `SCALE_COLS`: Spalten, die gruppenweise z-standardisiert werden sollen  
+## Ziel
+Ziel ist eine klare und nachvollziehbare Datenaufteilung entlang der Zeitachse, um getrennte Bereiche für Training, Hyperparameterabstimmung und finale Bewertung zu definieren.
 
-## Ablauf
-1. **Einlesen** der verarbeiteten Datei (`CSV` oder `Parquet`).
-2. **Sortierung** nach Zeit (`TIME_COL`) und Gruppen-IDs (`ID_COLS`).
-3. **Bestimmung der Split-Grenzen**  
-   - Entweder über feste Datumswerte (`VAL_START`, `TEST_START`)  
-   - Oder automatisch nach Verhältnis (`SPLIT_RATIOS`).
-4. **Aufteilung der Daten** in Train-, Validation- und Test-Abschnitte entlang der Zeitachse.  
-   Dabei gilt: ältere Daten → Training, jüngere Daten → Test.
-5. **(Optional)** Gruppenspezifische Z-Standardisierung für angegebene Spalten.
-6. **Speichern** der drei Teilmengen und des begleitenden Manifests mit Metadaten.
+---
 
-## Bedeutung des Splits
-Der Split stellt sicher, dass:
-- das Modell nur aus der Vergangenheit lernt (Train),
-- Hyperparameter anhand eines unabhängigen Zeitraums überprüft werden können (Validation),
-- und die finale Bewertung auf völlig neuen Daten erfolgt (Test).  
-Dies verhindert Überanpassung und erlaubt eine objektive Leistungsbewertung.
+## Eingaben & Ausgaben
 
-## Annahmen und Grenzen
-- Die Zeitspalte muss als `datetime` interpretierbar sein und eine eindeutige zeitliche Reihenfolge besitzen.
-- Bei Verwendung von `SPLIT_RATIOS` erfolgt der Split auf globaler Ebene, nicht pro Gruppe.
-- Es werden keine Modell- oder Framework-Abhängigkeiten geladen; der Fokus liegt ausschließlich auf reproduzierbarer Datenstrukturierung.
+**Eingabe:**  
+- `train_features_cyc_lag.parquet` (oder eine andere final vorbereitete Datei)
 
-## Überprüfung
-- Kontrolle der Grenzen in der Konsolenausgabe oder in `manifest.json`:
-  - Stimmen die Zeiträume mit der Erwartung überein?
-  - Sind alle drei Teilmengen befüllt?
-- Stichprobenprüfung per:
-  ```python
-  import pandas as pd
-  pd.read_parquet("data/processed/model_dataset/train.parquet").head()
-  ```
+**Ausgaben:**  
+- `train.parquet`  
+- `val.parquet`  
+- `test.parquet`  
+- `manifest.json` (Informationen zu Zeitgrenzen, Zeilenzahlen und Spalten)
 
-## Weiterführender Schritt
-Das Ergebnis dieses Moduls wird von `dataset_tft.py` oder anderen Trainingsmodulen weiterverarbeitet,  
-um daraus framework-spezifische Datenobjekte (z. B. für PyTorch Forecasting) zu erzeugen.
+---
+
+## Vorgehen
+
+### 1. Einlesen und Sortieren  
+Der Datensatz wird geladen und nach Zeitspalte (`TIME_COL`) sowie Identitätsspalten (`ID_COLS`) sortiert.
+
+### 2. Bestimmung der Zeitgrenzen  
+Die Splitgrenzen werden entweder  
+- über feste Datumswerte (`VAL_START`, `TEST_START`) oder  
+- über Verhältnisangaben (`SPLIT_RATIOS`) festgelegt.
+
+### 3. Zeitbasierter Split  
+Die Daten werden entlang der Zeitachse in drei aufeinanderfolgende Zeitbereiche geteilt.
+
+### 4. (Optional) Skalierung  
+Falls in `SCALE_COLS` angegeben, werden ausgewählte numerische Spalten gruppenweise z-standardisiert.
+
+### 5. Schreiben der Ausgaben  
+Die Teilmengen sowie das Manifest mit Metadaten werden in das Zielverzeichnis gespeichert.
+
+---
+
+## Konfiguration
+Die relevanten Parameter werden in `config.py` definiert:
+
+- `TIME_COL`  
+- `ID_COLS`  
+- `TARGET_COL`  
+- `VAL_START`, `TEST_START`  
+- `SPLIT_RATIOS`  
+- `SCALE_COLS`  
+- `DATASETS_DIR`
+
+---
+
+## Beispielaufruf
+```bash
+python -m src.modeling.model_dataset
+```
+
+---
+
+## Ergebnis und Nutzen
+- klar definierte zeitliche Strukturierung der Daten  
+- reproduzierbare Splits für Training, Validation und Test  
+- Manifest zur Dokumentation aller relevanten Metadaten  

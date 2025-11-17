@@ -87,5 +87,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.visualization.plot_tft_eval_single --run-id run_20251115_132824_baseline
+    # python -m src.visualization.plot_tft_eval_single --run-id run_20251116_183848_baseline02
+    # python -m src.visualization.plot_tft_eval_single --run-id run_20251115_160147_bs32
+    # python -m src.visualization.plot_tft_eval_single --run-id run_20251116_230357_lr001
+    # python -m src.visualization.plot_tft_eval_single --run-id run_20251117_091520_lr001_hs64_hcs32
     main()

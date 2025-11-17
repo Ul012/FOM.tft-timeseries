@@ -1,68 +1,54 @@
 # CyclicalEncoder – Zweck und Funktionsweise
 
-**Datum:** 2025-11-15  
-**Script:** src/data/cyclical_encoder.py  
-**Ziel & Inhalt:** Erläutert die Sinus-/Kosinus-Kodierung zyklischer Zeitmerkmale (dow, month, doy, week, hour). Beschreibt mathematische Grundlagen, Konfiguration, erzeugte Features sowie die Position des Encoders in der Pipeline.
-
-
-## Überblick
-
-Der CyclicalEncoder wandelt zyklische Zeitmerkmale (z. B. Wochentag, Monat, Tag im Jahr) in Sinus- und Kosinuswerte um. Dadurch kann ein Modell wie der Temporal Fusion Transformer (TFT) die kreisförmige Struktur zeitlicher Merkmale korrekt erfassen.
+**Datum:** 2025-11-17  
+**Script:** `src/data/cyclical_encoder.py`  
+**Ziel & Inhalt:** Beschreibung der Sinus-/Kosinus-Kodierung zyklischer Zeitmerkmale. Erläutert Prinzip, Konfiguration und erzeugte Features.
 
 ---
 
-## Zweck der Sin/Cos-Transformation
+## Überblick
+Der CyclicalEncoder wandelt zyklische Zeitmerkmale wie Wochentag oder Monat in Sinus- und Kosinuswerte um. Dadurch wird die kreisförmige Struktur zeitlicher Merkmale korrekt repräsentiert, ohne künstliche numerische Sprünge an Periodenübergängen.
 
-Viele Zeitmerkmale sind zyklisch:  
-- Nach Sonntag folgt wieder Montag  
-- Nach Dezember beginnt erneut Januar  
-- Nach Stunde 23 folgt Stunde 0  
+---
 
-Die numerische Darstellung (0–6, 0–11, 0–23…) erzeugt jedoch künstliche Sprünge.  
-Die Sin/Cos-Kodierung projiziert Werte auf einen Kreis und stellt die zyklische Nähe korrekt dar.
+## Ziel
+Ziel der Kodierung ist es, zyklische Muster maschinenlesbar abzubilden.  
+Die Sin/Cos-Repräsentation stellt sicher, dass:
+- Periodenanfang und -ende nahtlos verbunden sind  
+- relative Abstände korrekt erhalten bleiben  
+- Modelle zyklische Nähe erkennen können (z. B. Sonntag und Montag)
 
 ---
 
 ## Mathematisches Prinzip
+Für ein zyklisches Merkmal mit Wert \(x\) und Periode \(P\) wird ein Winkel berechnet:
 
-Ein zyklisches Merkmal wird in einen Winkel transformiert:
-
-θ = 2π × (x / Periode)
+\[
+\theta = 2\pi \times \frac{x}{P}
+\]
 
 Daraus entstehen zwei Features:
-- sin(θ)
-- cos(θ)
-
-Diese Abbildung:
-- ist kontinuierlich  
-- verbindet Periodenanfang und -ende  
-- wahrt die relativen Abstände  
+- `sin(θ)`
+- `cos(θ)`
 
 ---
 
-## Verwendete zyklische Merkmale im Projekt
+## Verwendete Merkmale
+Der Encoder erzeugt für folgende Merkmale je zwei Spalten (`*_sin`, `*_cos`):
 
-Die Standard-Konfiguration des Encoders erzeugt folgende Merkmale:
-
-- **dow** – Wochentag (7)
-- **month** – Monat (12)
-- **doy** – Tag des Jahres (366, inkl. Schaltjahr)
-- **week** – ISO-Kalenderwoche (53)
-- **hour** – Stunde des Tages (24)
-
-Für jedes Merkmal entstehen zwei Spalten:  
-`cyc_<name>_sin` und `cyc_<name>_cos`.
+- `dow` – Wochentag (7)  
+- `month` – Monat (12)  
+- `doy` – Tag des Jahres (366)  
+- `week` – Kalenderwoche (53)  
+- `hour` – Stunde des Tages (24)
 
 ---
 
 ## Konfiguration
 
-Die Konfigurationswerte sind fest in der Klasse `CyclicalEncoderConfig` definiert:
-
 ```python
-@dataclass(frozen=True)
 class CyclicalEncoderConfig:
-    datetime_col: str = "date"
+    datetime_col = "date"
     periodicities = {
         "dow": ("dow", 7),
         "month": ("month", 12),
@@ -73,8 +59,6 @@ class CyclicalEncoderConfig:
     prefix = "cyc"
     drop_source_cols = True
 ```
-
-Eine globale `CYCLICAL_CONF` in der Projekt-Config wird aktuell **nicht** verwendet.
 
 ---
 
@@ -90,19 +74,6 @@ Montag (0) und Sonntag (6) liegen trotz des Zahlenabstands wieder nahe beieinand
 
 ---
 
-## Verwendung im Projektkontext
-
-Der Encoder folgt im Pipeline-Ablauf direkt auf  
-**feature_engineering.py** und erzeugt die Datei:
-
-```
-data/processed/train_features_cyc.parquet
-```
-
-Diese dient anschließend als Input für **lag_features.py**.
-
----
-
 ## Beispielaufruf
 
 ```python
@@ -112,24 +83,12 @@ enc = CyclicalEncoder(CyclicalEncoderConfig())
 df_cyc = enc.fit_transform(df)
 ```
 
----
-
-## Hinweise & Fallstricke
-
-- Zeitzonen werden korrekt berücksichtigt (Default: Europe/Berlin)  
-- NaT-Werte bleiben bewusst NaN  
-- `drop_source_cols=True` entfernt Hilfsspalten wie `cyc_dow_idx`  
-- Für jedes Merkmal entstehen zwei Features (sin/cos)
+Ausgabe: `data/processed/train_features_cyc.parquet`
 
 ---
 
-## Zusammenfassung
-
-| Aspekt | Beschreibung |
-|--------|-------------|
-| Zweck | Abbildung zyklischer Zeitmerkmale |
-| Methode | Sinus- und Kosinus-Transformation |
-| Vorteile | Keine Sprünge, korrekte Distanzwahrung |
-| Eingesetzte Merkmale | dow, month, doy, week, hour |
-| Ausgabe | Zwei Features pro Merkmal |
-| Position in Pipeline | Nach FeatureEngineering, vor LagFeatures |
+## Ergebnis und Nutzen
+- Abbildung zyklischer Zeitstrukturen ohne Sprünge  
+- kontinuierliche Sin/Cos-Darstellung  
+- zwei Feature-Spalten pro Merkmal  
+- verbesserte Modellierung periodischer Muster

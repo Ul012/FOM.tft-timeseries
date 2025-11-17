@@ -31,11 +31,9 @@ nav:
         - Cyclical Encoder: project/CyclicalEncoder.md
         - Lag Features: project/LagFeatures.md
       - Modeling:
-        - Dataset TFT: project/DatasetTFT.md
         - Model Dataset: project/ModelDataset.md
+        - Dataset TFT: project/DatasetTFT.md
         - Trainer TFT: project/TrainerTFT.md
-        - Trainer TFT – Runprotokoll: project/TrainerTFT_Runprotokoll.md
-        - Trainer ARIMA und Prophet: project/ArimaProphetIntegration.md
       - Evaluation:
         - Evaluation TFT: project/EvaluatorTFT.md
         - Evaluation TFT Plot: project/EvaluatorTFTPlot.md
@@ -46,6 +44,6 @@ nav:
       - Trainer & Evaluator Struktur: shared/TrainerEvaluator_Stuktur.md
       - MkDocs Nutzung: shared/MkDocsUsage.md
   - Geplant:
-      - Erweiterung um ARIMA und Prophet: project/ArimaProphetIntegration.md
-      - Erweiterung um Hyperparameter Optimierung: project/Optuna.md
-      - Integration um MLFlow: project/MLFlow.md
+      - ARIMA und Prophet: project/ArimaProphetIntegration.md
+      - Hyperparameter Optimierung: project/OptunaPreparation.md
+      - Integration in MLFlow: project/MLFlow.md

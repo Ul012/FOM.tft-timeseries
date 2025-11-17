@@ -5,7 +5,7 @@
 
 # Reproduzierbarkeit
 seed: 42
-accelerator: "cpu"        # bei GPU: "gpu"
+accelerator: "gpu"        # bei GPU: "gpu"
 devices: 1
 
 # ----------------------------

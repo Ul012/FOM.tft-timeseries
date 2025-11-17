@@ -1,241 +1,153 @@
-# DatasetTFT -- Erstellung der TFT-Datensatzspezifikation
+# DatasetTFT – Erstellung der TFT-Datensatzspezifikation
 
-**Datum:** 2025-11-15\
-**Script:** `src/modeling/dataset_tft.py`\
-**Ziel & Inhalt:** Beschreibt, wie aus den vorbereiteten
-Train/Val/Test-Dateien eine konsistente Datensatzspezifikation für den
-Temporal Fusion Transformer (TFT) abgeleitet wird. Erläutert Heuristiken
-zur automatischen Feature-Einteilung, die verwendeten
-Konfigurationsparameter und die erzeugte `dataset_spec.json`.
+**Datum:** 2025-11-15  
+**Script:** `src/modeling/dataset_tft.py`  
+**Ziel & Inhalt:** Ableitung einer konsistenten Datensatzspezifikation für den Temporal Fusion Transformer (TFT) auf Basis der vorbereiteten Splits.
 
-------------------------------------------------------------------------
+---
 
-## Zweck
+## Überblick
+`dataset_tft.py` erzeugt eine zentrale Spezifikation (`dataset_spec.json`), die beschreibt, wie der TFT die Spalten interpretiert. Die Spezifikation legt Feature-Listen, Zeit- und ID-Spalten sowie Sequenzlängen für das Modelltraining fest.
 
-`dataset_tft.py` erstellt **keine neuen Daten**, sondern eine
-**Spezifikation** darüber, wie der TFT die vorhandenen Spalten
-interpretieren soll.
+---
 
-Konkret:
+## Ziel
+Ziel ist eine eindeutige, reproduzierbare Definition aller Eingabemerkmale.  
+Die Spezifikation dient als verbindliche Schnittstelle zwischen den vorbereiteten Daten (`train/val/test.parquet`) und dem Trainingsskript `trainer_tft.py`.
 
--   Train/Val/Test werden aus `PROCESSED_DIR` geladen,
--   Feature-Listen (z. B. `static_categoricals`,
-    `time_varying_known_reals`) werden heuristisch abgeleitet,
--   Sequenzlängen (Encoder/Decoder) werden aus der Konfiguration
-    übernommen,
--   alles wird in einer zentralen Datei `dataset_spec.json` gespeichert.
+---
 
-Diese Spezifikation ist der verbindliche Input für `trainer_tft.py`.
-
-------------------------------------------------------------------------
-
-## Eingaben und Ausgaben
+## Eingaben & Ausgaben
 
 ### Eingaben
+- `train.parquet`  
+- `val.parquet`  
+- `test.parquet`  
+- Konfiguration aus `src/config.py`:
+  - `TIME_COL`  
+  - `ID_COLS`  
+  - `TARGET_COL`  
+  - `TFT_DATASET`
 
--   **Verzeichnis mit Splits:**\
-    `PROCESSED_DIR` aus `config.py`, üblich:
-    -   `data/processed/train.parquet`\
-    -   `data/processed/val.parquet`\
-    -   `data/processed/test.parquet`
--   **Spalten- und Dataset-Konfiguration:**
-    -   `TIME_COL`, `ID_COLS`, `TARGET_COL`\
-    -   `TFT_DATASET` (enthält u. a. Prefix-Konfigurationen und
-        Sequenzlängen)
+### Ausgabe
+- `dataset_spec.json` im gleichen Verzeichnis wie die Splits
 
-### Ausgaben
+---
 
--   **`data/processed/dataset_spec.json`** (genauer:
-    `PROCESSED_DIR / "dataset_spec.json"`)
-
-Inhalt von `dataset_spec.json` (vereinfacht):
-
--   `time_col`, `id_cols`, `target_col`\
--   Pfade zu `train/val/test.parquet`\
--   `feature_lists`:
-    -   `static_categoricals`\
-    -   `time_varying_known_reals`\
-    -   `time_varying_unknown_reals`\
-    -   `time_varying_known_categoricals` (bewusst leer)\
--   `lengths`:
-    -   `max_encoder_length`\
-    -   `max_prediction_length`\
--   `notes`:
-    -   verwendete Prefix-Heuristiken\
-    -   Flags und Kalenderbehandlung
-
-------------------------------------------------------------------------
-
-## Konfiguration und Heuristiken
-
-Die Logik basiert auf einer Kombination aus **Konfigurationswerten**
-(`TFT_DATASET`) und **Spaltenmustern** im Trainingsdatensatz.
-
-### 1. Zentrale Konstanten
+## Zentrale Konstanten
 
 Aus `src/config.py`:
 
--   `TIME_COL` -- Zeitspalte\
+- `TIME_COL` – Zeitspalte  
+- `ID_COLS` – Identität der Zeitreihen (z. B. `country`, `store`, `product`)  
+- `TARGET_COL` – Zielvariable (z. B. `num_sold`)  
+- `TFT_DATASET` – Dict mit TFT-spezifischen Einstellungen, u. a.:
+  - `known_real_prefixes` – z. B. `["cyc_"]` für zyklische Features  
+  - `lag_prefixes` – z. B. `["lag_"]` für Lag-Features  
+  - `treat_calendar_as_known` – Bool, ob Kalenderfeatures als „known“ gelten  
+  - `flag_cols` – explizite Flag-Spalten (z. B. `is_lockdown_period`)  
+  - `max_encoder_length`, `max_prediction_length` – Encoder- und Decoderlängen
 
--   `ID_COLS` -- Identität der Zeitreihen (z. B. `country`, `store`,
-    `product`)\
+Im Script sind zusätzlich Heuristiken für Kalender- und Feiertagsmerkmale hinterlegt:
 
--   `TARGET_COL` -- Zielvariable (z. B. `num_sold`)\
+- **Kalenderspalten:**  
+  `CALENDAR_COLS = {"year", "month", "day", "dayofweek", "weekofyear", "is_weekend"}`  
+- **Feiertagspräfixe:**  
+  `HOLIDAY_PREFIXES = ("is_holiday",)` – z. B. `is_holiday_de` oder andere `is_holiday_*`-Spalten
 
--   `TFT_DATASET` -- Dict mit TFT-spezifischen Einstellungen, u. a.:
+---
 
-    -   `known_real_prefixes` -- z. B. `["cyc_"]` für zyklische
-        Features\
-    -   `lag_prefixes` -- z. B. `["lag_"]` für Lag-Features\
-    -   `treat_calendar_as_known` -- Bool, ob Kalender-Features als
-        „known" gelten\
-    -   `flag_cols` -- explizite Flag-Spalten (z. B.
-        `is_lockdown_period`)\
-    -   `max_encoder_length`, `max_prediction_length` -- Sequenzlängen
+## Vorgehen
 
-### 2. Kalender- und Feiertagsfeatures
+### 1. Grundprüfung
+Es wird geprüft, ob `TIME_COL`, alle `ID_COLS` und `TARGET_COL` im Trainingsdatensatz vorhanden sind.  
+Fehlende Pflichtspalten führen zu einem Abbruch mit Fehlermeldung.
 
-Im Script sind zusätzlich Heuristiken hinterlegt:
+---
 
--   **Kalenderspalten:**\
-    `CALENDAR_COLS = {"year", "month", "day", "dayofweek", "weekofyear", "is_weekend"}`
+### 2. Ableitung der Feature-Listen
 
--   **Feiertagspräfixe:**\
-    `HOLIDAY_PREFIXES = ("is_holiday",)`\
-    (z. B. `is_holiday_de` oder andere `is_holiday_*`-Spalten)
+Die folgenden Listen werden automatisch aus Spaltennamen, Datentypen und Konfiguration abgeleitet:
 
-------------------------------------------------------------------------
+- `static_categoricals`  
+- `time_varying_known_reals`  
+- `time_varying_unknown_reals`  
+- `time_varying_known_categoricals` (derzeit leer)
 
-## Ableitung der Feature-Listen
+#### 2.1 `static_categoricals`
+- enthält alle ID-Spalten aus `ID_COLS`, die im Datensatz vorhanden sind  
+- typisches Beispiel: `["country", "store", "product"]`
 
-Die Methode `TFTDatasetSpecBuilder.run()` führt die Kernlogik aus.
+#### 2.2 `time_varying_known_reals`
+Beginnend mit einer leeren Liste werden schrittweise ergänzt:
 
-### 1. Basic Checks
+1. **Zyklische Features**  
+   Alle numerischen Spalten, deren Name mit einem der `known_real_prefixes` beginnt  
+   (z. B. `cyc_dow_sin`, `cyc_month_cos`).
 
--   Prüft, ob `TIME_COL`, alle `ID_COLS` und `TARGET_COL` im
-    Trainingsdatensatz vorhanden sind.
--   Bricht mit Fehlermeldung ab, falls eine erwartete Spalte fehlt.
+2. **Kalenderfeatures (optional)**  
+   Nur, wenn `treat_calendar_as_known = True`.  
+   Es werden numerische Spalten aus `CALENDAR_COLS` aufgenommen, sofern vorhanden  
+   (z. B. `year`, `month`, `dayofweek`, `weekofyear`, `is_weekend`).
 
-### 2. `static_categoricals`
+3. **Feiertagsfeatures**  
+   Alle numerischen Spalten, deren Name mit einem Prefix aus `HOLIDAY_PREFIXES` beginnt  
+   (z. B. `is_holiday_de`).
 
--   Enthält alle ID-Spalten aus `ID_COLS`, die tatsächlich im Datensatz
-    vorhanden sind.
--   Typisch: `["country", "store", "product"]`.
+4. **Explizite Flags**  
+   Alle Spalten aus `flag_cols`, falls sie existieren und numerisch oder boolesch sind  
+   (z. B. `is_lockdown_period`).
 
-### 3. `time_varying_known_reals`
+5. **Zeitindex**  
+   Falls ein numerischer `time_idx` vorhanden ist, wird er ebenfalls als known real ergänzt.
 
-Aufbau in mehreren Schritten:
+Am Ende werden doppelte Einträge entfernt; die Reihenfolge der ersten Vorkommen bleibt erhalten.
 
-1.  **Zyklische Features**
-    -   Alle numerischen Spalten, deren Name mit einem der
-        `known_real_prefixes` beginnt\
-        (z. B. `cyc_dow_sin`, `cyc_dow_cos`, `cyc_month_sin`, ...).
-2.  **Kalenderfeatures (optional)**
-    -   Nur, wenn `treat_calendar_as_known = True`.\
-    -   Fügt numerische Spalten aus `CALENDAR_COLS` hinzu, sofern
-        vorhanden\
-        (z. B. `year`, `month`, `dayofweek`, `weekofyear`,
-        `is_weekend`).
-3.  **Feiertags-Features**
-    -   Alle numerischen Spalten, deren Name mit einem Prefix aus
-        `HOLIDAY_PREFIXES` beginnt\
-        (z. B. `is_holiday_de`).
-4.  **Explizite Flags**
-    -   Alle spalten aus `flag_cols` (z. B. `is_lockdown_period`), falls
-        sie existieren\
-    -   dürfen numerisch oder bool sein.
-5.  **`time_idx` (falls vorhanden)**
-    -   Wird als weiteres known real aufgenommen, wenn numerisch
-        vorhanden.
+#### 2.3 `time_varying_unknown_reals`
+Ausgangspunkt ist die Menge aller numerischen (inkl. boolescher) Spalten:
 
-Am Ende werden Duplikate entfernt, die Reihenfolge der ersten Vorkommen
-bleibt erhalten.
+1. **Target**  
+   `TARGET_COL` wird als erster Eintrag aufgenommen.
 
-### 4. `time_varying_unknown_reals`
+2. **Lag-Spalten**  
+   Alle numerischen Spalten, deren Name mit einem Prefix aus `lag_prefixes` beginnt  
+   (z. B. `lag_1`, `lag_7`, `lag_14`, `lag_7_mean`) werden gesammelt.
 
-Ausgangspunkt ist die Menge aller numerischen Spalten (inkl. bool):
+3. **Weitere numerische Spalten**  
+   Alle verbliebenen numerischen Spalten, die  
+   - nicht Target sind,  
+   - nicht in `time_varying_known_reals` enthalten sind,  
+   - nicht zu `ID_COLS` gehören,  
+   - nicht als Lag-Spalten markiert sind.
 
-1.  **Target hinzufügen**
-    -   `TARGET_COL` (z. B. `num_sold`) wird als erstes Unknown Real
-        aufgenommen.
-2.  **Lag-Spalten identifizieren**
-    -   Alle numerischen Spalten, deren Name mit einem Prefix aus
-        `lag_prefixes` beginnt\
-        (z. B. `lag_1`, `lag_7`, `lag_14`, `lag_7_mean`).
-3.  **Weitere numerische Spalten**
-    -   Alle numerischen Spalten, die **nicht**:
-        -   Target sind,
-        -   in `known_reals` enthalten sind,
-        -   zu den ID-Spalten gehören,
-        -   als Lag-Spalten markiert sind.
-4.  **Lags ans Ende**
-    -   Die Lag-Spalten werden gesammelt und **am Ende** der Liste
-        angehängt.\
-        Das hat lediglich dokumentarischen Charakter (bessere
-        Lesbarkeit).
+4. **Reihenfolge der Lags**  
+   Die zuvor gesammelten Lag-Spalten werden am Ende der Liste hinzugefügt.  
+   Dies erleichtert die Lesbarkeit von `dataset_spec.json`.
 
-### 5. `time_varying_known_categoricals`
+#### 2.4 `time_varying_known_categoricals`
+- wird derzeit als leere Liste gespeichert  
+- dient als Platzhalter für zukünftige kategoriale Zeitmerkmale
 
--   Wird derzeit bewusst als **leere Liste** gespeichert.\
--   Platzhalter für zukünftige Erweiterungen (z. B. kategoriale
-    Zeitmerkmale).
-
-------------------------------------------------------------------------
+---
 
 ## Sequenzlängen
+Aus `TFT_DATASET` werden die Fensterlängen übernommen:
 
-Aus `TFT_DATASET` werden übernommen:
+- `max_encoder_length` – Länge des historischen Fensters  
+- `max_prediction_length` – Länge der Vorhersageperiode
 
--   `max_encoder_length` -- Länge des historischen Fensters\
--   `max_prediction_length` -- Länge der Prognoseperiode
+Beide Werte werden in `dataset_spec.json` unter `lengths` abgelegt.
 
-Beide Werte werden in `spec["lengths"]` gespeichert und später im
-Trainer verwendet.
+---
 
-------------------------------------------------------------------------
+## Beispielaufruf
+```bash
+python -m src.modeling.dataset_tft
+```
 
-## Ablauf (End-to-End)
+---
 
-1.  **Aufruf des Scripts**
-
-    ``` bash
-    python -m src.modeling.dataset_tft
-    ```
-
-2.  **Erstellen des Builders**
-
-    ``` python
-    builder = TFTDatasetSpecBuilder(
-        datasets_dir=PROCESSED_DIR,
-        time_col=TIME_COL,
-        id_cols=list(ID_COLS),
-        target_col=TARGET_COL,
-        tft_cfg=TFT_DATASET,
-    )
-    ```
-
-3.  **Ausführen von `run()`**
-
-    -   lädt `train/val/test.parquet`,
-    -   führt Basic Checks durch,
-    -   leitet Feature-Listen ab,
-    -   liest Sequenzlängen aus `TFT_DATASET`,
-    -   schreibt `dataset_spec.json`,
-    -   gibt eine kurze Konsolenübersicht aus.
-
-------------------------------------------------------------------------
-
-## Einordnung in die Pipeline
-
-Übliche Pipeline:
-
-1.  `data_alignment.py` (optional)\
-2.  `data_cleaning.py` (optional)\
-3.  `feature_engineering.py`\
-4.  `cyclical_encoder.py`\
-5.  `lag_features.py`\
-6.  `model_dataset.py`\
-7.  **dataset_tft.py**\
-8.  `trainer_tft.py`
-
-------------------------------------------------------------------------
+## Ergebnis und Nutzen
+- konsistente, maschinenlesbare Beschreibung der TFT-Datenstruktur  
+- automatisierte, konfigurationsgestützte Ableitung der Feature-Listen  
+- zentrale Spezifikation als Grundlage für das Modelltraining in `trainer_tft.py`  

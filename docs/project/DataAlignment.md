@@ -1,32 +1,28 @@
 # DataAlignment – Zweck und Funktionsweise
 
-**Datum:** 2025-11-15  
+**Datum:** 2025-11-17  
 **Script:** src/data/data_alignment.py  
-**Ziel & Inhalt:** Erklärt die Normalisierung der Verkaufsniveaus auf ein gemeinsames Referenzjahr (2020). Beschreibt Motivation, mathematische Herleitung, Implementierungsschritte und Nutzen für stabile zeitreihenbasierte Modellierung.
+**Ziel & Inhalt:** Normalisierung der Verkaufsniveaus auf ein gemeinsames Referenzjahr (2020). Beschreibt Motivation, mathematische Herleitung, Implementierungsschritte und Nutzen für stabile zeitreihenbasierte Modellierung.
 
 
 ## Überblick
-Das Modul **DataAlignment** gleicht die Verkaufszahlen der Jahre 2017–2019 auf das Niveau von 2020 an. Dieser Schritt ist notwendig, um die Daten für den **Temporal Fusion Transformer (TFT)** vergleichbar zu machen. Ohne diese Angleichung würde das Modell Unterschiede in der Höhe der Jahreswerte (z. B. generell höhere Absätze im Jahr 2020) als wichtiges Muster interpretieren, obwohl es sich nur um ein Skalierungsproblem handelt. 
-
-Durch die Angleichung werden alle Zeitreihen auf ein gemeinsames Niveau gebracht, sodass der TFT die **zeitlichen und saisonalen Muster** innerhalb eines Jahres lernt – nicht die absoluten Unterschiede zwischen den Jahren.
+Das Modul DataAlignment passt die Verkaufszahlen der Jahre 2017–2019 an das Niveau von 2020 an. Dadurch liegen alle Jahre auf einer gemeinsamen Skala, was die spätere Bereinigung, Feature-Erzeugung und Analyse unterstützt. Die saisonalen und innerhalb eines Jahres relevanten Muster bleiben vollständig erhalten.
 
 ---
 
 ## Ziel
-Ziel ist die **Nivellierung der Verkaufsniveaus** über die Jahre hinweg. Dadurch konzentriert sich das Modell auf:
-- **Saisonale Schwankungen** (z. B. Feiertagseffekte oder Quartalsveränderungen),
-- **Wochen- und Monatstrends**,
-- **relative Muster** zwischen Zeitpunkten,
-und nicht auf absolute Mengenunterschiede.
+Ziel ist die **Nivellierung der Jahresniveaus**, damit sich folgende Analyseschritte auf relative zeitliche Muster konzentrieren können:
+- saisonale und kalendarische Effekte  
+- Wochen- und Monatstrends  
+- innerjährige Dynamiken  
 
-Die Angleichung verbessert somit die Stabilität des Trainings und die Generalisierungsfähigkeit des TFT.
+Absolute Jahresunterschiede werden vereinheitlicht; die Struktur der Zeitreihen bleibt erhalten.
 
 ---
 
 ## Begriffliche Einordnung
-Der beschriebene Vorgang entspricht einer **Normalisierung auf ein Referenzniveau** (auch „Baseline-Normalisierung“ genannt). Dabei werden alle Zeitreihen auf dasselbe Skalenniveau gebracht, hier das von 2020. Im Gegensatz zur **Standardisierung**, bei der Werte so transformiert werden, dass sie Mittelwert = 0 und Standardabweichung = 1 besitzen, geht es bei der Normalisierung um eine relative Anpassung an ein gemeinsames Vergleichsniveau. 
-
-Durch diese Normalisierung werden die Daten skalentechnisch harmonisiert, ohne dass ihre inneren Strukturen oder saisonalen Muster verloren gehen.
+Der Prozess entspricht einer **Normalisierung auf ein Referenzniveau** („Baseline-Normalisierung“). Dabei werden alle Jahre eines Landes auf das gleiche Durchschnittsniveau gebracht.  
+Im Unterschied zur **Standardisierung** (Mittelwert = 0, Standardabweichung = 1) bleibt die ursprüngliche Struktur bestehen; lediglich die Skala wird angeglichen.
 
 ---
 
@@ -79,16 +75,15 @@ Optionale Visualisierung
 
 Zur qualitativen Überprüfung des Angleichungsschritts existiert im Ordner
 `src/visualization/` das Skript `data_alignment_plot.py`.
-Es ist nicht Bestandteil der Datenpipeline, sondern dient ausschließlich der visuellen Kontrolle und dem besseren Verständnis des Effekts der Skalierung. Das Skript lädt die Datei `data/interim/train_aligned.parquet` und stellt die auf 2020-Niveau skalierten Verkaufszahlen als Liniendiagramm dar.
+Es ist nicht Bestandteil der Datenpipeline, sondern dient ausschließlich der visuellen Kontrolle und dem besseren Verständnis des Effekts der Skalierung. Das Skript lädt die Datei `data/interim/train_aligned.parquet`.
 
 ---
 
 ## Ergebnis und Nutzen
-Nach der Skalierung sind die durchschnittlichen Verkaufsniveaus aller Jahre pro Land nahezu identisch (Verhältnis ≈ 1,0). Dadurch:
-- werden die Zeitreihen **direkt vergleichbar**,
-- bleibt die **Saisonalität** erhalten,
-- kann der TFT **stabiler trainieren**, da Wertebereiche konsistent sind.
+Nach der Anpassung besitzen alle Jahre eines Landes ein vergleichbares Verkaufsniveau.  
+Dies führt zu:
+- einheitlicheren Wertebereichen,  
+- besserer Vergleichbarkeit,  
+- stabileren Modelltrainings.  
 
-Diese Normalisierung entspricht inhaltlich einer Form der **Skalenharmonisierung** – sie eliminiert globale Niveauunterschiede und fokussiert das Modell auf die **zeitliche Dynamik** der Daten.
-
-Dieser Schritt verändert zwar die absoluten Verkaufsniveaus, erhält jedoch alle relativen Muster und saisonalen Strukturen. Für Modelle wie den Temporal Fusion Transformer, die empfindlich auf unterschiedliche Skalen reagieren, führt diese Harmonisierung erfahrungsgemäß zu einer stabileren Konvergenz und reproduzierbareren Trainingsergebnissen.
+Die relevanten inneren Muster der Zeitreihen bleiben vollständig erhalten.
