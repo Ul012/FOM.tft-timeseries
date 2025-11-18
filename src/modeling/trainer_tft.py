@@ -304,7 +304,7 @@ def main():
         "epochs_trained": epochs_trained,
         "avg_epoch_time_sec": round(fit_time_sec / max(1, epochs_trained), 2),
 
-        # wichtige Hparams aus dem YAML-Dict (primitives!)
+        # wichtige Hparams aus dem YAML-Dict
         "learning_rate": cfg_dict.get("learning_rate"),
         "batch_size": cfg_dict.get("batch_size"),
         "max_epochs": cfg_dict.get("max_epochs"),
@@ -347,4 +347,5 @@ if __name__ == "__main__":
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr001.yaml
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr001_hs64_hcs32.yaml
     # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr001_mel120.yaml
+    # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr0003_mel120_hs64_hc32.yaml
     main()

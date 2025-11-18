@@ -44,7 +44,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--run-id",
         required=True,
-        help="Run-ID wie in results/tft/runs/<run_id>/",
+        help="Run-ID wie in results/tft/run_20251117_232558_lr001_mel120/<run_id>/",
     )
     parser.add_argument(
         "--split",
@@ -286,5 +286,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.visualization.plot_tft_forecast_series --run-id run_20251116_230357_lr001 --split test --history-length 120
+    # python -m src.visualization.plot_tft_forecast_series --run-id run_20251117_232558_lr001_mel120 --split test --history-length 120
     main()

@@ -46,4 +46,4 @@ nav:
   - Geplant:
       - ARIMA und Prophet: project/ArimaProphetIntegration.md
       - Hyperparameter Optimierung: project/OptunaPreparation.md
-      - Integration in MLFlow: project/MLFlow.md
+      - Integration in MLFlow: project/MLFlowKonzept.md

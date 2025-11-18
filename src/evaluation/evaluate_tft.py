@@ -22,13 +22,8 @@ from src.config import (
     TIME_COL,
     ID_COLS,
     TARGET_COL,
-    TFT_DATASET
+    TFT_DATASET,
 )
-
-
-# ---------------------------------------------------------------------------
-# Metriken
-# ---------------------------------------------------------------------------
 
 
 def _mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -61,11 +56,6 @@ def _compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]
     }
 
 
-# ---------------------------------------------------------------------------
-# Datenstrukturen
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class SplitMetrics:
     mae: float
@@ -83,11 +73,6 @@ class EvaluationResult:
     eval_dir: Path
 
 
-# ---------------------------------------------------------------------------
-# Logger
-# ---------------------------------------------------------------------------
-
-
 class EvalLogger:
     def __init__(self, output_dir: Path) -> None:
         self.output_dir = output_dir
@@ -98,10 +83,21 @@ class EvalLogger:
         path.write_text(json.dumps(data, indent=2), encoding="utf-8")
         return path
 
+    def log_csv(self, row: Dict[str, Any], filename: str = "eval_summary.csv") -> Path:
+        """
+        Schreibt eine Zeile in eine CSV im output_dir.
+        - Falls die Datei noch nicht existiert: neue Datei mit Header.
+        - Falls sie existiert: Zeile anhängen ohne Header.
+        """
+        path = self.output_dir / filename
+        df_new = pd.DataFrame([row])
 
-# ---------------------------------------------------------------------------
-# Helfer
-# ---------------------------------------------------------------------------
+        if path.exists():
+            df_new.to_csv(path, mode="a", header=False, index=False)
+        else:
+            df_new.to_csv(path, index=False)
+
+        return path
 
 
 def _find_best_checkpoint(model_cfg: Dict[str, Any]) -> Path:
@@ -145,37 +141,29 @@ def _load_dataset_spec() -> Dict[str, Any]:
     return json.loads(spec_path.read_text(encoding="utf-8"))
 
 
-# ---------------------------------------------------------------------------
-# Evaluation
-# ---------------------------------------------------------------------------
-
-
 def _evaluate_split(
         model: TemporalFusionTransformer,
         df: pd.DataFrame,
         dataset_spec: Dict[str, Any],
         eval_cfg: Dict[str, Any],
 ) -> SplitMetrics:
-    """FIX: Nutzt TimeSeriesDataSet mit Feature-Listen für korrekte Predictions."""
-
     if TARGET_COL not in df.columns:
         raise KeyError(f"Zielspalte {TARGET_COL!r} fehlt im DataFrame.")
 
-    # Feature-Listen aus spec
     fl = dataset_spec["feature_lists"]
     lengths = dataset_spec["lengths"]
 
-    # NaN-Handling für Lags
     lag_cols = [col for col in df.columns if col.startswith("lag_")]
     if lag_cols:
         df = df.dropna(subset=lag_cols)
 
-    # Target auf float32
+    # Ensure correct temporal ordering (critical for TFT)
+    df = df.sort_values(by=ID_COLS + [TIME_COL]).reset_index(drop=True)
+
     df[TARGET_COL] = pd.to_numeric(df[TARGET_COL], errors="coerce").astype("float32")
 
     time_idx_col = "time_idx" if "time_idx" in df.columns else TIME_COL
 
-    # TimeSeriesDataSet mit Feature-Listen (wie in trainer_tft.py)
     dataset = TimeSeriesDataSet(
         df,
         time_idx=time_idx_col,
@@ -191,30 +179,36 @@ def _evaluate_split(
         allow_missing_timesteps=True,
     )
 
-    # DataLoader (Parameter aus eval_cfg)
     dataloader = dataset.to_dataloader(
         train=False,
         batch_size=eval_cfg["batch_size"],
         num_workers=eval_cfg["num_workers"],
     )
 
-    # Predictions + Ground Truth sammeln
-    predictions, actuals = [], []
+    # Predict: model.predict() returns predictions directly when used with dataloader
     model.eval()
     with torch.no_grad():
-        for batch in dataloader:
-            pred = model.predict(batch, mode="prediction")
-            actual = batch[1][0][:, :, 0]  # (batch, prediction_length)
-            predictions.append(pred)
-            actuals.append(actual)
+        y_pred_raw = model.predict(dataloader, mode="prediction")
 
-    y_pred = torch.cat(predictions, dim=0).cpu().numpy()
+    y_pred = y_pred_raw.cpu().numpy()
+
+    # Extract actuals from dataloader by iterating once
+    actuals = []
+    for batch_x, batch_y in dataloader:
+        # batch_y is tuple (target, weight), we want target
+        # target shape: (batch_size, max_prediction_length)
+        target = batch_y[0]
+        actuals.append(target)
+
     y_true = torch.cat(actuals, dim=0).cpu().numpy()
 
-    # Falls Quantile: Median nehmen
+    # Handle quantile predictions (if output_size > 1)
+    # y_pred shape: (n_samples, max_prediction_length) or (n_samples, max_prediction_length, n_quantiles)
     if y_pred.ndim == 3:
+        # Use median quantile (middle one) for evaluation
         y_pred = y_pred[:, :, y_pred.shape[2] // 2]
 
+    # Flatten to 1D for metric computation
     y_pred = y_pred.reshape(-1)
     y_true = y_true.reshape(-1)
 
@@ -249,7 +243,7 @@ def evaluate_tft_run(
 
     eval_root = Path(eval_cfg["eval_root"])
     eval_dir = eval_root / run_id
-    logger = EvalLogger(eval_dir)
+    eval_logger = EvalLogger(eval_dir)
 
     payload: Dict[str, Any] = {
         "run_id": run_id,
@@ -265,7 +259,22 @@ def evaluate_tft_run(
         },
     }
 
-    summary_path = logger.log_json(payload, filename="eval_summary.json")
+    summary_path = eval_logger.log_json(payload, filename="eval_summary.json")
+
+    # NEU: einfache CSV pro Run im gleichen Ordner
+    csv_row: Dict[str, Any] = {
+        "run_id": run_id,
+        "checkpoint_path": str(ckpt_path),
+        "val_mae": metrics_val.mae,
+        "val_rmse": metrics_val.rmse,
+        "val_mape": metrics_val.mape,
+        "val_smape": metrics_val.smape,
+        "test_mae": metrics_test.mae,
+        "test_rmse": metrics_test.rmse,
+        "test_mape": metrics_test.mape,
+        "test_smape": metrics_test.smape,
+    }
+    csv_path = eval_logger.log_csv(csv_row, filename="eval_summary.csv")
 
     result: Dict[str, Any] = {
         "run_id": run_id,
@@ -273,15 +282,11 @@ def evaluate_tft_run(
         "checkpoint_path": str(ckpt_path),
         "artifacts": {
             "eval_summary_path": str(summary_path),
+            "eval_summary_csv_path": str(csv_path),  # NEU
             "eval_dir": str(eval_dir),
         },
     }
     return result
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
 
 
 def _parse_args() -> argparse.Namespace:
@@ -311,6 +316,7 @@ def main() -> None:
         "checkpoint_pattern": "*.ckpt",
     }
 
+    # Hardcoded eval params (rarely changed, will be tracked by MLflow later)
     eval_cfg: Dict[str, Any] = {
         "eval_root": str(BASE_DIR / "results" / "tft" / "eval"),
         "batch_size": 128,
@@ -342,7 +348,6 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-# python -m src.evaluation.evaluate_tft --run-id run_20251116_183848_baseline02
-# python -m src.evaluation.evaluate_tft --run-id run_20251115_160147_bs32
-# python -m src.evaluation.evaluate_tft --run-id run_20251116_230357_lr001
-# python -m src.evaluation.evaluate_tft --run-id run_20251117_091520_lr001_hs64_hcs32
+
+# python -m src.evaluation.evaluate_tft --run-id run_20251117_232558_lr001_mel120
+# python -m src.evaluation.evaluate_tft --run-id run_20251118_221004_lr0003_mel120_hs64_hc32
