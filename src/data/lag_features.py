@@ -1,11 +1,14 @@
 # src/data/lag_features.py
 
 import pandas as pd
-from src.config import PROCESSED_DIR
+
+
+from src.config import PROCESSED_DIR, BASE_DIR
 from src.utils.load_dataset_config import load_dataset_config, get_schema, get_preprocessing_params
 
 # Lade Config einmalig
 _dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
 _schema = get_schema(_dataset_config)
 _lag_params = get_preprocessing_params(_dataset_config, "lag_features")
 
@@ -62,8 +65,8 @@ def add_lag_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     """Liest train_features_cyc.parquet, erzeugt Lag/Rolling-Features und speichert train_features_cyc_lag.parquet."""
-    in_path = PROCESSED_DIR / "train_features_cyc.parquet"
-    out_path = PROCESSED_DIR / "train_features_cyc_lag.parquet"
+    in_path = BASE_DIR / "data" / "processed" / _dataset_name / "train_features_cyc.parquet"
+    out_path = BASE_DIR / "data" / "processed" / _dataset_name / "train_features_cyc_lag.parquet"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not in_path.exists():

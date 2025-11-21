@@ -7,7 +7,11 @@ import numpy as np
 import pandas as pd
 
 # Direkte Imports, kein try/except – schlank und pythonic
-from src.config import PROCESSED_DIR
+from src.config import PROCESSED_DIR, BASE_DIR
+from src.utils.load_dataset_config import load_dataset_config
+
+_dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
 
 
 @dataclass(frozen=True)
@@ -103,8 +107,8 @@ class CyclicalEncoder:
 
 
 def main() -> None:
-    in_path = PROCESSED_DIR / "train_features.parquet"
-    out_path = PROCESSED_DIR / "train_features_cyc.parquet"
+    in_path = BASE_DIR / "data" / "processed" / _dataset_name / "train_features.parquet"
+    out_path = BASE_DIR / "data" / "processed" / _dataset_name / "train_features_cyc.parquet"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"[cyclical_encoder] Lade {in_path} ...")

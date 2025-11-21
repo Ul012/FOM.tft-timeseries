@@ -4,11 +4,15 @@
 import numpy as np
 import pandas as pd
 
-from src.config import RAW_DIR, INTERIM_DIR
+from src.config import RAW_DIR, INTERIM_DIR, BASE_DIR
+from src.utils.load_dataset_config import load_dataset_config
 
-# Rohdaten-Input (Kaggle Booksales) und Output nach zentraler Config
-RAW = RAW_DIR / "tabular-playground-series-sep-2022" / "train.csv"
-OUT = INTERIM_DIR / "train_aligned.parquet"
+_dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
+
+# Rohdaten-Input und Output nach zentraler Config
+RAW = BASE_DIR / "data" / "raw" / _dataset_name / "train.csv"
+OUT = BASE_DIR / "data" / "interim" / _dataset_name / "train_aligned.parquet"
 
 
 def align_yearly_sales(df: pd.DataFrame) -> pd.DataFrame:

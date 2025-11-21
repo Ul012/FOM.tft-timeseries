@@ -21,6 +21,7 @@ from src.utils.load_dataset_config import load_dataset_config, get_schema, get_t
 
 # Lade Config einmalig
 _dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
 _schema = get_schema(_dataset_config)
 
 # Extrahiere Werte
@@ -51,11 +52,16 @@ def _smape(y_true: np.ndarray, y_pred: np.ndarray, eps: float = 1e-8) -> float:
 
 
 def _compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+    metric_funcs = {
+        "mae": _mae,
+        "rmse": _rmse,
+        "mape": _mape,
+        "smape": _smape,
+    }
+
     return {
-        "mae": _mae(y_true, y_pred),
-        "rmse": _rmse(y_true, y_pred),
-        "mape": _mape(y_true, y_pred),
-        "smape": _smape(y_true, y_pred),
+        metric: metric_funcs[metric](y_true, y_pred)
+        for metric in EVALUATION_METRICS
     }
 
 
@@ -138,7 +144,7 @@ def _load_splits(data_cfg: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def _load_dataset_spec() -> Dict[str, Any]:
-    spec_path = PROCESSED_DIR / "dataset_spec.json"
+    spec_path = BASE_DIR / "data" / "processed" / _dataset_name / "dataset_spec.json"
     if not spec_path.exists():
         raise FileNotFoundError(f"dataset_spec.json nicht gefunden: {spec_path}")
     return json.loads(spec_path.read_text(encoding="utf-8"))
@@ -309,8 +315,8 @@ def main() -> None:
     run_id = args.run_id
 
     data_cfg: Dict[str, Any] = {
-        "val_path": str(PROCESSED_DIR / "val.parquet"),
-        "test_path": str(PROCESSED_DIR / "test.parquet"),
+        "val_path": str(BASE_DIR / "data" / "processed" / _dataset_name / "val.parquet"),
+        "test_path": str(BASE_DIR / "data" / "processed" / _dataset_name / "test.parquet"),
     }
 
     model_cfg: Dict[str, Any] = {

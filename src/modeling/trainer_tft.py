@@ -28,14 +28,14 @@ from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.metrics import QuantileLoss, MAE, RMSE, MAPE, SMAPE
 
-from src.config import PROCESSED_DIR
+from src.config import PROCESSED_DIR, BASE_DIR
 from src.utils.load_dataset_config import load_dataset_config, get_schema
 from src.utils.config_loader import load_trainer_cfg
+from src.utils.json_results import export_run_jsons_from_metrics
 
 # Lade Dataset-Config
 _dataset_config = load_dataset_config()
 _schema = get_schema(_dataset_config)
-
 TARGET_COL = _schema["target_col"]
 ID_COLS = _schema["id_cols"]
 TIME_COL = _schema["time_col"]
@@ -158,9 +158,15 @@ def main():
     torch.set_float32_matmul_precision("high")  # nutzt Tensor Cores besser aus
 
     # -----------------------------
+    # Dataset-Pfad berechnen
+    # -----------------------------
+    dataset_name = _dataset_config["name"]  # KeyError wenn fehlt!
+    dataset_processed_dir = BASE_DIR / "data" / "processed" / dataset_name
+
+    # -----------------------------
     # Datasets + Dataloader
     # -----------------------------
-    train_ds, val_ds = _load_dataset_from_spec(PROCESSED_DIR)
+    train_ds, val_ds = _load_dataset_from_spec(dataset_processed_dir)
 
     print("[DEBUG] Erzeuge train_loader...")
     train_loader = train_ds.to_dataloader(
@@ -342,13 +348,6 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   ALT:
-#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_baseline02.yaml
-#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_bs32.yaml
-#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_lr001.yaml
-#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_lr001_hs64_hcs32.yaml
-#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_lr001_mel120.yaml
-#   NEU:
 #   python -m src.modeling.trainer_tft --config configs/models/tft/baseline.yaml
 #   python -m src.modeling.trainer_tft --config configs/models/tft/bs_small.yaml
 #   python -m src.modeling.trainer_tft --config configs/models/tft/lr_high.yaml

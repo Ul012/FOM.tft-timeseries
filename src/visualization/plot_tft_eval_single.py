@@ -101,7 +101,7 @@ if __name__ == "__main__":
 # Aufruf (nach Evaluation):
 #   python -m src.visualization.plot_tft_eval_single --run-id run_20251121_125758_baseline
 #   python -m src.visualization.plot_tft_eval_single --run-id run_20251121_150832_bs_small
-#   python -m src.visualization.plot_tft_eval_single --run-id run_20251121_174613_lr_high
+#   python -m src.visualization.plot_tft_eval_single --run-id run_20251121_195900_model_large
 #
 # Output: results/tft/plots/eval/<run_id>_metrics.png
 

@@ -21,7 +21,8 @@ markdown_extensions:
 nav:
   - Übersicht: index.md
   - Projekt Pipeline:
-      - Pipeline & I/O: project/PipelineOrder.md
+      - Pipeline Übersicht: shared/PipelineOrder.md
+      - Pipeline Script: project/Pipeline.md
   - Projekt Schritte:
       - Data Preprocessing:
         - Data Alignment: project/DataAlignment.md

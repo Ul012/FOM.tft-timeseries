@@ -5,11 +5,12 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from src.config import INTERIM_DIR
+from src.config import INTERIM_DIR, BASE_DIR
 from src.utils.load_dataset_config import load_dataset_config, get_schema
 
 # Lade Config
 _dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
 _schema = get_schema(_dataset_config)
 
 TARGET_COL = _schema["target_col"]
@@ -86,8 +87,8 @@ class DataCleaner:
 
 def main() -> None:
     """Lädt die ausgerichteten Daten, bereinigt sie und speichert das Ergebnis."""
-    parquet_path = INTERIM_DIR / "train_aligned.parquet"
-    cleaned_path = INTERIM_DIR / "train_cleaned.parquet"
+    parquet_path = BASE_DIR / "data" / "interim" / _dataset_name / "train_aligned.parquet"
+    cleaned_path = BASE_DIR / "data" / "interim" / _dataset_name / "train_cleaned.parquet"
 
     if not parquet_path.exists():
         raise FileNotFoundError(

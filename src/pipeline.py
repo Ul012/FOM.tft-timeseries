@@ -4,20 +4,14 @@ Minimale Pipeline-Orchestrierung für reproduzierbare Experimente.
 
 Aufruf-Beispiele:
     # Kompletter Run (Preprocessing + Training)
-    python -m src.pipeline \\
-        --dataset configs/datasets/booksales.yaml \\
-        --model configs/models/tft/baseline.yaml
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/baseline.yaml
 
     # Nur Preprocessing
-    python -m src.pipeline \\
-        --dataset configs/datasets/booksales.yaml \\
-        --steps preprocessing,model_dataset,dataset_tft
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing,model_dataset,dataset_tft
 
     # Nur Training (Preprocessing bereits erledigt)
-    python -m src.pipeline \\
-        --dataset configs/datasets/booksales.yaml \\
-        --model configs/models/tft/baseline.yaml \\
-        --steps training
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/baseline.yaml --steps training
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/lr_high.yaml --steps training
 
 Philosophie:
 - Nutzt bestehende Module via subprocess (kein Refactoring nötig)
@@ -59,16 +53,15 @@ def run_subprocess(cmd: List[str], step_name: str) -> None:
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
 
-    result = subprocess.run(cmd, capture_output=True, text=True, env=env, encoding='utf-8')
-
-    # Output immer ausgeben (auch bei Erfolg)
-    if result.stdout:
-        print(result.stdout)
+    result = subprocess.run(
+        cmd,
+        env=env,
+        encoding='utf-8',
+        # Kein capture_output! → Live-Output direkt an Terminal
+    )
 
     if result.returncode != 0:
         print(f"\n[ERROR] Schritt '{step_name}' fehlgeschlagen:", file=sys.stderr)
-        if result.stderr:
-            print(result.stderr, file=sys.stderr)
         raise RuntimeError(f"Pipeline-Schritt fehlgeschlagen: {step_name}")
 
 
@@ -217,14 +210,14 @@ def run_pipeline(
     if not dataset_cfg_path.exists():
         raise FileNotFoundError(f"Dataset-Config nicht gefunden: {dataset_cfg_path}")
 
-    dataset_cfg = yaml.safe_load(dataset_cfg_path.read_text())
+    dataset_cfg = yaml.safe_load(dataset_cfg_path.read_text(encoding="utf-8"))
     print(f"[Pipeline] Dataset: {dataset_cfg.get('name')}")
 
     model_cfg = None
     if model_cfg_path:
         if not model_cfg_path.exists():
             raise FileNotFoundError(f"Model-Config nicht gefunden: {model_cfg_path}")
-        model_cfg = yaml.safe_load(model_cfg_path.read_text())
+        model_cfg = yaml.safe_load(model_cfg_path.read_text(encoding="utf-8"))
         print(f"[Pipeline] Model: {model_cfg.get('type')} / {model_cfg.get('name')}")
 
     print(f"[Pipeline] Schritte: {', '.join(steps)}\n")

@@ -8,6 +8,7 @@
 
 ## Überblick
 `dataset_tft.py` erzeugt eine zentrale Spezifikation (`dataset_spec.json`), die beschreibt, wie der TFT die Spalten interpretiert. Die Spezifikation legt Feature-Listen, Zeit- und ID-Spalten sowie Sequenzlängen für das Modelltraining fest.
+**Wichtig:** Liest/schreibt in `data/processed/<dataset_name>/` - Dataset-Name kommt aus Config.
 
 ---
 

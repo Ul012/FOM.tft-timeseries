@@ -3,8 +3,13 @@
 from pathlib import Path
 import pandas as pd
 
-# Pfad **relativ zu dieser Datei**, damit er immer stimmt
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "raw" / "tabular-playground-series-sep-2022"
+from src.config import BASE_DIR
+from src.utils.load_dataset_config import load_dataset_config
+
+_dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
+
+DATA_DIR = BASE_DIR / "data" / "raw" / _dataset_name
 
 train_path = DATA_DIR / "train.csv"
 test_path  = DATA_DIR / "test.csv"

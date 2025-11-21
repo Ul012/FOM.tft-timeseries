@@ -17,11 +17,12 @@ from typing import List, Dict, Any, Set
 import json
 import pandas as pd
 
-from src.config import PROCESSED_DIR
+from src.config import PROCESSED_DIR, BASE_DIR
 from src.utils.load_dataset_config import load_dataset_config, get_schema, get_tft_config
 
 # Lade Config einmalig
 _dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
 _schema = get_schema(_dataset_config)
 
 # Extrahiere Werte
@@ -186,7 +187,7 @@ class TFTDatasetSpecBuilder:
 
 def main() -> None:
     builder = TFTDatasetSpecBuilder(
-        datasets_dir=PROCESSED_DIR,
+        datasets_dir=BASE_DIR / "data" / "processed" / _dataset_name,
         time_col=TIME_COL,
         id_cols=list(ID_COLS),
         target_col=TARGET_COL,

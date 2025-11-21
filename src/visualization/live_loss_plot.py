@@ -131,7 +131,7 @@ if __name__ == "__main__":
 # Aufruf (nach Training):
 #   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_123456_baseline
 #   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_150832_bs_small
-#   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_174613_lr_high
+#   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_222313_lr_high
 #
 # Output: results/tft/plots/training/<run_id>_loss.png
 

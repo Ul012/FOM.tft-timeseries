@@ -8,6 +8,7 @@
 
 ## Überblick
 `model_dataset.py` strukturiert die vorbereiteten Zeitreihen in drei zeitlich sortierte Teilmengen. Der Schritt erzeugt keine neuen Features, sondern organisiert die Daten für ein reproduzierbares Modelltraining.
+**Wichtig:** Arbeitet mit dataset-spezifischen Pfaden aus `BASE_DIR / "data" / "processed" / <dataset_name>/`
 
 ---
 

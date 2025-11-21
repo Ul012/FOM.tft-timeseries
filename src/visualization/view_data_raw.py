@@ -12,6 +12,9 @@ import seaborn as sns
 from src.config import RAW_DIR, BASE_DIR
 from src.utils.load_dataset_config import load_dataset_config, get_schema
 
+_dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
+
 
 def load_raw_data(dataset_config: dict) -> pd.DataFrame:
     """Lädt Rohdaten basierend auf Dataset-Config."""
@@ -19,7 +22,7 @@ def load_raw_data(dataset_config: dict) -> pd.DataFrame:
     if not dataset_name:
         raise ValueError("Dataset-Config muss 'name' enthalten.")
 
-    data_path = RAW_DIR / "tabular-playground-series-sep-2022" / "train.csv"
+    data_path = BASE_DIR / "data" / "raw" / dataset_name / "train.csv"
 
     if not data_path.exists():
         raise FileNotFoundError(

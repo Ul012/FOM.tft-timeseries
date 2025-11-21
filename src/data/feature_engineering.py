@@ -5,7 +5,11 @@ from pathlib import Path
 import pandas as pd
 import holidays
 
-from src.config import INTERIM_DIR, PROCESSED_DIR
+from src.config import INTERIM_DIR, PROCESSED_DIR, BASE_DIR
+from src.utils.load_dataset_config import load_dataset_config
+
+_dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
 
 
 class FeatureEngineer:
@@ -74,8 +78,8 @@ class FeatureEngineer:
 
 
 def main() -> None:
-    inp = INTERIM_DIR / "train_cleaned.parquet"
-    outp = PROCESSED_DIR / "train_features.parquet"
+    inp = BASE_DIR / "data" / "interim" / _dataset_name / "train_cleaned.parquet"
+    outp = BASE_DIR / "data" / "processed" / _dataset_name / "train_features.parquet"
     outp.parent.mkdir(parents=True, exist_ok=True)
 
     if not inp.exists():

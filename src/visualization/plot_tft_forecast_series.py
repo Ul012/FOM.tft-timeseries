@@ -26,6 +26,7 @@ from src.utils.load_dataset_config import load_dataset_config, get_schema, get_t
 
 # Lade Dataset-Config
 _dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
 _schema = get_schema(_dataset_config)
 
 TIME_COL = _schema["time_col"]
@@ -94,9 +95,9 @@ def _find_checkpoint(run_id: str) -> Path:
 def _load_split(split: str) -> pd.DataFrame:
     """Lädt den gewünschten Split (val oder test) aus data/processed."""
     if split == "val":
-        path = PROCESSED_DIR / "val.parquet"
+        path = BASE_DIR / "data" / "processed" / _dataset_name / "val.parquet"
     elif split == "test":
-        path = PROCESSED_DIR / "test.parquet"
+        path = BASE_DIR / "data" / "processed" / _dataset_name / "test.parquet"
     else:
         raise ValueError(f"Unbekannter Split: {split!r}")
 
@@ -296,4 +297,4 @@ if __name__ == "__main__":
 # Aufruf (nach Training):
 #   python -m src.visualization.plot_tft_forecast_series --run-id run_20251121_125758_baseline --split test --history-length 120
 #   python -m src.visualization.plot_tft_forecast_series --run-id run_20251121_150832_bs_small --split test --history-length 120
-#   python -m src.visualization.plot_tft_forecast_series --run-id run_20251121_174613_lr_high --split test --history-length 120
+#   python -m src.visualization.plot_tft_forecast_series --run-id run_20251121_195900_model_large --split test --history-length 120

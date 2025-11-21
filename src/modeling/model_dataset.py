@@ -16,11 +16,12 @@ import json
 import pandas as pd
 import numpy as np
 
-from src.config import PROCESSED_DIR
+from src.config import PROCESSED_DIR, BASE_DIR
 from src.utils.load_dataset_config import load_dataset_config, get_schema, get_split_config
 
 # Lade Config einmalig
 _dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]  # KeyError wenn fehlt!
 _schema = get_schema(_dataset_config)
 _split = get_split_config(_dataset_config)
 
@@ -30,7 +31,7 @@ ID_COLS = _schema["id_cols"]
 TARGET_COL = _schema["target_col"]
 
 # Model Input Path (kann später auch aus YAML kommen)
-MODEL_INPUT_PATH = PROCESSED_DIR / "train_features_cyc_lag.parquet"
+MODEL_INPUT_PATH = BASE_DIR / "data" / "processed" / _dataset_name / "train_features_cyc_lag.parquet"
 
 # Split-Config
 if _split["method"] == "fixed":
@@ -269,7 +270,7 @@ class ModelDatasetBuilder:
 def main() -> None:
     builder = ModelDatasetBuilder(
         data_path=MODEL_INPUT_PATH,
-        output_dir=PROCESSED_DIR,
+        output_dir=BASE_DIR / "data" / "processed" / _dataset_name,
         time_col=TIME_COL,
         id_cols=list(ID_COLS),
         target_col=TARGET_COL,

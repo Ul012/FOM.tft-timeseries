@@ -22,8 +22,7 @@ Thumbs.db
 .ipynb_checkpoints/
 
 # --- Data & Intermediate Files ---
-data/raw/*
-!data/raw/.gitkeep
+!data/raw/booksales/.gitkeep
 data/interim/
 data/processed/
 logs/
@@ -31,6 +30,8 @@ lightning_logs/
 experimental/
 archive/
 configs/models/tft/experiments/
+data/raw/**/*.csv
+data/raw/**/*.parquet
 
 # --- Private Notes (außerhalb von docs) ---
 notes/

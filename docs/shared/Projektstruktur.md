@@ -31,7 +31,7 @@ src/
 | `cyclical_encoder.py` | Zyklische Kodierung (sin/cos) |
 | `lag_features.py` | Lag- und Rolling-Features |
 
-**Output:** `data/processed/train_features_cyc_lag.parquet`
+**Output:** `data/processed/<dataset_name>/train_features_cyc_lag.parquet`
 
 ---
 
@@ -49,12 +49,12 @@ src/
 
 ```
 model_dataset.py
-  Eingabe: data/processed/train_features_cyc_lag.parquet
-  Ausgabe: data/processed/{train,val,test}.parquet + meta.json
+  Eingabe: data/processed/<dataset_name>/train_features_cyc_lag.parquet
+  Ausgabe: data/processed/<dataset_name>/{train,val,test}.parquet + meta.json
 
 dataset_tft.py
-  Eingabe: data/processed/{train,val,test}.parquet
-  Ausgabe: data/processed/dataset_spec.json
+  Eingabe: data/processed/<dataset_name>/{train,val,test}.parquet
+  Ausgabe: data/processed/<dataset_name>/dataset_spec.json
 
 trainer_tft.py
   Eingabe: dataset_spec.json + configs/models/tft/*.yaml

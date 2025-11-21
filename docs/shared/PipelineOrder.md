@@ -18,7 +18,7 @@ Alle Schritte können einzeln getestet werden. Schritte 1–6 bilden die Hauptpi
 | Ebene | Ordner | Aufgabe |
 |------|--------|---------|
 | **data** | `src/data/` | Laden, Bereinigen und Feature-Erzeugung (Kalender, Feiertage, Lags, zyklische Merkmale) |
-| **modeling** | `src/modeling/` | TFT-spezifische Datenaufbereitung, Modelltraining |
+| **modeling** | `src/modeling/` | Splitten, TFT-Datensatz, Modelltraining |
 | **evaluation** | `src/evaluation/` | Ergebnisanalyse, Kennzahlen und Visualisierung |
 | **visualization** | `src/visualization/` | Plots für Daten, Training und Evaluation |
 | **utils** | `src/utils/` | Hilfsfunktionen – **nicht Teil der Pipeline** |
@@ -35,7 +35,7 @@ Alle Schritte können einzeln getestet werden. Schritte 1–6 bilden die Hauptpi
 | 3A | `feature_engineering.py` | Kalender-Features, time_idx, Feiertage | `data/interim/train_cleaned.parquet` | `data/processed/train_features.parquet` | Einzeln oder via Pipeline |
 | 3B | `cyclical_encoder.py` | Zyklische Sin/Cos-Kodierungen | `train_features.parquet` | `train_features_cyc.parquet` | Einzeln oder via Pipeline |
 | 3C | `lag_features.py` | Lag- und Rolling-Features | `train_features_cyc.parquet` | `train_features_cyc_lag.parquet` | Einzeln oder via Pipeline |
-| 4 | `model_dataset.py` | Zeitbasierter Split (Train/Val/Test) | Ergebnis aus 3C | `train.parquet`, `val.parquet`, `test.parquet`, `meta.json` | Einzeln oder via Pipeline |
+| 4 | `model_dataset.py` | Zeitbasierter Split (Train/Val/Test) | Ergebnis aus 3C | `data/processed/<dataset_name>/train.parquet`, `val.parquet`, `test.parquet`, `meta.json` | Einzeln oder via Pipeline |
 | 5 | `dataset_tft.py` | TFT-Datensatz erstellen | Schritt 4 | `dataset_spec.json` | Einzeln oder via Pipeline |
 | 6 | `trainer_tft.py` | TFT-Training nach Config | Schritt 5 + `configs/models/tft/*.yaml` | Logs, Checkpoints, JSONs | Einzeln oder via Pipeline |
 | 7 | `evaluate_tft.py` *(optional)* | Berechnet Fehlermaße (MAE, RMSE, MAPE, SMAPE) | Checkpoint + val/test.parquet | `results/tft/eval/<run_id>/eval_summary.json` | Nur einzeln |

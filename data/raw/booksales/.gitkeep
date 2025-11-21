@@ -1,0 +1,7 @@
+# Dieser Ordner enthält die Rohdaten (nicht versioniert)
+#
+# Erforderliche Dateien:
+#   - train.csv
+#   - test.csv (optional)
+#
+# Diese Dateien werden NICHT in Git committet (.gitignore)

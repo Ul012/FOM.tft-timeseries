@@ -11,8 +11,10 @@ from typing import Any, Dict, List
 
 import pandas as pd
 
-from src.config import (  # type: ignore
+from src.config import (
     BASE_DIR,
+    EVALUATION_METRICS,
+    EVALUATION_SPLITS,
 )
 
 
@@ -28,17 +30,13 @@ def _load_single_eval(eval_path: Path) -> Dict[str, Any]:
     row: Dict[str, Any] = {
         "run_id": run_id,
         "checkpoint_path": data.get("checkpoint_path", ""),
-        # Validation
-        "val_mae": val.get("mae"),
-        "val_rmse": val.get("rmse"),
-        "val_mape": val.get("mape"),
-        "val_smape": val.get("smape"),
-        # Test
-        "test_mae": test.get("mae"),
-        "test_rmse": test.get("rmse"),
-        "test_mape": test.get("mape"),
-        "test_smape": test.get("smape"),
     }
+
+    # Dynamisch alle Splits und Metriken
+    for split in EVALUATION_SPLITS:
+        split_metrics = metrics.get(split, {})
+        for metric in EVALUATION_METRICS:
+            row[f"{split}_{metric}"] = split_metrics.get(metric)
     return row
 
 

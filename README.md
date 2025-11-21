@@ -1,12 +1,14 @@
 # TFT-TimeSeries – Book Sales Forecasting
 
-Dieses Repository enthält eine modulare, reproduzierbare Pipeline zur Modellierung von Zeitreihen auf Basis des **Temporal Fusion Transformer (TFT)**. Der Fokus liegt auf einer klar strukturierten, konfigurationsgetriebenen und teamfähigen Umsetzung.
+Dieses Repository enthält eine **modulare, erweiterbare Pipeline** zur Modellierung von Zeitreihen auf Basis des **Temporal Fusion Transformer (TFT)**. Der Fokus liegt auf einer klar strukturierten, konfigurationsgetriebenen und teamfähigen Umsetzung.
+
+Als **Beispiel-Datensatz** dient der Kaggle-Datensatz **"Tabular Playground Series – Sep 2022" (Book Sales)**. Die Architektur ist so aufgebaut, dass weitere Datensätze einfach hinzugefügt werden können.
 
 ---
 
 ## 1. Datenbasis
 
-Die Pipeline nutzt den Kaggle-Datensatz **"Tabular Playground Series – Sep 2022"**.
+Die Pipeline nutzt als **Beispiel** den Kaggle-Datensatz **"Tabular Playground Series – Sep 2022"**.
 
 Erforderliche Dateien:
 
@@ -16,10 +18,12 @@ Erforderliche Dateien:
 Ablageort:
 
 ```
-data/raw/
+data/raw/booksales/
 ```
 
 Rohdaten werden nicht versioniert.
+
+**Erweiterbarkeit:** Die modulare Struktur erlaubt das einfache Hinzufügen weiterer Datensätze. Jeder Datensatz erhält einen eigenen Unterordner (`data/raw/<dataset_name>/`) und eine eigene Config (`configs/datasets/<dataset_name>.yaml`).
 
 ---
 
@@ -42,172 +46,168 @@ Aktivierung:
 pip install -r requirements.txt
 ```
 
-Bei Bedarf:
-
-```bash
-pip freeze > requirements.txt
-```
-
 ---
 
 ## 3. Projektstruktur
 
 ```text
 src/
-├── data/
-│   ├── data_alignment.py
-│   ├── data_cleaning.py
-│   ├── feature_engineering.py
-│   ├── cyclical_encoder.py
-│   ├── lag_features.py
-│   └── view_data.py
-│
-├── modeling/
-│   ├── model_dataset.py
-│   ├── dataset_tft.py
-│   ├── trainer_tft.py
-│   ├── evaluate_tft.py
-│   ├── forecasting_interface.py
-│   └── diagnostics/
-│
-├── utils/
-│   ├── config_loader.py
-│   ├── json_results.py
-│   └── load_trained_tft.py
-│
-├── visualization/
-│   ├── plot_tft_forecast_series.py
-│   ├── plot_training_curves.py
-│   └── plot_data_overview.py
-│
-└── config.py
-```
+├── data/              # Preprocessing (Alignment, Cleaning, Features)
+├── modeling/          # Training (model_dataset, dataset_tft, trainer_tft)
+├── evaluation/        # Metriken-Berechnung und Aggregation
+├── visualization/     # Plots für Daten, Training und Evaluation
+├── utils/             # Hilfsfunktionen
+├── config.py          # Globale Konstanten
+└── pipeline.py        # Orchestrierung aller Schritte
 
-Weitere Verzeichnisse:
-
-```text
 configs/
-│   ├── trainer_tft_baseline.yaml
-│   ├── trainer_tft_optuna.yaml
-│   └── * weitere Experimente *
+├── datasets/          # booksales.yaml (Dataset-Config)
+└── models/tft/        # baseline.yaml + Experimente
 
 data/
-├── raw/
-├── interim/
-└── processed/
+├── raw/booksales/     # Rohdaten (nicht versioniert)
+├── interim/booksales/ # Zwischenschritte (aligned, cleaned)
+└── processed/booksales/ # Features, Splits (train/val/test)
 
-logs/
-└── tft/run_*/
+logs/tft/              # Training-Logs (metrics.csv)
 
-results/
-├── tft/
-│   ├── checkpoints/
-│   └── runs/
-└── evaluation/
+results/tft/
+├── runs/              # Checkpoints + Training-Summaries
+├── eval/              # Evaluation-Ergebnisse
+└── plots/             # Visualisierungen
 
-docs/
-└── MkDocs-Dokumentation
+docs/                  # Detaillierte Dokumentation
 ```
 
 ---
 
 ## 4. Pipeline – Ausführung
 
-### 4.1 Datenaufbereitung
+### 4.1 Via Pipeline (empfohlen)
 
 ```bash
-python -m src.data.data_cleaning
+# Kompletter Run (Preprocessing + Training)
+python -m src.pipeline \
+    --dataset configs/datasets/booksales.yaml \
+    --model configs/models/tft/baseline.yaml
+
+# Nur Preprocessing
+python -m src.pipeline \
+    --dataset configs/datasets/booksales.yaml \
+    --steps preprocessing,model_dataset,dataset_tft
+
+# Nur Training (wenn Preprocessing bereits erledigt)
+python -m src.pipeline \
+    --dataset configs/datasets/booksales.yaml \
+    --model configs/models/tft/baseline.yaml \
+    --steps training
+```
+
+### 4.2 Einzelne Schritte (manuell)
+
+**Preprocessing:**
+```bash
 python -m src.data.data_alignment
+python -m src.data.data_cleaning
 python -m src.data.feature_engineering
 python -m src.data.cyclical_encoder
 python -m src.data.lag_features
 ```
 
-### 4.2 Modell-Dataset
-
+**Modeling:**
 ```bash
 python -m src.modeling.model_dataset
-```
-
-### 4.3 TFT-Dataset
-
-```bash
 python -m src.modeling.dataset_tft
+python -m src.modeling.trainer_tft --config configs/models/tft/baseline.yaml
 ```
 
-### 4.4 Training
-
+**Evaluation:**
 ```bash
-python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
+python -m src.evaluation.evaluate_tft --run-id <run_id>
+python -m src.evaluation.aggregate_tft_eval
+```
+
+**Visualization:**
+```bash
+python -m src.visualization.live_loss_plot --run_dir logs/tft/<run_id>
+python -m src.visualization.plot_tft_eval_comparison --metric smape --split test
 ```
 
 ---
 
 ## 5. Konfiguration
 
-### `config.py`
-- Datei- und Verzeichnisstruktur  
-- Feature-Definitionen  
-- Sequenzlängen  
-- Spaltennamen  
+### `configs/datasets/booksales.yaml`
+- Schema (Spaltennamen)
+- Preprocessing-Pipeline (Steps aktivieren/deaktivieren)
+- Split-Konfiguration
+- TFT-Parameter
 
-### YAML-Konfigurationen
-Steuern Training, Modellarchitektur, Hardware-Parameter und Logging.
+### `configs/models/tft/*.yaml`
+- Training-Hyperparameter (Epochen, Batch-Size, Learning Rate)
+- Modell-Architektur (hidden_size, dropout, etc.)
+- Hardware-Parameter (GPU/CPU, num_workers)
+
+### `src/config.py`
+- Verzeichnis-Struktur
+- Projekt-übergreifende Konstanten
 
 ---
 
 ## 6. Logging & Ergebnisse
 
-- Trainingsmetriken:  
-  `logs/tft/run_*/metrics.csv`
-- Checkpoints:  
+- **Training-Logs:**  
+  `logs/tft/<run_id>/metrics.csv`
+
+- **Checkpoints:**  
   `results/tft/runs/<run_id>/checkpoints/`
-- Evaluation:  
-  `results/evaluation/<run_id>/summary.json`
+
+- **Training-Summary:**  
+  `results/tft/runs/<run_id>/summary.json`
+
+- **Evaluation:**  
+  `results/tft/eval/<run_id>/eval_summary.json`  
+  `results/tft/eval/eval_overview.csv`
+
+- **Plots:**  
+  `results/tft/plots/{data,training,eval}/`
 
 ---
 
-## 7. Dokumentation (MkDocs)
+## 7. Dokumentation
 
-Start:
+Detaillierte Dokumentation in `docs/`:
 
-```bash
-mkdocs serve
-```
-
-Dokumentation:
-
-```
-docs/
-```
+- Pipeline-Übersicht
+- Script-Beschreibungen
+- Workflow-Guides
+- Konfigurationsreferenz
 
 ---
 
 ## 8. Geplante Erweiterungen
 
+### Weitere Datensätze
+- Modulare Struktur erlaubt einfache Integration neuer Datensätze
+- Jeder Datensatz: eigene Config + eigene Unterordner
+- Beispiele: Retail Sales, E-Commerce, Energy Consumption
+
 ### Klassische Modelle
-- Integration von **ARIMA** und **Prophet**  
-- Vergleich der Modelle mit TFT hinsichtlich Forecast-Horizont und Fehlermaßen
+- Integration von **ARIMA** und **Prophet**
+- Vergleich mit TFT
 
 ### Hyperparameter-Optimierung
-- Einbindung von **Optuna** mit:
-  - Random Search → 20–40 Trials  
-  - TPE Bayesian Optimization → 50–100 Trials  
-  - Pruning (MedianPruner / SuccessiveHalving)  
-- Speicherung der Studien als `.pkl`
+- **Optuna** mit Random Search, TPE, Pruning
+- Studien-Persistierung
 
 ### MLflow
-- Logging von Parametern und Trainingsmetriken  
-- Versionierung von Modellen  
-- Optionale Model Registry
+- Tracking von Experimenten
+- Model Registry
 
 ---
 
 ## 9. Zusammenarbeit
 
-Die modulare Struktur ermöglicht paralleles Arbeiten und reproduzierbare Ergebnisse.  
-Alle Schritte sind klar dokumentiert und können über Konfigurationen gesteuert werden.
+Die modulare Struktur ermöglicht paralleles Arbeiten und reproduzierbare Ergebnisse.
 
-Die Entwicklung erfolgt in einer klar strukturierten, konfigurationsbasierten Pipeline.
-Alle Skripte folgen einem einheitlichen Aufbau, verwenden ausschließlich zentrale Konfigurationen und vermeiden unnötige Komplexität. Änderungen werden minimalinvasiv umgesetzt, sodass die Gesamtstruktur stabil bleibt. Die Dokumentation der einzelnen Module unterstützt ein gemeinsames, reproduzierbares Arbeiten und ermöglicht eine einheitliche Erweiterung der Pipeline (z. B. durch ARIMA, Prophet, Optuna oder MLflow).
-
+Alle Schritte sind konfigurationsgetrieben und klar dokumentiert. Änderungen werden minimalinvasiv umgesetzt, sodass die Gesamtstruktur stabil bleibt.
