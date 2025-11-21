@@ -118,5 +118,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.data.cyclical_encoder
     main()
+
+# Aufruf einzeln:
+#   python -m src.data.cyclical_encoder
+# Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing

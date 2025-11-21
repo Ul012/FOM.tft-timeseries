@@ -3,8 +3,6 @@
 Trainiert einen Temporal Fusion Transformer (TFT) ausschließlich gesteuert über eine YAML-Konfiguration.
 Keinerlei Hyperparameter-Fallbacks im Code – alles kommt aus der YAML.
 
-FIXED VERSION - mit korrekter Feature-Listen-Übergabe und NaN-Handling
-
 Aufrufbeispiele:
     python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml
     python -m src.modeling.trainer_tft  # nutzt Default-Pfad unten
@@ -341,11 +339,20 @@ def main():
 
 
 if __name__ == "__main__":
-    # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml
-    # python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline02.yaml
-    # python -m src.modeling.trainer_tft --config configs/trainer_tft_bs32.yaml
-    # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr001.yaml
-    # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr001_hs64_hcs32.yaml
-    # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr001_mel120.yaml
-    # python -m src.modeling.trainer_tft --config configs/trainer_tft_lr0003_mel120_hs64_hc32.yaml
     main()
+
+# Aufruf einzeln:
+#   ALT:
+#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_baseline02.yaml
+#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_bs32.yaml
+#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_lr001.yaml
+#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_lr001_hs64_hcs32.yaml
+#   python -m src.modeling.trainer_tft --config configs/models/tft/experiments/trainer_tft_lr001_mel120.yaml
+#   NEU:
+#   python -m src.modeling.trainer_tft --config configs/models/tft/baseline.yaml
+#   python -m src.modeling.trainer_tft --config configs/models/tft/bs_small.yaml
+#
+# Via Pipeline (empfohlen):
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml \
+#                          --model configs/models/tft/baseline.yaml \
+#                          --steps training

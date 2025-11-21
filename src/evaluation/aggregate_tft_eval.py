@@ -85,5 +85,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.evaluation.aggregate_tft_eval
     main()
+
+# Aufruf (nachdem mindestens ein Run evaluiert wurde):
+#   python -m src.evaluation.aggregate_tft_eval
+#
+# Erzeugt: results/tft/eval/eval_overview.{csv,json}

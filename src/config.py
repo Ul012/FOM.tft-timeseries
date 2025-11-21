@@ -1,7 +1,20 @@
 # src/config.py
-# Zentrale Projektkonfiguration – bewusst schlank und YAML-freundlich.
-# Enthält nur projektweite Konstanten (Pfade, Schema, Split).
-# KEINE Trainings-/Modell-Hyperparameter mehr (die stehen in configs/*.yaml).
+# ============================================================================
+# DEPRECATION NOTICE (2025-11-21)
+# ============================================================================
+# Diese Datei wird schrittweise durch Dataset-Configs ersetzt.
+# Neue Projekte sollten configs/datasets/*.yaml nutzen.
+#
+# Bestehende Module (data_*, model_dataset, dataset_tft, trainer_tft)
+# verwenden noch diese Konstanten für Rückwärtskompatibilität.
+#
+# Migration-Plan:
+# - Phase 1 (JETZT): Dataset-Configs parallel einführen
+# - Phase 2: Pipeline nutzt nur noch Dataset-Configs
+# - Phase 3: Alte Module werden optional auf Dataset-Configs umgestellt
+#
+# Diese Datei bleibt solange erhalten, bis alle Module migriert sind.
+# ============================================================================
 
 from pathlib import Path
 

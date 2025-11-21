@@ -60,5 +60,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.data.lag_features
     main()
+
+# Aufruf einzeln:
+#   python -m src.data.lag_features
+# Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing

@@ -30,6 +30,7 @@ logs/
 lightning_logs/
 experimental/
 archive/
+configs/models/tft/experiments/
 
 # --- Private Notes (außerhalb von docs) ---
 notes/

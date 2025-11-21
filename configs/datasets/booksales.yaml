@@ -1,0 +1,61 @@
+name: "booksales"
+description: "Book sales forecasting dataset"
+
+# Pfade relativ zu BASE_DIR
+paths:
+  raw: "data/raw/booksales"
+  interim: "data/interim/booksales"
+  processed: "data/processed/booksales"
+
+# Schema
+schema:
+  time_col: "date"
+  id_cols: ["country", "store", "product"]
+  target_col: "num_sold"
+
+# Preprocessing-Pipeline (Reihenfolge wichtig!)
+preprocessing:
+  - step: "alignment"
+    enabled: true
+    params: {}
+
+  - step: "cleaning"
+    enabled: true
+    params:
+      lockdown_start: "2020-03-15"
+      lockdown_end: "2020-05-31"
+
+  - step: "feature_engineering"
+    enabled: true
+    params:
+      include_holiday_name: false
+
+  - step: "cyclical_encoder"
+    enabled: true
+    params:
+      periodicities:
+        dow: ["dow", 7]
+        month: ["month", 12]
+
+  - step: "lag_features"
+    enabled: true
+    params:
+      lags: [1, 7, 14]
+      roll_windows: [7]
+      roll_stats: ["mean"]
+
+# Split-Konfiguration
+split:
+  method: "ratio"  # oder "fixed"
+  ratios: [0.80, 0.10, 0.10]
+  # val_start: "2020-04-01"  # nur bei method: "fixed"
+  # test_start: "2020-08-01"
+
+# TFT-spezifische Konfiguration
+tft:
+  max_encoder_length: 120
+  max_prediction_length: 7
+  known_real_prefixes: ["cyc_"]
+  lag_prefixes: ["lag_"]
+  treat_calendar_as_known: true
+  flag_cols: ["is_lockdown_period"]

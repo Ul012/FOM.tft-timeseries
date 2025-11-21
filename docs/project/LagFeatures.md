@@ -91,7 +91,7 @@ filters should not remove all entries – check encoder/decoder lengths and lags
 ```python
 import pandas as pd
 from src.data.lag_features import add_lag_features
-from src.config import PROCESSED_DIR
+from archive.x_config import PROCESSED_DIR
 
 df = pd.read_parquet(PROCESSED_DIR / "train_features_cyc.parquet")
 df_lag = add_lag_features(df)

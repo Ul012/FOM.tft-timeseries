@@ -192,5 +192,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.modeling.dataset_tft
     main()
+
+# Aufruf einzeln:
+#   python -m src.modeling.dataset_tft
+# Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps dataset_tft

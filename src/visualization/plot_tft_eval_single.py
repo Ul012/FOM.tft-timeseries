@@ -97,8 +97,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # python -m src.visualization.plot_tft_eval_single --run-id run_20251117_232558_lr001_mel120
+    # python -m src.visualization.plot_tft_eval_single --run-id run_20251118_221004_lr0003_mel120_hs64_hc32
     main()
 
 
 
-# python -m src.visualization.plot_tft_eval_single --run-id run_20251117_232558_lr001_mel120
+

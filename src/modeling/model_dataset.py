@@ -271,5 +271,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.modeling.model_dataset
     main()
+
+# Aufruf einzeln:
+#   python -m src.modeling.model_dataset
+# Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps model_dataset

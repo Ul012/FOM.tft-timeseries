@@ -83,6 +83,7 @@ def _plot_comparison(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
+    plt.show()
     plt.close(fig)
 
 

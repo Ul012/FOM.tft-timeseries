@@ -1,9 +1,8 @@
 # Projektstruktur – FOM.tft-timeseries
 
-**Datum:** 2025-11-16  
+**Datum:** 2025-11-21 (aktualisiert)  
 **Script:** –  
-**Ziel & Inhalt:** Gibt eine vollständige Übersicht über die Struktur des gesamten Projekts. Erklärt die Rollen der Ordner `data`, `modeling`, `utils`, `visualization` sowie geplante Evaluation. Beschreibt Datenfluss, Zuständigkeiten und Erweiterbarkeit der Pipeline.
-
+**Ziel & Inhalt:** Vollständige Übersicht über die Projektstruktur. Erklärt Ordner-Rollen, Datenfluss, Zuständigkeiten und Erweiterbarkeit.
 
 ---
 
@@ -11,145 +10,212 @@
 
 ```text
 src/
-├── data/
-├── modeling/
-├── evaluation/
-├── utils/
-├── visualization/
-└── config.py
+├── data/           # Preprocessing
+├── modeling/       # Training
+├── evaluation/     # Bewertung
+├── utils/          # Hilfsfunktionen
+├── visualization/  # Plots
+├── config.py       # Globale Konstanten
+└── pipeline.py     # Orchestrierung (NEU)
 ```
 
 ---
 
-## 📊 2. `data/` – Datenaufbereitung (Preprocessing)
-
-Beinhaltet alle Schritte bis zur Erstellung eines modellfertigen Datensatzes.
+## 📊 2. `data/` – Datenaufbereitung
 
 | Datei | Aufgabe |
 |-------|---------|
-| `data_alignment.py` | Harmonisierung und optionale Normalisierung der Zeitachsen. |
-| `data_cleaning.py` | Bereinigung, Imputation, Konsistenzprüfungen. |
-| `feature_engineering.py` | Erstellung von Kalender- und Feiertags-Features. |
-| `cyclical_encoder.py` | Zyklische Kodierung periodischer Variablen (sin/cos). |
-| `lag_features.py` | Erzeugt Lag- und Rolling-Features per `groupby().shift()`. |
-| `view_data.py` | Kurze visuelle Kontrolle der Roh- und Zwischendaten. |
+| `data_alignment.py` | Harmonisierung und Normalisierung |
+| `data_cleaning.py` | Bereinigung, Imputation |
+| `feature_engineering.py` | Kalender- und Feiertags-Features |
+| `cyclical_encoder.py` | Zyklische Kodierung (sin/cos) |
+| `lag_features.py` | Lag- und Rolling-Features |
 
-**Ausgabe dieser Stufe:**  
-- `data/processed/train_features_cyc_lag.parquet` (Features inkl. Zyklen und Lags)  
-→ dient als Input für `model_dataset.py`.
+**Output:** `data/processed/train_features_cyc_lag.parquet`
 
 ---
 
-## 🤖 3. `modeling/` – Modellierung und Training
-
-Enthält alle Skripte zur Vorbereitung, Spezifikation und zum Training der Modelle.
+## 🤖 3. `modeling/` – Training
 
 | Datei | Aufgabe |
 |-------|---------|
-| `model_dataset.py` | Split in Train/Validation/Test, schreibt `train/val/test.parquet` und `meta.json`. |
-| `dataset_tft.py` | Leitet Feature-Listen (known/unknown/static) ab, erstellt `dataset_spec.json`. |
-| `trainer_tft.py` | Trainiert den Temporal Fusion Transformer, speichert Logs, Checkpoints und JSON-Reports. |
-| *(geplant)* `trainer_arima.py` | ARIMA-Modelltraining auf aggregierten oder einzelnen Zeitreihen. |
-| *(geplant)* `trainer_prophet.py` | Prophet-Training mit automatischer Saisonalitätserkennung. |
+| `model_dataset.py` | Split in Train/Val/Test |
+| `dataset_tft.py` | TFT-Datensatz-Spezifikation |
+| `trainer_tft.py` | TFT-Training |
+| *(geplant)* `trainer_arima.py` | ARIMA-Training |
+| *(geplant)* `trainer_prophet.py` | Prophet-Training |
 
-**Wichtige Datenflüsse:**
+### Datenfluss:
 
-1. `model_dataset.py`:
-   - Eingabe: `data/processed/train_features_cyc_lag.parquet`
-   - Ausgabe:  
-     - `data/processed/train.parquet`  
-     - `data/processed/val.parquet`  
-     - `data/processed/test.parquet`  
-     - `data/processed/meta.json`
+```
+model_dataset.py
+  Eingabe: data/processed/train_features_cyc_lag.parquet
+  Ausgabe: data/processed/{train,val,test}.parquet + meta.json
 
-2. `dataset_tft.py`:
-   - Eingabe: `train/val/test.parquet` aus `data/processed/`
-   - Ausgabe: `data/processed/dataset_spec.json` (TFT-Datensatzspezifikation)
+dataset_tft.py
+  Eingabe: data/processed/{train,val,test}.parquet
+  Ausgabe: data/processed/dataset_spec.json
 
-3. `trainer_tft.py`:
-   - Eingabe: `dataset_spec.json` + YAML aus `configs/`
-   - Ausgabe:
-     - Logs: `logs/tft/run_YYYYMMDD_HHMMSS/metrics.csv`, `hparams.yaml`, …
-     - Checkpoints: `results/tft/runs/run_YYYYMMDD_HHMMSS/checkpoints/*.ckpt`
-     - Evaluations-JSONs: `results/tft/eval/run_YYYYMMDD_HHMMSS/{results,summary}.json`
+trainer_tft.py
+  Eingabe: dataset_spec.json + configs/models/tft/*.yaml
+  Ausgabe:
+    - Logs: logs/tft/run_YYYYMMDD_HHMMSS_<config>/
+    - Checkpoints: results/tft/runs/run_YYYYMMDD_HHMMSS_<config>/checkpoints/
+    - JSONs: results/tft/runs/run_YYYYMMDD_HHMMSS_<config>/{results,summary}.json
+```
 
 ---
 
-## 4. evaluation/ – Kennzahlen für fertige Modelle
+## 4. `evaluation/` – Bewertung
 
-| Datei                   | Aufgabe                                                                |
-| ----------------------- | ---------------------------------------------------------------------- |
-| `evaluate_tft.py`       | Lädt ein TFT-Checkpoint und berechnet Fehlermaße auf Val/Test.         |
-| `aggregate_tft_eval.py` | Aggregiert alle `eval_summary.json` zu einer tabellarischen Übersicht. |
+| Datei | Aufgabe |
+|-------|---------|
+| `evaluate_tft.py` | Berechnet Fehlermaße für einen Run |
+| `aggregate_tft_eval.py` | Aggregiert alle Evaluierungen |
 
-**Ablage:**
+**Ausgabe:**
+```
+results/tft/eval/
+├── <run_id>/
+│   └── eval_summary.json
+├── eval_overview.csv
+└── eval_overview.json
+```
 
+---
+
+## 📈 5. `visualization/` – Plots
+
+| Datei | Aufgabe |
+|-------|---------|
+| `data_alignment_plot.py` | Visualisierung der Harmonisierung |
+| `data_cleaning_plot.py` | Vorher/Nachher-Vergleich |
+| `plot_learning_rate.py` | Lernkurven |
+| `plot_tft_eval_comparison.py` | Run-Vergleiche |
+| `plot_tft_forecast_series.py` | Forecast-Beispiele |
+
+**Ausgabe:** `results/tft/plots/`
+
+---
+
+## 🧰 6. `utils/` – Hilfsfunktionen
+
+| Datei | Aufgabe |
+|-------|---------|
+| `config_loader.py` | YAML-Validierung |
+| `json_results.py` | Metriken-Export |
+| `load_trained_tft.py` | Checkpoint-Loader |
+
+---
+
+## 🔄 7. `pipeline.py` – Orchestrierung (NEU)
+
+**Hauptfunktion:** Orchestriert alle Schritte von Preprocessing bis Training.
+
+**Aufruf:**
+```bash
+python -m src.pipeline \
+    --dataset configs/datasets/booksales.yaml \
+    --model configs/models/tft/baseline.yaml \
+    --steps preprocessing,model_dataset,dataset_tft,training
+```
+
+**Ausgabe:** `results/pipeline_runs/pipeline_YYYYMMDD_HHMMSS_manifest.json`
+
+---
+
+## ⚙️ 8. `config.py` – Zentrale Steuerung
+
+**Enthält:**
+- Pfade: `RAW_DIR`, `INTERIM_DIR`, `PROCESSED_DIR`
+- Schema: `DATETIME_COLUMN`, `GROUP_COLS`, `TARGET_COL`
+- Feature-Configs: `LAG_CONF`, `TFT_DATASET`
+- Split-Parameter: `SPLIT_RATIOS`
+
+**NICHT enthalten:**
+- Trainings-Hyperparameter → `configs/models/tft/*.yaml`
+- Dataset-Definition → `configs/datasets/*.yaml`
+
+---
+
+## 📁 9. `configs/` – Konfigurationen
+
+```
+configs/
+├── datasets/
+│   ├── booksales.yaml
+│   ├── retail_sales.yaml (geplant)
+│   └── ecommerce.yaml (geplant)
+└── models/
+    ├── tft/
+    │   ├── baseline.yaml
+    │   └── experiments/
+    │       ├── lr_high.yaml
+    │       ├── bs_small.yaml
+    │       └── model_large.yaml
+    ├── arima/ (geplant)
+    └── prophet/ (geplant)
+```
+
+---
+
+## 📂 10. `results/` – Outputs
+
+```
 results/
-└─ tft/
-   ├─ runs/              # Artefakte aus dem Training (Checkpoints, Summaries)
-   ├─ eval/              # Ausgaben der Evaluationsskripte
-   │  ├─ <run_id>/eval_summary.json
-   │  └─ eval_overview.{csv,json}
-   └─ plots/             # Plots für Training und Evaluation
-      └─ eval/...
+├── pipeline_runs/           # Pipeline-Manifests (modellübergreifend)
+└── tft/
+    ├── runs/
+    │   └── run_YYYYMMDD_HHMMSS_<config>/
+    │       ├── checkpoints/
+    │       │   └── tft-epoch=XX-val_loss=Y.YYYY.ckpt
+    │       ├── results.json
+    │       └── summary.json
+    ├── eval/
+    │   ├── <run_id>/
+    │   │   └── eval_summary.json
+    │   ├── eval_overview.csv
+    │   └── eval_overview.json
+    └── plots/
+        └── eval/
+            └── compare_test_smape.png
+```
 
 ---
 
-## 📈 5. `visualization/` – Plots und Diagnosen (Evaluationsebene)
+## ✅ 11. Erweiterbarkeit
 
-Fasst alle Visualisierungen zusammen, die nach oder während des Trainings benötigt werden.
+### Neues Modell hinzufügen (z.B. ARIMA):
 
-| Datei                         | Aufgabe                                                             |
-| ----------------------------- | ------------------------------------------------------------------- |
-| `data_alignment_plot.py`      | Visualisierung der Datenharmonisierung.                             |
-| `data_cleaning_plot.py`       | Darstellung der Bereinigung (Vorher/Nachher).                       |
-| `plot_learning_rate.py`       | Lernkurven und ggf. Lernratenverlauf aus dem Training.              |
-| `plot_tft_eval_comparison.py` | Vergleich einer Kennzahl (z. B. Test-SMAPE) über mehrere Runs.      |
-| `plot_tft_forecast_series.py` | Ist vs. Prognose für eine Beispiel-Zeitreihe mit Forecast-Horizont. |
+1. **Config erstellen:** `configs/models/arima/baseline.yaml`
+2. **Trainer erstellen:** `src/modeling/trainer_arima.py`
+3. **Pipeline erweitern:** Modelltyp-Erkennung in `src/pipeline.py`
+4. **Output-Struktur:** `results/arima/runs/...`
 
-Plots werden typischerweise unter `results/tft/plots/` abgelegt.
+### Neuer Datensatz:
 
----
-
-## 🧰 6. `utils/` – Hilfsfunktionen & Werkzeuge
-
-Dient zur Wiederverwendung und modularen Wartung.
-
-| Datei | Aufgabe |
-|-------|---------|
-| `config_loader.py` | Lädt und validiert YAML-Konfigurationen für den Trainer. |
-| `json_results.py` | Aggregiert Metriken aus `metrics.csv` und exportiert JSON-Ergebnisse pro Run. |
-| `load_trained_tft.py` | Utility zum Laden eines gespeicherten TFT-Checkpoints (optional). |
-| `__init__.py` | Kennzeichnung als Paket; ggf. globale Utility-Imports. |
-
-> Utils-Skripte werden meist importiert und nicht direkt als Pipeline-Schritt ausgeführt.
+1. **Config erstellen:** `configs/datasets/neuer_datensatz.yaml`
+2. **Preprocessing anpassen:** Steps aktivieren/deaktivieren
+3. **Pipeline ausführen:**
+   ```bash
+   python -m src.pipeline --dataset configs/datasets/neuer_datensatz.yaml \
+                          --model configs/models/tft/baseline.yaml
+   ```
 
 ---
 
+## 🎯 12. Workflow-Übersicht
 
-## ⚙️ 7. `config.py` – Zentrale Steuerung
+```
+Preprocessing → model_dataset → dataset_tft → trainer_tft → evaluate_tft
+     ↓              ↓               ↓              ↓             ↓
+   interim/      processed/      spec.json    checkpoints/  eval_summary.json
+```
 
-- Globale Konstanten: `DATETIME_COLUMN`, `GROUP_COLS`, `TARGET_COL`  
-- Pfade: `RAW_DIR`, `INTERIM_DIR`, `PROCESSED_DIR`, `MODEL_INPUT_PATH`  
-- Feature-Konfigurationen: `LAG_CONF`, `TFT_DATASET` (Sequenzlängen, Prefixes, Flags)  
-- Split-Parameter: `VAL_START`, `TEST_START`, `SPLIT_RATIOS`
-
-**Wichtig:** Trainings- und Modell-Hyperparameter (Learning Rate, Batch Size, Epochen, Modellgrößen, Devices etc.) stehen **nicht** in `config.py`, sondern in den YAML-Dateien im Ordner `configs/`.
+**Parallel möglich:**
+- Alte Arbeitsweise (einzelne Scripte) ✅
+- Neue Pipeline-Orchestrierung ✅
 
 ---
 
-## ✅ 8. Einordnung und Erweiterbarkeit
-
-- **Hauptpipeline:**  
-  `src/data/` → `src/modeling/` → `src/evaluation/` (Datenaufbereitung bis Evaluation)
-
-- **Unterstützend, optional:**  
-  `src/utils/`, `src/visualization/`
-
-- **Erweiterbar:**  
-  Zusätzliche Trainer-Module (z. B. `trainer_arima.py`, `trainer_prophet.py`) können nach demselben Muster aufgebaut werden wie `trainer_tft.py`:
-  - trainieren Modelle,
-  - loggen Metriken in `logs/<modell>/run_*`,
-  - schreiben Ergebnisse nach `results/<modell>/...`.
-
-Damit bleibt das Projekt trotz Erweiterungen (mehr Modelle, mehr Szenarien) **übersichtlich, modular und gut dokumentierbar**.
+Diese Struktur bleibt **übersichtlich, modular und erweiterbar** – auch bei mehreren Modellen und Datensätzen.

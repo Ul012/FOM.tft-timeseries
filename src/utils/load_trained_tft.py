@@ -1,15 +1,18 @@
-# src/modeling/load_trained_tft.py
+# src/utils/load_trained_tft.py
 """
-Lädt ein bereits trainiertes Temporal Fusion Transformer (TFT) Modell aus einem
-Checkpoint (.ckpt) und prüft, ob es erfolgreich geladen wurde.
+Utility zum Laden trainierter TFT-Modelle aus Checkpoints.
 
 Beispiel-Aufruf:
-    python -m src.modeling.load_trained_tft
+    python -m src.utils.load_trained_tft
+
+Hinweis: Wird selten direkt aufgerufen, meist via evaluate_tft.py
 """
 
 from pathlib import Path
 from pytorch_forecasting.models import TemporalFusionTransformer
 import torch
+
+from src.config import BASE_DIR
 
 
 def load_trained_model(checkpoint_path: str | Path) -> TemporalFusionTransformer:
@@ -44,10 +47,17 @@ def main():
     """
     Beispielhafte Nutzung: Lädt das zuletzt gespeicherte Checkpoint des TFT-Modells.
     """
-    ckpt_dir = Path("data/processed/model_dataset/tft/checkpoints")
-    checkpoints = sorted(ckpt_dir.glob("*.ckpt"), key=lambda p: p.stat().st_mtime, reverse=True)
+    # Suche neuestes Checkpoint in results/tft/runs/
+    runs_dir = BASE_DIR / "results" / "tft" / "runs"
+    if not runs_dir.exists():
+        raise FileNotFoundError(f"Keine Runs gefunden in: {runs_dir}")
+
+    # Finde alle Checkpoints in allen Run-Ordnern
+    checkpoints = sorted(runs_dir.glob("*/checkpoints/*.ckpt"),
+                         key=lambda p: p.stat().st_mtime,
+                         reverse=True)
     if not checkpoints:
-        raise FileNotFoundError(f"Keine Checkpoints gefunden in: {ckpt_dir}")
+        raise FileNotFoundError(f"Keine Checkpoints gefunden in: {runs_dir}")
 
     latest_ckpt = checkpoints[0]
     model = load_trained_model(latest_ckpt)
@@ -62,4 +72,8 @@ def main():
 if __name__ == "__main__":
     main()
 
-# python -m src.modeling.load_trained_tft
+# Aufruf (selten direkt genutzt):
+#   python -m src.utils.load_trained_tft
+#
+# Häufiger via evaluate_tft.py:
+#   python -m src.evaluation.evaluate_tft --run-id <run_id>

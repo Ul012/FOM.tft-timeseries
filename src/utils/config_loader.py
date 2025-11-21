@@ -1,95 +1,149 @@
 # src/utils/config_loader.py
-# Schlanker, strikter YAML-Loader ohne Fallbacks.
+"""
+Lädt und validiert YAML-Konfigurationen für Trainer.
+
+Unterstützt BEIDE Formate:
+1. ALT (flach): batch_size, learning_rate, model.hidden_size, etc.
+2. NEU (verschachtelt): training.batch_size, model.hidden_size, type, name, etc.
+"""
 
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Dict, Any
+from typing import Any, Dict
 import yaml
 
 
-@dataclass(frozen=True)
+@dataclass
 class ModelCfg:
-    loss: Literal["quantile", "mse"]
+    """Modell-spezifische Hyperparameter."""
+    loss: str
+    output_size: int
     hidden_size: int
     attention_head_size: int
-    dropout: float
     hidden_continuous_size: int
-    output_size: int
+    dropout: float
     reduce_on_plateau_patience: int
 
 
-@dataclass(frozen=True)
+@dataclass
 class TrainerCfg:
+    """Vollständige Trainer-Konfiguration."""
+    # Training
     seed: int
     max_epochs: int
     batch_size: int
     learning_rate: float
     gradient_clip_val: float
     early_stopping_patience: int
-    num_workers: int
-    accelerator: Literal["cpu", "gpu"]
+
+    # Hardware
+    accelerator: str
     devices: int
-    limit_train_batches: float | int
-    limit_val_batches: float | int
+
+    # Dataloader
+    num_workers: int
+    limit_train_batches: float
+    limit_val_batches: float
+
+    # Modell
     model: ModelCfg
 
 
-def _fail_if_extra_keys(loaded: Dict[str, Any], schema_keys: set[str], ctx: str) -> None:
-    extras = set(loaded.keys()) - schema_keys
-    if extras:
-        raise KeyError(f"Unerwartete Schlüssel in {ctx}: {sorted(extras)}")
+def load_trainer_cfg(config_path: str | Path) -> TrainerCfg:
+    """
+    Lädt Trainer-Config aus YAML.
 
+    Unterstützt beide Formate:
+    - ALT: Flache Struktur (batch_size, learning_rate, ...)
+    - NEU: Verschachtelt (training.batch_size, type, name, ...)
 
-def load_trainer_cfg(path: str | Path) -> TrainerCfg:
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"Konfigurationsdatei nicht gefunden: {p}")
+    Args:
+        config_path: Pfad zur YAML-Datei
 
-    try:
-        cfg: Dict[str, Any] = yaml.safe_load(p.read_text(encoding="utf-8"))
-    except Exception as e:
-        raise RuntimeError(f"Konfiguration konnte nicht geladen werden: {e}")
+    Returns:
+        TrainerCfg mit allen Hyperparametern
 
-    # Harte Validierung: nur erlaubte Keys
-    allowed_top = {
-        "seed", "max_epochs", "batch_size", "learning_rate", "gradient_clip_val",
-        "early_stopping_patience", "num_workers", "accelerator", "devices",
-        "limit_train_batches", "limit_val_batches", "model"
-    }
-    _fail_if_extra_keys(cfg, allowed_top, "trainer-config")
+    Raises:
+        FileNotFoundError: Wenn Config nicht existiert
+        KeyError: Wenn erforderliche Keys fehlen
+    """
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Config nicht gefunden: {path}")
 
-    if "model" not in cfg:
-        raise KeyError("trainer-config: Schlüssel 'model' fehlt.")
-    m = cfg["model"]
-    allowed_model = {
-        "loss", "hidden_size", "attention_head_size", "dropout",
-        "hidden_continuous_size", "output_size", "reduce_on_plateau_patience"
-    }
-    _fail_if_extra_keys(m, allowed_model, "trainer-config.model")
+    with open(path, "r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
 
-    # Typisiertes Objekt bauen
-    return TrainerCfg(
-        seed=int(cfg["seed"]),
-        max_epochs=int(cfg["max_epochs"]),
-        batch_size=int(cfg["batch_size"]),
-        learning_rate=float(cfg["learning_rate"]),
-        gradient_clip_val=float(cfg["gradient_clip_val"]),
-        early_stopping_patience=int(cfg["early_stopping_patience"]),
-        num_workers=int(cfg["num_workers"]),
-        accelerator=str(cfg["accelerator"]),
-        devices=int(cfg["devices"]),
-        limit_train_batches=cfg["limit_train_batches"],
-        limit_val_batches=cfg["limit_val_batches"],
-        model=ModelCfg(
-            loss=str(m["loss"]),
-            hidden_size=int(m["hidden_size"]),
-            attention_head_size=int(m["attention_head_size"]),
-            dropout=float(m["dropout"]),
-            hidden_continuous_size=int(m["hidden_continuous_size"]),
-            output_size=int(m["output_size"]),
-            reduce_on_plateau_patience=int(m["reduce_on_plateau_patience"]),
-        ),
-    )
+    # Erkenne Format
+    is_new_format = "training" in raw and "type" in raw
 
-# python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml
+    if is_new_format:
+        # NEUES Format: training.*, model.*, type, name, etc.
+        training = raw["training"]
+        model_dict = raw["model"]
+
+        cfg = TrainerCfg(
+            # Training
+            seed=training["seed"],
+            max_epochs=training["max_epochs"],
+            batch_size=training["batch_size"],
+            learning_rate=training["learning_rate"],
+            gradient_clip_val=training["gradient_clip_val"],
+            early_stopping_patience=training["early_stopping_patience"],
+
+            # Hardware
+            accelerator=training["accelerator"],
+            devices=training["devices"],
+
+            # Dataloader
+            num_workers=training["num_workers"],
+            limit_train_batches=training["limit_train_batches"],
+            limit_val_batches=training["limit_val_batches"],
+
+            # Modell
+            model=ModelCfg(
+                loss=model_dict["loss"],
+                output_size=model_dict["output_size"],
+                hidden_size=model_dict["hidden_size"],
+                attention_head_size=model_dict["attention_head_size"],
+                hidden_continuous_size=model_dict["hidden_continuous_size"],
+                dropout=model_dict["dropout"],
+                reduce_on_plateau_patience=model_dict["reduce_on_plateau_patience"],
+            ),
+        )
+    else:
+        # ALTES Format: flache Struktur
+        model_dict = raw["model"]
+
+        cfg = TrainerCfg(
+            # Training
+            seed=raw["seed"],
+            max_epochs=raw["max_epochs"],
+            batch_size=raw["batch_size"],
+            learning_rate=raw["learning_rate"],
+            gradient_clip_val=raw["gradient_clip_val"],
+            early_stopping_patience=raw["early_stopping_patience"],
+
+            # Hardware
+            accelerator=raw["accelerator"],
+            devices=raw["devices"],
+
+            # Dataloader
+            num_workers=raw["num_workers"],
+            limit_train_batches=raw["limit_train_batches"],
+            limit_val_batches=raw["limit_val_batches"],
+
+            # Modell
+            model=ModelCfg(
+                loss=model_dict["loss"],
+                output_size=model_dict["output_size"],
+                hidden_size=model_dict["hidden_size"],
+                attention_head_size=model_dict["attention_head_size"],
+                hidden_continuous_size=model_dict["hidden_continuous_size"],
+                dropout=model_dict["dropout"],
+                reduce_on_plateau_patience=model_dict["reduce_on_plateau_patience"],
+            ),
+        )
+
+    return cfg

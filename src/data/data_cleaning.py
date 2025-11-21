@@ -96,5 +96,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.data.data_cleaning
     main()
+
+# Aufruf einzeln:
+#   python -m src.data.data_cleaning
+# Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing

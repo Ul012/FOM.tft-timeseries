@@ -94,4 +94,7 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-# python -m src.data.feature_engineering
+# Aufruf einzeln:
+#   python -m src.data.feature_engineering
+# Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing
