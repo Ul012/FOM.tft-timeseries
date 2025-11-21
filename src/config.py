@@ -25,7 +25,7 @@ PROCESSED_DIR = DATA_DIR / "processed"
 # Evaluation-Metriken (modell-übergreifend)
 # -----------------------------------------------------------------------------
 # Diese Metriken werden für ALLE Modelle gleich berechnet
-EVALUATION_METRICS: list[str] = ["mae", "rmse", "mape", "smape"]
+EVALUATION_METRICS: list[str] = ["mae", "rmse", "mape", "smape", "rs"]
 EVALUATION_SPLITS: list[str] = ["val", "test"]
 
 # Beschreibung der Metriken (optional, für Dokumentation)
@@ -34,4 +34,5 @@ METRIC_DESCRIPTIONS: dict[str, str] = {
     "rmse": "Root Mean Squared Error",
     "mape": "Mean Absolute Percentage Error",
     "smape": "Symmetric Mean Absolute Percentage Error",
+    "r2": "R² Score (Coefficient of Determination)",
 }

@@ -51,12 +51,36 @@ def _smape(y_true: np.ndarray, y_pred: np.ndarray, eps: float = 1e-8) -> float:
     return float(np.mean(2.0 * num / denom) * 100.0)
 
 
+def _r2(y_true: np.ndarray, y_pred: np.ndarray, eps: float = 1e-8) -> float:
+    """
+    Berechnet R² (Coefficient of Determination).
+
+    R² = 1 - (SS_res / SS_tot)
+    wobei:
+    - SS_res = Summe der quadratischen Residuen
+    - SS_tot = Totale Quadratsumme
+
+    R² = 1.0 bedeutet perfekte Vorhersage
+    R² = 0.0 bedeutet Modell ist nicht besser als Mittelwert
+    R² < 0.0 bedeutet Modell ist schlechter als Mittelwert
+    """
+    ss_res = np.sum((y_true - y_pred) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
+
+    # Verhindere Division durch Null
+    if ss_tot < eps:
+        return 0.0
+
+    return float(1.0 - (ss_res / ss_tot))
+
+
 def _compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     metric_funcs = {
         "mae": _mae,
         "rmse": _rmse,
         "mape": _mape,
         "smape": _smape,
+        "r2": _r2,
     }
 
     return {
@@ -71,6 +95,7 @@ class SplitMetrics:
     rmse: float
     mape: float
     smape: float
+    r2: float
 
 
 @dataclass
