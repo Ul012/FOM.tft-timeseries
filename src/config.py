@@ -25,7 +25,7 @@ PROCESSED_DIR = DATA_DIR / "processed"
 # Evaluation-Metriken (modell-übergreifend)
 # -----------------------------------------------------------------------------
 # Diese Metriken werden für ALLE Modelle gleich berechnet
-EVALUATION_METRICS: list[str] = ["mae", "rmse", "mape", "smape", "rs"]
+EVALUATION_METRICS: list[str] = ["mae", "rmse", "mape", "smape", "r2"]
 EVALUATION_SPLITS: list[str] = ["val", "test"]
 
 # Beschreibung der Metriken (optional, für Dokumentation)

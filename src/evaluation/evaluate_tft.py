@@ -256,6 +256,7 @@ def _evaluate_split(
         rmse=metrics_raw["rmse"],
         mape=metrics_raw["mape"],
         smape=metrics_raw["smape"],
+        r2=metrics_raw["r2"],
     )
 
 
@@ -299,15 +300,16 @@ def evaluate_tft_run(
     csv_row: Dict[str, Any] = {
         "run_id": run_id,
         "checkpoint_path": str(ckpt_path),
-        "val_mae": metrics_val.mae,
-        "val_rmse": metrics_val.rmse,
-        "val_mape": metrics_val.mape,
-        "val_smape": metrics_val.smape,
-        "test_mae": metrics_test.mae,
-        "test_rmse": metrics_test.rmse,
-        "test_mape": metrics_test.mape,
-        "test_smape": metrics_test.smape,
     }
+
+    # Dynamisch alle Metriken hinzufügen
+    val_dict = asdict(metrics_val)
+    test_dict = asdict(metrics_test)
+
+    for metric in EVALUATION_METRICS:
+        csv_row[f"val_{metric}"] = val_dict[metric]
+        csv_row[f"test_{metric}"] = test_dict[metric]
+
     csv_path = eval_logger.log_csv(csv_row, filename="eval_summary.csv")
 
     result: Dict[str, Any] = {
@@ -362,20 +364,15 @@ def main() -> None:
     print("[evaluate_tft] Evaluierung abgeschlossen.")
     print(f"- Run-ID           : {result['run_id']}")
     print(f"- Checkpoint       : {result['checkpoint_path']}")
-    print(
-        f"- Val-Metriken     : "
-        f"MAE={result['metrics']['val']['mae']:.4f}, "
-        f"RMSE={result['metrics']['val']['rmse']:.4f}, "
-        f"MAPE={result['metrics']['val']['mape']:.2f}%, "
-        f"SMAPE={result['metrics']['val']['smape']:.2f}%"
-    )
-    print(
-        f"- Test-Metriken    : "
-        f"MAE={result['metrics']['test']['mae']:.4f}, "
-        f"RMSE={result['metrics']['test']['rmse']:.4f}, "
-        f"MAPE={result['metrics']['test']['mape']:.2f}%, "
-        f"SMAPE={result['metrics']['test']['smape']:.2f}%"
-    )
+    val_metrics = result['metrics']['val']
+    test_metrics = result['metrics']['test']
+
+    val_str = ", ".join([f"{m.upper()}={val_metrics[m]:.4f}" for m in EVALUATION_METRICS])
+    test_str = ", ".join([f"{m.upper()}={test_metrics[m]:.4f}" for m in EVALUATION_METRICS])
+
+    print(f"- Val-Metriken     : {val_str}")
+    print(f"- Test-Metriken    : {test_str}")
+
     print(f"- Eval-Summary     : {result['artifacts']['eval_summary_path']}")
 
 
@@ -385,6 +382,7 @@ if __name__ == "__main__":
 # Aufruf (nach abgeschlossenem Training):
 #   python -m src.evaluation.evaluate_tft --run-id run_20251121_125758_baseline
 #   python -m src.evaluation.evaluate_tft --run-id run_20251121_150832_bs_small
-#   python -m src.evaluation.evaluate_tft --run-id run_20251121_174613_lr_high
+#   python -m src.evaluation.evaluate_tft --run-id run_20251121_222313_lr_high
+#   python -m src.evaluation.evaluate_tft --run-id run_20251121_195900_model_large
 #
 # Hinweis: Pipeline macht dies nicht automatisch - bewusst manueller Schritt
