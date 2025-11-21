@@ -177,26 +177,9 @@ python -m src.modeling.trainer_tft \
 
 ## 4. Best Practices
 
-- Jedes Experiment = eigene YAML in `configs/models/tft/experiments/`
 - Funktionale Namen: `lr_high.yaml`, `bs_small.yaml`, `model_large.yaml`
 - Keine Änderungen in `config.py` für Experimente
 - YAML-Dateien versionieren (Git)
-
----
-
-## 5. Migration von alten Configs
-
-**Alt:**
-```
-configs/trainer_tft_baseline02.yaml
-```
-
-**Neu:**
-```
-configs/models/tft/baseline.yaml
-```
-
-Alte Configs funktionieren weiter, sind aber deprecated.
 
 ---
 

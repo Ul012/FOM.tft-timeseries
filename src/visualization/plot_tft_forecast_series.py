@@ -21,14 +21,17 @@ import numpy as np
 import pandas as pd
 from pytorch_forecasting.models import TemporalFusionTransformer
 
-from src.config import (  # type: ignore
-    BASE_DIR,
-    PROCESSED_DIR,
-    TIME_COL,
-    ID_COLS,
-    TARGET_COL,
-    TFT_DATASET,
-)
+from src.config import BASE_DIR, PROCESSED_DIR
+from src.utils.load_dataset_config import load_dataset_config, get_schema, get_tft_config
+
+# Lade Dataset-Config
+_dataset_config = load_dataset_config()
+_schema = get_schema(_dataset_config)
+
+TIME_COL = _schema["time_col"]
+ID_COLS = _schema["id_cols"]
+TARGET_COL = _schema["target_col"]
+TFT_DATASET = get_tft_config(_dataset_config)
 
 
 # -----------------------------------------------------------------------------
@@ -243,7 +246,9 @@ def _plot_series_forecast(
     fig.tight_layout()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path)
+    fig.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"✓ Plot gespeichert: {output_path}")
+
     plt.show()
     plt.close(fig)
 
@@ -286,6 +291,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.visualization.plot_tft_forecast_series --run-id run_20251117_232558_lr001_mel120 --split test --history-length 120
-    # python -m src.visualization.plot_tft_forecast_series --run-id run_20251118_221004_lr0003_mel120_hs64_hc32 --split test --history-length 120
     main()
+
+# Aufruf (nach Training):
+#   python -m src.visualization.plot_tft_forecast_series --run-id run_20251121_125758_baseline --split test --history-length 120
+#   python -m src.visualization.plot_tft_forecast_series --run-id run_20251121_150832_bs_small --split test --history-length 120
+#   python -m src.visualization.plot_tft_forecast_series --run-id run_20251121_174613_lr_high --split test --history-length 120

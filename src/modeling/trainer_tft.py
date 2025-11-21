@@ -28,17 +28,17 @@ from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.metrics import QuantileLoss, MAE, RMSE, MAPE, SMAPE
 
-# Projektweite, statische Konstanten (Pfade, Spalten) – NICHT Hyperparameter:
-from src.config import (
-    PROCESSED_DIR,
-    TARGET_COL,
-    ID_COLS,
-    TIME_COL,
-)
-
-# Strikter YAML-Loader (liefert typisierte cfg ohne Fallbacks)
+from src.config import PROCESSED_DIR
+from src.utils.load_dataset_config import load_dataset_config, get_schema
 from src.utils.config_loader import load_trainer_cfg
-from src.utils.json_results import export_run_jsons_from_metrics
+
+# Lade Dataset-Config
+_dataset_config = load_dataset_config()
+_schema = get_schema(_dataset_config)
+
+TARGET_COL = _schema["target_col"]
+ID_COLS = _schema["id_cols"]
+TIME_COL = _schema["time_col"]
 
 
 def _load_dataset_from_spec(processed_dir: Path):
@@ -351,6 +351,8 @@ if __name__ == "__main__":
 #   NEU:
 #   python -m src.modeling.trainer_tft --config configs/models/tft/baseline.yaml
 #   python -m src.modeling.trainer_tft --config configs/models/tft/bs_small.yaml
+#   python -m src.modeling.trainer_tft --config configs/models/tft/lr_high.yaml
+#   python -m src.modeling.trainer_tft --config configs/models/tft/model_large.yaml
 #
 # Via Pipeline (empfohlen):
 #   python -m src.pipeline --dataset configs/datasets/booksales.yaml \

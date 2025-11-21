@@ -5,7 +5,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from src.config import INTERIM_DIR
+from src.config import INTERIM_DIR, BASE_DIR
 
 
 def main() -> None:
@@ -59,7 +59,7 @@ def main() -> None:
         & (merged["product"] == product)
     ].sort_values("date")
 
-    plt.figure(figsize=(18, 6))
+    fig = plt.figure(figsize=(18, 6))
     sns.lineplot(x=sel["date"], y=sel["diff"])
     plt.axhline(0, color="black", linewidth=1)
     plt.title(
@@ -68,9 +68,24 @@ def main() -> None:
     plt.ylabel("Differenz num_sold")
     plt.xlabel("Datum (2020)")
     plt.tight_layout()
+
+    # Speichern
+    output_dir = BASE_DIR / "results" / "tft" / "plots" / "data"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "cleaning_diff.png"
+
+    fig.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"✓ Plot gespeichert: {output_path}")
+
+    # Anzeigen
     plt.show()
+    plt.close(fig)
 
 
 if __name__ == "__main__":
-    # python -m src.visualization.data_cleaning_plot_diff
     main()
+
+# Aufruf (optional, zeigt größte Änderung):
+#   python -m src.visualization.data_cleaning_plot_diff
+#
+# Output: results/tft/plots/data/cleaning_diff.png

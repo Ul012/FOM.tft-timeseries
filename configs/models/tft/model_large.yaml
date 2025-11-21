@@ -48,8 +48,8 @@ model:
   output_size: 7  # 7 Quantile für probabilistische Vorhersagen
 
   # Netzwerk-Größe
-  hidden_size: 32
   hidden_size: 64  # ← 2x größer
+  attention_head_size: 4
   hidden_continuous_size: 32  # ← 2x größer
 
   # Regularisierung

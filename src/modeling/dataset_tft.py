@@ -11,20 +11,24 @@ Kein Training, keine PyTorch-Abhängigkeit – reine Datenspezifikation.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
-
+from dataclasses import dataclass
+from typing import List, Dict, Any, Set
 import json
 import pandas as pd
 
-from src.config import (
-    PROCESSED_DIR,
-    TIME_COL,
-    ID_COLS,
-    TARGET_COL,
-    TFT_DATASET,
-)
+from src.config import PROCESSED_DIR
+from src.utils.load_dataset_config import load_dataset_config, get_schema, get_tft_config
+
+# Lade Config einmalig
+_dataset_config = load_dataset_config()
+_schema = get_schema(_dataset_config)
+
+# Extrahiere Werte
+TIME_COL = _schema["time_col"]
+ID_COLS = _schema["id_cols"]
+TARGET_COL = _schema["target_col"]
+TFT_DATASET = get_tft_config(_dataset_config)
 
 # ------------------------- Heuristiken -------------------------
 

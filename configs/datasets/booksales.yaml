@@ -1,37 +1,47 @@
 name: "booksales"
-description: "Book sales forecasting dataset"
+description: "Book sales forecasting dataset - Kaggle Tabular Playground Sep 2022"
 
-# Pfade relativ zu BASE_DIR
+# ----------------------------------------------------------------------------
+# Pfade (relativ zu BASE_DIR)
+# ----------------------------------------------------------------------------
 paths:
-  raw: "data/raw/booksales"
-  interim: "data/interim/booksales"
-  processed: "data/processed/booksales"
+  raw: "data/raw"
+  interim: "data/interim"
+  processed: "data/processed"
 
-# Schema
+# ----------------------------------------------------------------------------
+# Schema (Dataset-spezifisch)
+# ----------------------------------------------------------------------------
 schema:
   time_col: "date"
   id_cols: ["country", "store", "product"]
   target_col: "num_sold"
 
+# ----------------------------------------------------------------------------
 # Preprocessing-Pipeline (Reihenfolge wichtig!)
+# ----------------------------------------------------------------------------
 preprocessing:
   - step: "alignment"
     enabled: true
+    description: "Skaliert Zeitreihen auf 2020-Referenzniveau"
     params: {}
 
   - step: "cleaning"
     enabled: true
+    description: "Bereinigt Ausreißer und glättet Lockdown-Periode"
     params:
       lockdown_start: "2020-03-15"
       lockdown_end: "2020-05-31"
 
   - step: "feature_engineering"
     enabled: true
+    description: "Kalender-Features, time_idx, deutsche Feiertage"
     params:
       include_holiday_name: false
 
   - step: "cyclical_encoder"
     enabled: true
+    description: "Zyklische Sin/Cos-Kodierung"
     params:
       periodicities:
         dow: ["dow", 7]
@@ -39,23 +49,50 @@ preprocessing:
 
   - step: "lag_features"
     enabled: true
+    description: "Lag- und Rolling-Features"
     params:
       lags: [1, 7, 14]
       roll_windows: [7]
       roll_stats: ["mean"]
+      prefix: "lag_"
 
-# Split-Konfiguration
+# ----------------------------------------------------------------------------
+# Split-Konfiguration (zeitbasiert)
+# ----------------------------------------------------------------------------
 split:
-  method: "ratio"  # oder "fixed"
-  ratios: [0.80, 0.10, 0.10]
-  # val_start: "2020-04-01"  # nur bei method: "fixed"
+  method: "ratio"  # "ratio" oder "fixed"
+  ratios: [0.80, 0.10, 0.10]  # Train, Val, Test
+
+  # Nur für method: "fixed" (feste Zeitgrenzen):
+  # val_start: "2020-04-01"
   # test_start: "2020-08-01"
 
-# TFT-spezifische Konfiguration
+  # Optional: Skalierung nach Split
+  scale_cols: []  # z.B. ["num_sold"] für MinMax-Skalierung
+
+# ----------------------------------------------------------------------------
+# TFT-spezifische Parameter
+# ----------------------------------------------------------------------------
+# Diese Parameter definieren, wie der Temporal Fusion Transformer
+# die Features interpretiert und verarbeitet.
+# ----------------------------------------------------------------------------
 tft:
-  max_encoder_length: 120
-  max_prediction_length: 7
-  known_real_prefixes: ["cyc_"]
-  lag_prefixes: ["lag_"]
+  # Sequenz-Längen
+  max_encoder_length: 120    # Historie die das Modell sieht
+  max_prediction_length: 7   # Forecast-Horizont
+
+  # Feature-Klassifikation (basierend auf Spalten-Prefixes)
+  known_real_prefixes: ["cyc_"]  # Bekannte kontinuierliche Features
+  lag_prefixes: ["lag_"]          # Lag-Features (werden als unknown behandelt)
+
+  # Kalender-Features als "known" behandeln
   treat_calendar_as_known: true
+
+  # Explizite Flag-Spalten (binär)
   flag_cols: ["is_lockdown_period"]
+
+  # Optional: Statische kategorische Features (falls vorhanden)
+  # static_categoricals: []
+
+  # Optional: Time-varying kategorische Features
+  # time_varying_known_categoricals: []

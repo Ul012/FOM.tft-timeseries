@@ -70,7 +70,8 @@ def _plot_single_run(run_id: str, eval_data: Any, output_path: Path) -> None:
 
     fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path)
+    fig.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"✓ Plot gespeichert: {output_path}")
 
     plt.show()
     plt.close(fig)
@@ -93,14 +94,15 @@ def main() -> None:
 
     _plot_single_run(run_id, data, output_path)
 
-    print(f"Plot gespeichert: {output_path}")
-
 
 if __name__ == "__main__":
-    # python -m src.visualization.plot_tft_eval_single --run-id run_20251117_232558_lr001_mel120
-    # python -m src.visualization.plot_tft_eval_single --run-id run_20251118_221004_lr0003_mel120_hs64_hc32
     main()
 
-
+# Aufruf (nach Evaluation):
+#   python -m src.visualization.plot_tft_eval_single --run-id run_20251121_125758_baseline
+#   python -m src.visualization.plot_tft_eval_single --run-id run_20251121_150832_bs_small
+#   python -m src.visualization.plot_tft_eval_single --run-id run_20251121_174613_lr_high
+#
+# Output: results/tft/plots/eval/<run_id>_metrics.png
 
 

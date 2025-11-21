@@ -1,5 +1,14 @@
 # src/visualization/plot_tft_eval_comparison.py
 # Visualisiert eine ausgewählte Metrik über mehrere TFT-Runs hinweg.
+#
+# WICHTIG - Workflow vor dem Plotten:
+#   1. Runs evaluieren:
+#      python -m src.evaluation.evaluate_tft --run-id run_20251121_123456_baseline
+#   2. Overview aggregieren (erstellt eval_overview.csv):
+#      python -m src.evaluation.aggregate_tft_eval
+#   3. Dann plotten:
+#      python -m src.visualization.plot_tft_eval_comparison --metric smape --split test
+#
 # Nutzung:
 #   python -m src.visualization.plot_tft_eval_comparison --metric smape --split test
 
@@ -82,7 +91,9 @@ def _plot_comparison(
     fig.tight_layout()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path)
+    fig.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"✓ Plot gespeichert: {output_path}")
+
     plt.show()
     plt.close(fig)
 
@@ -106,5 +117,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # python -m src.visualization.plot_tft_eval_comparison --metric smape --split test
     main()
+
+# Aufruf (nach mehreren Evaluationen):
+#   python -m src.visualization.plot_tft_eval_comparison --metric smape --split test

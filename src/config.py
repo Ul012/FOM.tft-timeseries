@@ -1,25 +1,19 @@
 # src/config.py
 # ============================================================================
-# DEPRECATION NOTICE (2025-11-21)
+# Projekt-übergreifende Konfiguration
 # ============================================================================
-# Diese Datei wird schrittweise durch Dataset-Configs ersetzt.
-# Neue Projekte sollten configs/datasets/*.yaml nutzen.
+# Enthält NUR Parameter, die für ALLE Datensätze gleich sind:
+# - Verzeichnis-Struktur
+# - Evaluation-Metriken
 #
-# Bestehende Module (data_*, model_dataset, dataset_tft, trainer_tft)
-# verwenden noch diese Konstanten für Rückwärtskompatibilität.
-#
-# Migration-Plan:
-# - Phase 1 (JETZT): Dataset-Configs parallel einführen
-# - Phase 2: Pipeline nutzt nur noch Dataset-Configs
-# - Phase 3: Alte Module werden optional auf Dataset-Configs umgestellt
-#
-# Diese Datei bleibt solange erhalten, bis alle Module migriert sind.
+# Dataset-spezifische Parameter (Schema, Features, Split) gehören in:
+# configs/datasets/<dataset_name>.yaml
 # ============================================================================
 
 from pathlib import Path
 
 # -----------------------------------------------------------------------------
-# Verzeichnisse
+# Verzeichnisse (Projekt-Struktur)
 # -----------------------------------------------------------------------------
 BASE_DIR = Path(".")
 DATA_DIR = BASE_DIR / "data"
@@ -28,65 +22,16 @@ INTERIM_DIR = DATA_DIR / "interim"
 PROCESSED_DIR = DATA_DIR / "processed"
 
 # -----------------------------------------------------------------------------
-# Spalten / Schema
+# Evaluation-Metriken (modell-übergreifend)
 # -----------------------------------------------------------------------------
-DATETIME_COLUMN: str = "date"
-GROUP_COLS: list[str] = ["country", "store", "product"]
+# Diese Metriken werden für ALLE Modelle gleich berechnet
+EVALUATION_METRICS: list[str] = ["mae", "rmse", "mape", "smape"]
+EVALUATION_SPLITS: list[str] = ["val", "test"]
 
-# Einheitliche Zielspalte im gesamten Projekt.
-# Hinweis: Falls durch einen Merge temporär num_sold_y entsteht,
-# bitte direkt wieder auf num_sold zurückbenennen (df.rename(columns={"num_sold_y": "num_sold"})).
-TARGET_COL: str = "num_sold"
-
-# Aliase für Konsistenz im Code
-TIME_COL: str = DATETIME_COLUMN
-ID_COLS: list[str] = GROUP_COLS
-
-# -----------------------------------------------------------------------------
-# Pfade für Feature-/Dataset-Erzeugung
-# -----------------------------------------------------------------------------
-
-# Upstream-Features aus Schritt 3A (optional genutzt)
-FEATURES_TRAIN_PATH: Path = PROCESSED_DIR / "train_features.parquet"
-
-# Input für model_dataset.py (Ergebnis aus 3C: lag_features)
-MODEL_INPUT_PATH: Path = PROCESSED_DIR / "train_features_cyc_lag.parquet"
-
-# -----------------------------------------------------------------------------
-# Split-Parameter (zeitbasiert)
-# Entweder feste Grenzen (VAL_START/TEST_START) ODER SPLIT_RATIOS verwenden.
-# -----------------------------------------------------------------------------
-VAL_START: str | None = None         # z. B. "2020-04-01"
-TEST_START: str | None = None        # z. B. "2020-08-01"
-SPLIT_RATIOS: tuple[float, float, float] = (0.80, 0.10, 0.10)
-
-# Optional: gruppenweise Skalierung (falls in der Pipeline genutzt)
-SCALE_COLS: list[str] = []
-
-
-# -----------------------------------------------------------------------------
-# Lag-Features (für Zeitbezug des TFT und anderer Modelle)
-# -----------------------------------------------------------------------------
-LAG_CONF: dict = {
-    "target_col": TARGET_COL,        # übernimmt die globale Zielspalte
-    "lags": [1, 7, 14],         # zeitliche Rückblicke
-    "roll_windows": [7],             # optionale Rolling-Fenster
-    "roll_stats": ["mean"],          # z. B. Mittelwert über 7 Tage
-    "prefix": "lag_",                # muss zu dataset_tft.py passen
-}
-
-# -----------------------------------------------------------------------------
-# TFT-Dataset-Metadaten (für Feature-Pipeline / Dataset-Bau)
-# -----------------------------------------------------------------------------
-TFT_DATASET: dict = {
-    "max_encoder_length": 120, # Baseline02: 28. lr001: 90.
-    "max_prediction_length": 7,
-    # bekannte reelle Features (typisch: Kalenderzyklen), werden als "known" behandelt
-    "known_real_prefixes": ["cyc_"],        # z. B. cyc_dow_sin/cos, cyc_month_sin/cos
-    # Lag-Features: Spalten-Prefix für von dir erzeugte Lags
-    "lag_prefixes": ["lag_"],               # z. B. lag_num_sold_7, lag_num_sold_28
-    # Kalenderfelder (year, month, day, is_weekend, is_holiday_*)
-    "treat_calendar_as_known": True,
-    # explizite Flags (0/1)
-    "flag_cols": ["is_lockdown_period"],
+# Beschreibung der Metriken (optional, für Dokumentation)
+METRIC_DESCRIPTIONS: dict[str, str] = {
+    "mae": "Mean Absolute Error",
+    "rmse": "Root Mean Squared Error",
+    "mape": "Mean Absolute Percentage Error",
+    "smape": "Symmetric Mean Absolute Percentage Error",
 }

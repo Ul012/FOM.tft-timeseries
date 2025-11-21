@@ -5,7 +5,16 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from src.config import INTERIM_DIR, TARGET_COL
+from src.config import INTERIM_DIR
+from src.utils.load_dataset_config import load_dataset_config, get_schema
+
+# Lade Config
+_dataset_config = load_dataset_config()
+_schema = get_schema(_dataset_config)
+
+TARGET_COL = _schema["target_col"]
+GROUP_COLS = _schema["id_cols"]
+TIME_COL = _schema["time_col"]
 
 class DataCleaner:
     """Bereinigt offensichtliche Ausreißer und ersetzt Werte durch
@@ -23,14 +32,14 @@ class DataCleaner:
             self.df["date"] = pd.to_datetime(self.df["date"], errors="coerce")
 
             # wichtig: sortieren nach Gruppen + Datum
-        self.df = self.df.sort_values(["country", "store", "product", "date"])
+        self.df = self.df.sort_values(GROUP_COLS + [TIME_COL])
         self.df = self.df.set_index("date")
 
         if "is_lockdown_period" not in self.df.columns:
             self.df["is_lockdown_period"] = 0
 
         # merke dir die Gruppen
-        self.group_cols = ["country", "store", "product"]
+        self.group_cols = GROUP_COLS
 
     def handle_single_day_outlier(self, date_str: str) -> None:
         """Setzt den Wert an einem bestimmten Datum auf NaN (Einzelausreißer)."""

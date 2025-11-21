@@ -1,7 +1,27 @@
 # src/data/lag_features.py
 
 import pandas as pd
-from src.config import PROCESSED_DIR, LAG_CONF, GROUP_COLS, TIME_COL
+from src.config import PROCESSED_DIR
+from src.utils.load_dataset_config import load_dataset_config, get_schema, get_preprocessing_params
+
+# Lade Config einmalig
+_dataset_config = load_dataset_config()
+_schema = get_schema(_dataset_config)
+_lag_params = get_preprocessing_params(_dataset_config, "lag_features")
+
+# Extrahiere Werte (wie vorher aus config.py)
+GROUP_COLS = _schema["id_cols"]
+TIME_COL = _schema["time_col"]
+TARGET_COL = _schema["target_col"]
+
+# Lag-Config
+LAG_CONF = {
+    "target_col": TARGET_COL,
+    "lags": _lag_params["lags"],
+    "roll_windows": _lag_params.get("roll_windows", []),
+    "roll_stats": _lag_params.get("roll_stats", []),
+    "prefix": _lag_params.get("prefix", "lag_"),
+}
 
 
 def add_lag_features(df: pd.DataFrame) -> pd.DataFrame:

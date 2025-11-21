@@ -16,6 +16,8 @@ from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from src.config import BASE_DIR
+
 
 def load_epoch_metrics(metrics_path: Path) -> pd.DataFrame:
     """Lädt metrics.csv und aggregiert auf Epoche (letzter Eintrag pro Epoche)."""
@@ -53,15 +55,18 @@ def detect_loss_cols(df: pd.DataFrame) -> tuple[str | None, str | None]:
     return train_col, val_col
 
 
-def plot_loss_for_run(run_dir: Path, out_root: Path) -> Path:
+def plot_loss_for_run(run_dir: Path) -> Path:
     """Erstellt den Loss-Plot für einen Run und speichert ihn als PNG."""
     metrics_path = run_dir / "metrics.csv"
     df_epoch = load_epoch_metrics(metrics_path)
     train_col, val_col = detect_loss_cols(df_epoch)
 
     run_id = run_dir.name
-    out_root.mkdir(parents=True, exist_ok=True)
-    out_path = out_root / f"{run_id}_live.png"
+
+    # Output in training/ statt eval/
+    output_dir = BASE_DIR / "results" / "tft" / "plots" / "training"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{run_id}_loss.png"
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -89,14 +94,15 @@ def plot_loss_for_run(run_dir: Path, out_root: Path) -> Path:
 
     fig.tight_layout()
 
-    # still speichern
-    fig.savefig(out_path, dpi=150)
-    print(f"Plot gespeichert unter: {out_path}")
+    # Speichern
+    fig.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"✓ Plot gespeichert: {output_path}")
 
-    # Fenster öffnen (einmalig)
+    # Anzeigen
     plt.show()
+    plt.close(fig)
 
-    return out_path
+    return output_path
 
 
 def main():
@@ -109,12 +115,6 @@ def main():
         required=True,
         help="Pfad zum Run-Ordner (enthält metrics.csv), z. B. logs/tft/run_20251117_232558_lr001_mel120",
     )
-    parser.add_argument(
-        "--out_root",
-        type=str,
-        default="results/tft/plots/eval",
-        help="Wurzelordner für den gespeicherten Plot (Default: results/tft/plots/eval)",
-    )
 
     args = parser.parse_args()
 
@@ -122,13 +122,17 @@ def main():
     if not run_dir.exists():
         raise FileNotFoundError(f"Run-Ordner nicht gefunden: {run_dir}")
 
-    plot_loss_for_run(run_dir=run_dir, out_root=Path(args.out_root))
+    plot_loss_for_run(run_dir=run_dir)
 
 
 if __name__ == "__main__":
-    # python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251117_232558_lr001_mel120
-    # python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251118_221004_lr0003_mel120_hs64_hc32
     main()
 
+# Aufruf (nach Training):
+#   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_123456_baseline
+#   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_150832_bs_small
+#   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_174613_lr_high
+#
+# Output: results/tft/plots/training/<run_id>_loss.png
 
 

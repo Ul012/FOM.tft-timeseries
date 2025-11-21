@@ -8,7 +8,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from src.config import INTERIM_DIR
+from src.config import INTERIM_DIR, BASE_DIR
 
 
 def _prepare_daily_country(df: pd.DataFrame) -> pd.DataFrame:
@@ -24,7 +24,7 @@ def _prepare_daily_country(df: pd.DataFrame) -> pd.DataFrame:
     return daily_country
 
 
-def plot_cleaning_comparison(df_aligned: pd.DataFrame, df_cleaned: pd.DataFrame) -> None:
+def plot_cleaning_comparison(df_aligned: pd.DataFrame, df_cleaned: pd.DataFrame) -> plt.Figure:
     """Erstellt eine Vergleichsgrafik: vor/nach Cleaning für 2020."""
 
     sns.set(style="whitegrid")
@@ -56,8 +56,8 @@ def plot_cleaning_comparison(df_aligned: pd.DataFrame, df_cleaned: pd.DataFrame)
     axes[1].set_xlabel("Datum (nur Jahr 2020)")
     axes[1].set_ylabel("Verkäufe (num_sold, bereinigt)")
 
-    plt.tight_layout()
-    plt.show()
+    fig.tight_layout()
+    return fig
 
 
 def main() -> None:
@@ -83,10 +83,26 @@ def main() -> None:
     daily_aligned = _prepare_daily_country(df_aligned)
     daily_cleaned = _prepare_daily_country(df_cleaned)
 
-    plot_cleaning_comparison(daily_aligned, daily_cleaned)
+    # Plot erstellen
+    fig = plot_cleaning_comparison(daily_aligned, daily_cleaned)
+
+    # Speichern
+    output_dir = BASE_DIR / "results" / "tft" / "plots" / "data"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "cleaning_overview.png"
+
+    fig.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"✓ Plot gespeichert: {output_path}")
+
+    # Anzeigen
+    plt.show()
+    plt.close(fig)
 
 
 if __name__ == "__main__":
-    # python -m src.visualization.data_cleaning_plot_overview
     main()
 
+# Aufruf (optional, Vorher/Nachher-Vergleich):
+#   python -m src.visualization.data_cleaning_plot_overview
+#
+# Output: results/tft/plots/data/cleaning_overview.png

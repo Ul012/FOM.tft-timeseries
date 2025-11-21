@@ -16,15 +16,18 @@ from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.models import TemporalFusionTransformer
 
-from src.config import (
-    BASE_DIR,
-    PROCESSED_DIR,
-    TIME_COL,
-    ID_COLS,
-    TARGET_COL,
-    TFT_DATASET,
-)
+from src.config import BASE_DIR, PROCESSED_DIR, EVALUATION_METRICS
+from src.utils.load_dataset_config import load_dataset_config, get_schema, get_tft_config
 
+# Lade Config einmalig
+_dataset_config = load_dataset_config()
+_schema = get_schema(_dataset_config)
+
+# Extrahiere Werte
+TIME_COL = _schema["time_col"]
+ID_COLS = _schema["id_cols"]
+TARGET_COL = _schema["target_col"]
+TFT_DATASET = get_tft_config(_dataset_config)
 
 def _mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     diff = np.abs(y_true - y_pred)
@@ -350,5 +353,7 @@ if __name__ == "__main__":
 
 # Aufruf (nach abgeschlossenem Training):
 #   python -m src.evaluation.evaluate_tft --run-id run_20251121_125758_baseline
+#   python -m src.evaluation.evaluate_tft --run-id run_20251121_150832_bs_small
+#   python -m src.evaluation.evaluate_tft --run-id run_20251121_174613_lr_high
 #
 # Hinweis: Pipeline macht dies nicht automatisch - bewusst manueller Schritt

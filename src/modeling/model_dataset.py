@@ -9,29 +9,40 @@ Philosophie:
 - Sanity-Checks gegen Leckage.
 """
 
-from __future__ import annotations
-
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict, Any
-
+from dataclasses import dataclass
+from typing import Optional, Tuple, List, Dict, Any
 import json
 import pandas as pd
+import numpy as np
 
-# ------------------------- Konfiguration -------------------------
+from src.config import PROCESSED_DIR
+from src.utils.load_dataset_config import load_dataset_config, get_schema, get_split_config
 
-from src.config import (
-    MODEL_INPUT_PATH,
-    PROCESSED_DIR,
-    TIME_COL,
-    ID_COLS,
-    TARGET_COL,
-    VAL_START,
-    TEST_START,
-    SPLIT_RATIOS,
-    SCALE_COLS,
-)
+# Lade Config einmalig
+_dataset_config = load_dataset_config()
+_schema = get_schema(_dataset_config)
+_split = get_split_config(_dataset_config)
 
+# Extrahiere Werte
+TIME_COL = _schema["time_col"]
+ID_COLS = _schema["id_cols"]
+TARGET_COL = _schema["target_col"]
+
+# Model Input Path (kann später auch aus YAML kommen)
+MODEL_INPUT_PATH = PROCESSED_DIR / "train_features_cyc_lag.parquet"
+
+# Split-Config
+if _split["method"] == "fixed":
+    VAL_START = _split.get("val_start")
+    TEST_START = _split.get("test_start")
+    SPLIT_RATIOS = None
+else:
+    VAL_START = None
+    TEST_START = None
+    SPLIT_RATIOS = tuple(_split["ratios"])
+
+SCALE_COLS = _split.get("scale_cols", [])
 
 # ------------------------- I/O-Helfer -------------------------
 
@@ -56,7 +67,7 @@ class TimeSplitPlan:
     """Einfacher Plan: train < val < test (nach Zeit)."""
     val_start: Optional[pd.Timestamp] = None
     test_start: Optional[pd.Timestamp] = None
-    ratios: Optional[Tuple[float, float, float]] = None  # Fallback, wenn keine Startdaten
+    ratios: Optional[tuple[float, float, float]] = None  # Fallback, wenn keine Startdaten
 
     @classmethod
     def from_config(

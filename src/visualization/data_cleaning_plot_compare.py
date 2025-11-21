@@ -7,6 +7,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from src.config import INTERIM_DIR
+
 
 def plot_cleaned_sales(df: pd.DataFrame) -> None:
     """Erstellt einen Liniendiagramm-Plot der bereinigten Verkaufszahlen (täglich, je Land)."""
@@ -35,8 +37,7 @@ def plot_cleaned_sales(df: pd.DataFrame) -> None:
 
 def main() -> None:
     """Lädt die bereinigte Parquet-Datei und erstellt den Plot."""
-    base_dir = Path(__file__).resolve().parents[2]
-    parquet_path = base_dir / "data" / "interim" / "train_cleaned.parquet"
+    parquet_path = INTERIM_DIR / "train_cleaned.parquet"
 
     if not parquet_path.exists():
         raise FileNotFoundError(
@@ -56,4 +57,5 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-# python -m src.visualization.data_cleaning_plot_compare
+# Aufruf (optional):
+#   python -m src.visualization.data_cleaning_plot_compare
