@@ -4,8 +4,13 @@ Trainiert einen Temporal Fusion Transformer (TFT) ausschließlich gesteuert übe
 Keinerlei Hyperparameter-Fallbacks im Code – alles kommt aus der YAML.
 
 Aufrufbeispiele:
-    python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline01.yaml
-    python -m src.modeling.trainer_tft  # nutzt Default-Pfad unten
+    python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
+
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/optuna_tft_day_best.yaml --steps training
+
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/optuna_tft_day_trial15.yaml --steps training
+
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/bs_small_lr0003.yaml --steps training
 """
 
 from __future__ import annotations
@@ -300,8 +305,10 @@ def main():
     epochs_trained = int(trainer.current_epoch) + 1  # 0-basiert -> +1
 
     # Meta-Infos für summary.json zusammenstellen
+    training_dict = cfg_dict.get("training", {})
+
     meta = {
-        "seed": cfg_dict.get("seed"),
+        "seed": training_dict.get("seed"),
         "config_file": str(config_path),
         "config_values": cfg_dict,  # komplette YAML als normales Dict
         "fit_time_sec": fit_time_sec,

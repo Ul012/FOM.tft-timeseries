@@ -383,6 +383,8 @@ if __name__ == "__main__":
 #   python -m src.evaluation.evaluate_tft --run-id run_20251121_125758_baseline
 #   python -m src.evaluation.evaluate_tft --run-id run_20251121_150832_bs_small
 #   python -m src.evaluation.evaluate_tft --run-id run_20251121_222313_lr_high
-#   python -m src.evaluation.evaluate_tft --run-id run_20251121_195900_model_large
+#   python -m src.evaluation.evaluate_tft --run-id run_20251122_182227_bs_small_esp10
+#   python -m src.evaluation.evaluate_tft --run-id run_20251122_213701_bs_small_lr0003
+#   python -m src.evaluation.evaluate_tft --run-id run_20251122_195007_optuna_tft_day_best
 #
 # Hinweis: Pipeline macht dies nicht automatisch - bewusst manueller Schritt
