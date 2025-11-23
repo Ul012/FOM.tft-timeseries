@@ -8,10 +8,12 @@ import pandas as pd
 
 # Direkte Imports, kein try/except – schlank und pythonic
 from src.config import PROCESSED_DIR, BASE_DIR
-from src.utils.load_dataset_config import load_dataset_config
+from src.utils.load_dataset_config import load_dataset_config, get_schema, get_preprocessing_params
 
 _dataset_config = load_dataset_config()
 _dataset_name = _dataset_config["name"]
+_schema = get_schema(_dataset_config)
+TIME_COL = _schema["time_col"]
 
 
 @dataclass(frozen=True)
@@ -114,7 +116,21 @@ def main() -> None:
     print(f"[cyclical_encoder] Lade {in_path} ...")
     df = pd.read_parquet(in_path)
 
-    enc = CyclicalEncoder()
+    # Lade Periodicities aus YAML
+    cyc_params = get_preprocessing_params(_dataset_config, "cyclical_encoder")
+    periodicities_config = cyc_params.get("periodicities", {})
+
+    # Konvertiere zu Dict[str, Tuple[str, int]]
+    periodicities = {
+        name: (kind, period)
+        for name, (kind, period) in periodicities_config.items()
+    }
+
+    config = CyclicalEncoderConfig(
+        datetime_col=TIME_COL,
+        periodicities=periodicities
+    )
+    enc = CyclicalEncoder(config)
     out = enc.fit_transform(df)
 
     out.to_parquet(out_path, index=False)
@@ -125,6 +141,8 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   python -m src.data.cyclical_encoder
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.cyclical_encoder
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.cyclical_encoder
 # Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps preprocessing
 #   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing

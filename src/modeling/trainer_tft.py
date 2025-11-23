@@ -8,9 +8,12 @@ Aufrufbeispiele:
 
     python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/optuna_tft_day_best.yaml --steps training
 
-    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/optuna_tft_day_trial15.yaml --steps training
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/optuna_tft_day_trial_15.yaml --steps training
 
     python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/bs_small_lr0003.yaml --steps training
+
+
+
 """
 
 from __future__ import annotations

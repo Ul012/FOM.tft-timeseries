@@ -111,6 +111,9 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   python -m src.data.data_alignment
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.data_alignment
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.data_alignment
+#
 # Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps preprocessing
 #   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing

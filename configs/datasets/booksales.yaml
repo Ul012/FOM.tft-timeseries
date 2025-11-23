@@ -5,9 +5,20 @@ description: "Book sales forecasting dataset - Kaggle Tabular Playground Sep 202
 # Pfade (relativ zu BASE_DIR)
 # ----------------------------------------------------------------------------
 paths:
-  raw: "data/raw"
-  interim: "data/interim"
-  processed: "data/processed"
+  raw: "data/raw/booksales"
+  interim: "data/interim/booksales"
+  processed: "data/processed/booksales"
+
+# ----------------------------------------------------------------------------
+# Raw Data Loading (optional - für Datasets die Merge brauchen)
+# ----------------------------------------------------------------------------
+raw_data:
+  type: "single_file"  # "single_file" oder "multiple_files"
+  # Für single_file:
+  files:
+    - path: "data/raw/booksales/train.csv"
+      role: "main"
+
 
 # ----------------------------------------------------------------------------
 # Schema (Dataset-spezifisch)
@@ -21,22 +32,25 @@ schema:
 # Preprocessing-Pipeline (Reihenfolge wichtig!)
 # ----------------------------------------------------------------------------
 preprocessing:
+
   - step: "alignment"
     enabled: true
     description: "Skaliert Zeitreihen auf 2020-Referenzniveau"
-    params: {}
+    params:
+      lockdown_start: "2020-03-15"
+      lockdown_end: "2020-05-31"
 
   - step: "cleaning"
-    enabled: true
-    description: "Bereinigt Ausreißer und glättet Lockdown-Periode"
     params:
+      outlier_dates: [ "2020-01-01" ]  # <-- NEU
       lockdown_start: "2020-03-15"
       lockdown_end: "2020-05-31"
 
   - step: "feature_engineering"
     enabled: true
-    description: "Kalender-Features, time_idx, deutsche Feiertage"
+    description: "Kalender-Features, time_idx, europäische Feiertage"
     params:
+      country: "EU"
       include_holiday_name: false
 
   - step: "cyclical_encoder"

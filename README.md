@@ -1,29 +1,30 @@
-# TFT-TimeSeries – Book Sales Forecasting
+# TFT-TimeSeries – Multi-Dataset Forecasting
 
 Dieses Repository enthält eine **modulare, erweiterbare Pipeline** zur Modellierung von Zeitreihen auf Basis des **Temporal Fusion Transformer (TFT)**. Der Fokus liegt auf einer klar strukturierten, konfigurationsgetriebenen und teamfähigen Umsetzung.
 
-Als **Beispiel-Datensatz** dient der Kaggle-Datensatz **"Tabular Playground Series – Sep 2022" (Book Sales)**. Die Architektur ist so aufgebaut, dass weitere Datensätze einfach hinzugefügt werden können.
+Als **Beispiel-Datensätze** dienen:
+- **Booksales** (Kaggle Tabular Playground Series – Sep 2022)
+- **Walmart** (Kaggle Store Sales Forecasting)
+
+Die Architektur ist so aufgebaut, dass weitere Datensätze einfach hinzugefügt werden können.
 
 ---
 
 ## 1. Datenbasis
 
-Die Pipeline nutzt als **Beispiel** den Kaggle-Datensatz **"Tabular Playground Series – Sep 2022"**.
+Die Pipeline unterstützt **mehrere Datensätze** gleichzeitig.
 
-Erforderliche Dateien:
+**Beispiel: Booksales**
+- Dateien: `train.csv`, optional `test.csv`
+- Ablageort: `data/raw/booksales/`
 
-- `train.csv`
-- optional: `test.csv`
-
-Ablageort:
-
-```
-data/raw/booksales/
-```
+**Beispiel: Walmart**
+- Dateien: `train.csv`, `features.csv`, optional `test.csv`
+- Ablageort: `data/raw/walmart/`
 
 Rohdaten werden nicht versioniert.
 
-**Erweiterbarkeit:** Die modulare Struktur erlaubt das einfache Hinzufügen weiterer Datensätze. Jeder Datensatz erhält einen eigenen Unterordner (`data/raw/<dataset_name>/`) und eine eigene Config (`configs/datasets/<dataset_name>.yaml`).
+**Erweiterbarkeit:** Jeder Datensatz erhält einen eigenen Unterordner (`data/raw/<dataset_name>/`) und eine eigene Config (`configs/datasets/<dataset_name>.yaml`).
 
 ---
 
@@ -52,7 +53,7 @@ pip install -r requirements.txt
 
 ```text
 src/
-├── data/              # Preprocessing (Alignment, Cleaning, Features)
+├── data/              # Preprocessing (Load, Alignment, Cleaning, Features)
 ├── modeling/          # Training (model_dataset, dataset_tft, trainer_tft)
 ├── evaluation/        # Metriken-Berechnung und Aggregation
 ├── visualization/     # Plots für Daten, Training und Evaluation
@@ -61,13 +62,13 @@ src/
 └── pipeline.py        # Orchestrierung aller Schritte
 
 configs/
-├── datasets/          # booksales.yaml (Dataset-Config)
+├── datasets/          # booksales.yaml, walmart.yaml (Dataset-Configs)
 └── models/tft/        # baseline.yaml + Experimente
 
 data/
-├── raw/booksales/     # Rohdaten (nicht versioniert)
-├── interim/booksales/ # Zwischenschritte (aligned, cleaned)
-└── processed/booksales/ # Features, Splits (train/val/test)
+├── raw/<dataset>/     # Rohdaten (nicht versioniert)
+├── interim/<dataset>/ # Zwischenschritte (raw, aligned, cleaned)
+└── processed/<dataset>/ # Features, Splits (train/val/test)
 
 logs/tft/              # Training-Logs (metrics.csv)
 
@@ -86,9 +87,14 @@ docs/                  # Detaillierte Dokumentation
 ### 4.1 Via Pipeline (empfohlen)
 
 ```bash
-# Kompletter Run (Preprocessing + Training)
+# Kompletter Run (Preprocessing + Training) - Booksales
 python -m src.pipeline \
     --dataset configs/datasets/booksales.yaml \
+    --model configs/models/tft/baseline.yaml
+
+# Kompletter Run - Walmart
+python -m src.pipeline \
+    --dataset configs/datasets/walmart.yaml \
     --model configs/models/tft/baseline.yaml
 
 # Nur Preprocessing
@@ -107,11 +113,11 @@ python -m src.pipeline \
 
 **Preprocessing:**
 ```bash
-python -m src.data.data_alignment
-python -m src.data.data_cleaning
-python -m src.data.feature_engineering
-python -m src.data.cyclical_encoder
-python -m src.data.lag_features
+# Mit Umgebungsvariable (für einzelne Schritte)
+$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.load_raw
+$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.feature_engineering
+$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.cyclical_encoder
+$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.lag_features
 ```
 
 **Modeling:**
@@ -137,8 +143,9 @@ python -m src.visualization.plot_tft_eval_comparison --metric smape --split test
 
 ## 5. Konfiguration
 
-### `configs/datasets/booksales.yaml`
-- Schema (Spaltennamen)
+### `configs/datasets/<dataset_name>.yaml`
+- Schema (Spaltennamen, time_col, id_cols, target_col)
+- Raw Data Loading (single_file vs. multiple_files mit Merge)
 - Preprocessing-Pipeline (Steps aktivieren/deaktivieren)
 - Split-Konfiguration
 - TFT-Parameter
@@ -178,19 +185,62 @@ python -m src.visualization.plot_tft_eval_comparison --metric smape --split test
 
 Detaillierte Dokumentation in `docs/`:
 
-- Pipeline-Übersicht
-- Script-Beschreibungen
-- Workflow-Guides
-- Konfigurationsreferenz
+- LoadRaw.md – Laden und Mergen von Rohdaten
+- DataAlignment.md – Normalisierung
+- DataCleaning.md – Bereinigung
+- FeatureEngineer.md – Kalender-Features
+- CyclicalEncoder.md – Sin/Cos-Kodierung
+- LagFeatures.md – Lag- und Rolling-Features
+- Pipeline.md – Orchestrierung
+- PipelineOrder.md – Reihenfolge aller Schritte
+- ConfigSetup.md – Konfigurationssystem
+- Projektstruktur.md – Vollständiger Überblick
 
 ---
 
-## 8. Geplante Erweiterungen
+## 8. Multi-Dataset Support
 
-### Weitere Datensätze
-- Modulare Struktur erlaubt einfache Integration neuer Datensätze
-- Jeder Datensatz: eigene Config + eigene Unterordner
-- Beispiele: Retail Sales, E-Commerce, Energy Consumption
+### Neuen Datensatz hinzufügen:
+
+1. **Rohdaten ablegen:**
+   ```
+   data/raw/neuer_datensatz/
+   ├── train.csv
+   └── ...
+   ```
+
+2. **Config erstellen:**
+   ```yaml
+   # configs/datasets/neuer_datensatz.yaml
+   name: "neuer_datensatz"
+   
+   raw_data:
+     type: "single_file"  # oder "multiple_files"
+     files:
+       - path: "data/raw/neuer_datensatz/train.csv"
+         role: "main"
+   
+   schema:
+     time_col: "date"
+     id_cols: ["id1", "id2"]
+     target_col: "value"
+   
+   preprocessing:
+     - step: "load_raw"
+       enabled: true
+     # ... weitere Steps
+   ```
+
+3. **Pipeline ausführen:**
+   ```bash
+   python -m src.pipeline \
+       --dataset configs/datasets/neuer_datensatz.yaml \
+       --model configs/models/tft/baseline.yaml
+   ```
+
+---
+
+## 9. Geplante Erweiterungen
 
 ### Klassische Modelle
 - Integration von **ARIMA** und **Prophet**
@@ -206,8 +256,29 @@ Detaillierte Dokumentation in `docs/`:
 
 ---
 
-## 9. Zusammenarbeit
+## 10. Zusammenarbeit
 
 Die modulare Struktur ermöglicht paralleles Arbeiten und reproduzierbare Ergebnisse.
 
 Alle Schritte sind konfigurationsgetrieben und klar dokumentiert. Änderungen werden minimalinvasiv umgesetzt, sodass die Gesamtstruktur stabil bleibt.
+
+---
+
+## 11. Aktueller Stand 23.11.2025
+
+✅ **Komplett generalisiert:**
+- load_raw.py (Single-File + Multi-File mit Merge)
+- data_cleaning.py (Outlier-Dates + Lockdown aus YAML)
+- feature_engineering.py (Country-spezifische Feiertage)
+- cyclical_encoder.py (Periodicities aus YAML)
+- lag_features.py (Bereits generalisiert)
+- pipeline.py (Dataset-Config-Weitergabe)
+
+✅ **Funktionierende Datensätze:**
+- Booksales (tägliche Daten, 3 ID-Spalten)
+- Walmart (wöchentliche Daten, 2 ID-Spalten, Merge von 2 CSVs)
+
+🔄 **In Arbeit:**
+- model_dataset.py (Split generalisieren)
+- dataset_tft.py (TFT-Features generalisieren)
+- trainer_tft.py (Training anpassen)

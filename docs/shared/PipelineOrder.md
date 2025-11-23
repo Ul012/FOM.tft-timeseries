@@ -1,15 +1,15 @@
 # Pipeline Overview – FOM.tft-timeseries
 
-**Datum:** 2025-11-21 (aktualisiert)  
+**Datum:** 2025-11-23  
 **Script:** —  
-**Ziel & Inhalt:** Vollständige Übersicht über die Pipeline-Reihenfolge. Beschreibt Input, Output und Zweck aller Module von Alignment bis Training und optionaler Evaluation.
+**Ziel & Inhalt:** Vollständige Übersicht über die Pipeline-Reihenfolge. Beschreibt Input, Output und Zweck aller Module von Rohdaten-Laden bis Training und optionaler Evaluation.
 
 ---
 
 ## Ziel
 
 Diese Übersicht beschreibt die **Ausführungsreihenfolge** der zentralen Module – von Rohdaten bis Training und Evaluation.  
-Alle Schritte können einzeln getestet werden. Schritte 1–6 bilden die Hauptpipeline.
+Alle Schritte können einzeln getestet werden. Schritte 1–7 bilden die Hauptpipeline.
 
 ---
 
@@ -30,22 +30,23 @@ Alle Schritte können einzeln getestet werden. Schritte 1–6 bilden die Hauptpi
 
 | # | Modul | Beschreibung | Input | Output | Aufruf |
 |--:|-------|--------------|-------|--------|--------|
-| 1 | `data_alignment.py` *(optional)* | Skaliert/normalisiert Zeitreihen | `data/raw/*.csv` | `data/interim/train_aligned.parquet` | Einzeln oder via Pipeline |
-| 2 | `data_cleaning.py` *(optional)* | Bereinigt Ausreißer, glättet Lockdown | Schritt 1 oder `data/raw/*.csv` | `data/interim/train_cleaned.parquet` | Einzeln oder via Pipeline |
-| 3A | `feature_engineering.py` | Kalender-Features, time_idx, Feiertage | `data/interim/train_cleaned.parquet` | `data/processed/train_features.parquet` | Einzeln oder via Pipeline |
-| 3B | `cyclical_encoder.py` | Zyklische Sin/Cos-Kodierungen | `train_features.parquet` | `train_features_cyc.parquet` | Einzeln oder via Pipeline |
-| 3C | `lag_features.py` | Lag- und Rolling-Features | `train_features_cyc.parquet` | `train_features_cyc_lag.parquet` | Einzeln oder via Pipeline |
-| 4 | `model_dataset.py` | Zeitbasierter Split (Train/Val/Test) | Ergebnis aus 3C | `data/processed/<dataset_name>/train.parquet`, `val.parquet`, `test.parquet`, `meta.json` | Einzeln oder via Pipeline |
-| 5 | `dataset_tft.py` | TFT-Datensatz erstellen | Schritt 4 | `dataset_spec.json` | Einzeln oder via Pipeline |
-| 6 | `trainer_tft.py` | TFT-Training nach Config | Schritt 5 + `configs/models/tft/*.yaml` | Logs, Checkpoints, JSONs | Einzeln oder via Pipeline |
-| 7 | `evaluate_tft.py` *(optional)* | Berechnet Fehlermaße (MAE, RMSE, MAPE, SMAPE) | Checkpoint + val/test.parquet | `results/tft/eval/<run_id>/eval_summary.json` | Nur einzeln |
-| 8 | `aggregate_tft_eval.py` *(optional)* | Aggregiert alle eval_summary.json | Ordner aus 7 | `results/tft/eval/eval_overview.{csv,json}` | Nur einzeln |
+| 1 | `load_raw.py` | Laden und Mergen von Rohdaten | `data/raw/<dataset_name>/*.csv` | `data/interim/<dataset_name>/train_raw.parquet` | Einzeln oder via Pipeline |
+| 2 | `data_alignment.py` *(optional)* | Skaliert/normalisiert Zeitreihen | Schritt 1 | `data/interim/<dataset_name>/train_aligned.parquet` | Einzeln oder via Pipeline |
+| 3 | `data_cleaning.py` *(optional)* | Bereinigt Ausreißer, glättet Lockdown | Schritt 1 oder 2 | `data/interim/<dataset_name>/train_cleaned.parquet` | Einzeln oder via Pipeline |
+| 4A | `feature_engineering.py` | Kalender-Features, time_idx, Feiertage | Schritt 3 | `data/processed/<dataset_name>/train_features.parquet` | Einzeln oder via Pipeline |
+| 4B | `cyclical_encoder.py` | Zyklische Sin/Cos-Kodierungen | `train_features.parquet` | `train_features_cyc.parquet` | Einzeln oder via Pipeline |
+| 4C | `lag_features.py` | Lag- und Rolling-Features | `train_features_cyc.parquet` | `train_features_cyc_lag.parquet` | Einzeln oder via Pipeline |
+| 5 | `model_dataset.py` | Zeitbasierter Split (Train/Val/Test) | Ergebnis aus 4C | `data/processed/<dataset_name>/train.parquet`, `val.parquet`, `test.parquet`, `meta.json` | Einzeln oder via Pipeline |
+| 6 | `dataset_tft.py` | TFT-Datensatz erstellen | Schritt 5 | `dataset_spec.json` | Einzeln oder via Pipeline |
+| 7 | `trainer_tft.py` | TFT-Training nach Config | Schritt 6 + `configs/models/tft/*.yaml` | Logs, Checkpoints, JSONs | Einzeln oder via Pipeline |
+| 8 | `evaluate_tft.py` *(optional)* | Berechnet Fehlermaße (MAE, RMSE, MAPE, SMAPE) | Checkpoint + val/test.parquet | `results/tft/eval/<run_id>/eval_summary.json` | Nur einzeln |
+| 9 | `aggregate_tft_eval.py` *(optional)* | Aggregiert alle eval_summary.json | Ordner aus 8 | `results/tft/eval/eval_overview.{csv,json}` | Nur einzeln |
 
 ---
 
 ## Detaillierte Outputs
 
-### Schritt 6: `trainer_tft.py`
+### Schritt 7: `trainer_tft.py`
 
 **Ausgabe-Struktur:**
 ```
@@ -92,9 +93,10 @@ python -m src.pipeline \
 
 ```bash
 # Preprocessing
-python -m src.data.feature_engineering
-python -m src.data.cyclical_encoder
-python -m src.data.lag_features
+$env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.load_raw
+$env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.feature_engineering
+$env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.cyclical_encoder
+$env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.lag_features
 
 # Modeling
 python -m src.modeling.model_dataset
@@ -102,7 +104,7 @@ python -m src.modeling.dataset_tft
 python -m src.modeling.trainer_tft --config configs/models/tft/baseline.yaml
 
 # Evaluation (manuell)
-python -m src.evaluation.evaluate_tft --run-id run_20251121_123456_baseline
+python -m src.evaluation.evaluate_tft --run-id run_20251123_123456_baseline
 python -m src.evaluation.aggregate_tft_eval
 ```
 
@@ -110,8 +112,9 @@ python -m src.evaluation.aggregate_tft_eval
 
 ## Hinweise
 
-- Schritte 1–2 sind **optional** (abhängig vom Datensatz)
-- Schritte 7–8 werden **nicht** automatisch ausgeführt (bewusst manuell)
+- Schritt 1 ist **immer erforderlich** (lädt Rohdaten)
+- Schritte 2–3 sind **optional** (abhängig vom Datensatz)
+- Schritte 8–9 werden **nicht** automatisch ausgeführt (bewusst manuell)
 - Pipeline-Manifests dokumentieren den kompletten Workflow
 - Alte Arbeitsweise (einzelne Scripte) funktioniert parallel weiter
 

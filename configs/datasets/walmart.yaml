@@ -1,0 +1,108 @@
+name: "walmart"
+description: "Walmart Store Sales - Weekly forecasting (Kaggle)"
+
+# ----------------------------------------------------------------------------
+# Pfade (relativ zu BASE_DIR)
+# ----------------------------------------------------------------------------
+paths:
+  raw: "data/raw/walmart"
+  interim: "data/interim/walmart"
+  processed: "data/processed/walmart"
+
+# ----------------------------------------------------------------------------
+# Raw Data Loading (Walmart braucht Merge von 2 Dateien)
+# ----------------------------------------------------------------------------
+raw_data:
+  type: "multiple_files"  # "single_file" oder "multiple_files"
+  # Für multiple_files:
+  files:
+    - path: "data/raw/walmart/train.csv"
+      role: "main"
+      columns: ["Store", "Dept", "Date", "Weekly_Sales", "IsHoliday"]
+    - path: "data/raw/walmart/features.csv"
+      role: "features"
+      columns: ["Store", "Date", "Temperature", "Fuel_Price", "MarkDown1", "MarkDown2", "MarkDown3", "MarkDown4", "MarkDown5", "CPI", "Unemployment", "IsHoliday"]
+  merge:
+    merge_on: ["Store", "Date"]
+    how: "left"
+    drop_from_right:
+      - "IsHoliday"
+
+# ----------------------------------------------------------------------------
+# Schema (Dataset-spezifisch)
+# ----------------------------------------------------------------------------
+schema:
+  time_col: "Date"  # Achtung: Großschreibung bei Walmart!
+  id_cols: ["Store", "Dept"]  # Nur 2 statt 3 Group-Columns
+  target_col: "Weekly_Sales"
+
+# ----------------------------------------------------------------------------
+# Preprocessing-Pipeline (Reihenfolge wichtig!)
+# ----------------------------------------------------------------------------
+preprocessing:
+  - step: "load_raw"
+    enabled: true
+    description: "Merged train.csv + features.csv"
+    params: {}
+
+  - step: "alignment"
+    enabled: false  # Walmart braucht keine Skalierung auf Referenzjahr
+    description: "Nicht benötigt für Walmart"
+    params: {}
+
+  - step: "cleaning"
+    enabled: true
+    description: "Bereinigt Ausreißer (KEIN Lockdown bei Walmart)"
+    params:
+      outlier_dates: []  # Keine bekannten Outlier-Dates
+      # KEIN lockdown_start/lockdown_end bei Walmart!
+
+  - step: "feature_engineering"
+    enabled: true
+    description: "Kalender-Features, time_idx, US-Feiertage"
+    params:
+      country: "US"  # Für Feiertage (Super Bowl, Thanksgiving, etc.)
+      include_holiday_name: true  # IsHoliday-Namen als Feature
+
+  - step: "cyclical_encoder"
+    enabled: true
+    description: "Zyklische Sin/Cos-Kodierung"
+    params:
+      periodicities:
+        week: ["week", 52]  # Wöchentliche Daten!
+        month: ["month", 12]
+
+  - step: "lag_features"
+    enabled: true
+    description: "Lag- und Rolling-Features (angepasst für wöchentlich)"
+    params:
+      lags: [1, 4, 8, 12]  # Wochen statt Tage! (1W, 1M, 2M, 3M)
+      roll_windows: [4, 8]  # 4 Wochen = ~1 Monat, 8 Wochen = ~2 Monate
+      roll_stats: ["mean"]
+      prefix: "lag_"
+
+# ----------------------------------------------------------------------------
+# Split-Konfiguration (zeitbasiert)
+# ----------------------------------------------------------------------------
+split:
+  method: "ratio"  # "ratio" oder "fixed"
+  ratios: [0.80, 0.10, 0.10]  # Train, Val, Test
+  scale_cols: []  # Optional: Spalten für MinMax-Skalierung
+
+# ----------------------------------------------------------------------------
+# TFT-spezifische Parameter
+# ----------------------------------------------------------------------------
+tft:
+  # Sequenz-Längen
+  max_encoder_length: 52  # Historie die das Modell sieht (~1 Jahr bei wöchentlich)
+  max_prediction_length: 8  # Forecast-Horizont (~2 Monate)
+
+  # Feature-Klassifikation (basierend auf Spalten-Prefixes)
+  known_real_prefixes: ["cyc_"]  # Bekannte kontinuierliche Features
+  lag_prefixes: ["lag_"]          # Lag-Features (werden als unknown behandelt)
+
+  # Kalender-Features als "known" behandeln
+  treat_calendar_as_known: true
+
+  # Explizite Flag-Spalten (binär)
+  flag_cols: []  # Keine Lockdown-Flag bei Walmart

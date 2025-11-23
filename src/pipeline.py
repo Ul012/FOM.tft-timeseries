@@ -26,6 +26,7 @@ import json
 import subprocess
 import sys
 import yaml
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -52,6 +53,7 @@ def run_subprocess(cmd: List[str], step_name: str) -> None:
     import os
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
+    env["DATASET_CONFIG"] = os.environ.get("DATASET_CONFIG", "")
 
     result = subprocess.run(
         cmd,
@@ -76,6 +78,7 @@ def run_preprocessing_steps(dataset_cfg: Dict[str, Any]) -> List[str]:
         Liste der ausgeführten Schritte
     """
     module_map = {
+        "load_raw": "src.data.load_raw",
         "alignment": "src.data.data_alignment",
         "cleaning": "src.data.data_cleaning",
         "feature_engineering": "src.data.feature_engineering",
@@ -201,6 +204,7 @@ def run_pipeline(
     """
     # Run-ID generieren
     run_id = f"pipeline_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    os.environ["DATASET_CONFIG"] = str(dataset_cfg_path)
 
     print(f"\n{'#' * 70}")
     print(f"# Pipeline-Run: {run_id}")

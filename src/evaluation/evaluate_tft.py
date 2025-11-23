@@ -380,11 +380,6 @@ if __name__ == "__main__":
     main()
 
 # Aufruf (nach abgeschlossenem Training):
-#   python -m src.evaluation.evaluate_tft --run-id run_20251121_125758_baseline
-#   python -m src.evaluation.evaluate_tft --run-id run_20251121_150832_bs_small
-#   python -m src.evaluation.evaluate_tft --run-id run_20251121_222313_lr_high
-#   python -m src.evaluation.evaluate_tft --run-id run_20251122_182227_bs_small_esp10
-#   python -m src.evaluation.evaluate_tft --run-id run_20251122_213701_bs_small_lr0003
-#   python -m src.evaluation.evaluate_tft --run-id run_20251122_195007_optuna_tft_day_best
+#   python -m src.evaluation.evaluate_tft --run-id run_20251122_230253_optuna_tft_day_trial_15
 #
 # Hinweis: Pipeline macht dies nicht automatisch - bewusst manueller Schritt

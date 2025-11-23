@@ -86,6 +86,9 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   python -m src.data.lag_features
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.lag_features
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.lag_features
+#
 # Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps preprocessing
 #   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing

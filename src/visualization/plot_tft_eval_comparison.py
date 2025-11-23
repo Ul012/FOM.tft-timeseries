@@ -120,4 +120,4 @@ if __name__ == "__main__":
     main()
 
 # Aufruf (nach mehreren Evaluationen):
-#   python -m src.visualization.plot_tft_eval_comparison --metric smape --split test
+#   python -m src.visualization.plot_tft_eval_comparison --metric mae --split test

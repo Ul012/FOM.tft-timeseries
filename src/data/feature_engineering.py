@@ -6,10 +6,14 @@ import pandas as pd
 import holidays
 
 from src.config import INTERIM_DIR, PROCESSED_DIR, BASE_DIR
-from src.utils.load_dataset_config import load_dataset_config
+from src.utils.load_dataset_config import load_dataset_config, get_schema, get_preprocessing_params
 
 _dataset_config = load_dataset_config()
 _dataset_name = _dataset_config["name"]
+_schema = get_schema(_dataset_config)
+_fe_params = get_preprocessing_params(_dataset_config, "feature_engineering")
+
+TIME_COL = _schema["time_col"]
 
 
 class FeatureEngineer:
@@ -19,7 +23,8 @@ class FeatureEngineer:
     - gesamtdeutsches Feiertagsflag (is_holiday_de) + optional holiday_name
     """
 
-    def __init__(self, date_col: str = "date", include_holiday_name: bool = False):
+    def __init__(self, date_col: str, country: str = "DE", include_holiday_name: bool = False):
+        self.country = country
         self.date_col = date_col
         self.include_holiday_name = include_holiday_name
 
@@ -49,23 +54,28 @@ class FeatureEngineer:
         out["time_idx"] = (out[self.date_col] - first_date).dt.days.astype("int64")
         return out
 
-    def add_holiday_features_de(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Gesamtdeutsche Feiertage (bundesweit). Keine Länderspezifika.
-        Hinweis: Einmalige bundesweite Ausnahmen (z. B. Reformationstag 2017) werden korrekt markiert.
-        """
+    def add_holiday_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Feiertage basierend auf self.country."""
         out = self._ensure_datetime(df)
 
         years = out[self.date_col].dt.year.unique().tolist()
-        # subdivisions=None → nur bundesweite Feiertage
-        de_holidays = holidays.Germany(years=years, subdiv=None)  # observed: Default
 
-        # Schnelles Lookup: Bool-Flag pro Datum
-        is_holiday = out[self.date_col].dt.date.map(lambda d: d in de_holidays)
-        out["is_holiday_de"] = is_holiday.astype("int8")
+        # Country-spezifische Holidays
+        if self.country == "DE":
+            country_holidays = holidays.Germany(years=years, subdiv=None)
+        elif self.country == "US":
+            country_holidays = holidays.UnitedStates(years=years)
+        elif self.country == "EU":
+            # Gemeinsame EU-Feiertage (vereinfacht)
+            country_holidays = holidays.Germany(years=years, subdiv=None)
+        else:
+            raise ValueError(f"Unbekanntes Country: {self.country}")
+
+        is_holiday = out[self.date_col].dt.date.map(lambda d: d in country_holidays)
+        out["is_holiday"] = is_holiday.astype("int8")
 
         if self.include_holiday_name:
-            # Namen für Debug/Erklärung (NaN, wenn kein Feiertag)
-            out["holiday_name"] = out[self.date_col].dt.date.map(de_holidays.get)
+            out["holiday_name"] = out[self.date_col].dt.date.map(country_holidays.get)
 
         return out
 
@@ -73,7 +83,7 @@ class FeatureEngineer:
         out = df.copy()
         out = self.add_calendar_features(out)
         out = self.add_time_index(out)
-        out = self.add_holiday_features_de(out)
+        out = self.add_holiday_features(out)
         return out
 
 
@@ -88,7 +98,11 @@ def main() -> None:
         )
 
     df = pd.read_parquet(inp)
-    fe = FeatureEngineer(date_col="date", include_holiday_name=False)  # Namen optional
+
+    country = _fe_params.get("country", "DE")
+    include_holiday_name = _fe_params.get("include_holiday_name", False)
+
+    fe = FeatureEngineer(date_col=TIME_COL, country=country, include_holiday_name=include_holiday_name)
     df_feats = fe.transform(df)
 
     df_feats.to_parquet(outp, index=False)
@@ -99,6 +113,9 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   python -m src.data.feature_engineering
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.feature_engineering
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.feature_engineering
+#
 # Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps preprocessing
 #   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing

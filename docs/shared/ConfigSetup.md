@@ -1,6 +1,6 @@
 # Konfigurationen – Zusammenspiel von `config.py` und `configs/*.yaml`
 
-**Datum:** 2025-11-21 (aktualisiert)  
+**Datum:** 2025-11-23  
 **Script:** —  
 **Ziel & Inhalt:** Beschreibt die Trennung zwischen statischen Projektkonstanten (`config.py`) und variablen Trainingsparametern in YAML-Dateien. Erläutert Pfade, Spalten, Feature-Konfigurationen, Split-Parameter sowie den Ablauf eines Trainingslaufs.
 
@@ -95,16 +95,22 @@ TFT_DATASET = {
 
 ---
 
-## 2. Neue Config-Hierarchie (seit 2025-11-21)
+## 2. Config-Hierarchie
 
 ### 2.1 Dataset-Config (`configs/datasets/booksales.yaml`)
 
 ```yaml
 name: "booksales"
 paths:
-  raw: "data/raw"
-  interim: "data/interim"
-  processed: "data/processed"
+  raw: "data/raw/booksales"
+  interim: "data/interim/booksales"
+  processed: "data/processed/booksales"
+
+raw_data:
+  type: "single_file"
+  files:
+    - path: "data/raw/booksales/train.csv"
+      role: "main"
 
 schema:
   time_col: "date"
@@ -112,6 +118,8 @@ schema:
   target_col: "num_sold"
 
 preprocessing:
+  - step: "load_raw"
+    enabled: true
   - step: "alignment"
     enabled: true
   - step: "cleaning"
@@ -169,6 +177,10 @@ python -m src.pipeline \
 ### Einzeln (für Tests):
 
 ```bash
+# Preprocessing
+$env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.load_raw
+
+# Training
 python -m src.modeling.trainer_tft \
     --config configs/models/tft/baseline.yaml
 ```

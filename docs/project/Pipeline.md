@@ -1,6 +1,6 @@
 # Pipeline – Orchestrierung und Workflow
 
-**Datum:** 2025-11-21  
+**Datum:** 2025-11-23  
 **Script:** `src/pipeline.py`  
 **Ziel & Inhalt:** Beschreibung der zentralen Pipeline-Orchestrierung. Erklärt die verfügbaren Steps, deren Reihenfolge, Abhängigkeiten und praktische Anwendung für reproduzierbare Experimente.
 
@@ -35,18 +35,21 @@ Die Pipeline kennt vier Haupt-Phasen, die über den Parameter `--steps` gesteuer
 **Zweck:** Rohdatenverarbeitung bis zu modellfertigen Features
 
 **Umfasst alle aktivierten Steps aus der Dataset-Config:**
+- `load_raw` – Laden und Mergen von Rohdaten (CSV → Parquet)
 - `alignment` – Normalisierung der Verkaufsniveaus auf Referenzjahr
 - `cleaning` – Bereinigung von Ausreißern und Lockdown-Effekten
 - `feature_engineering` – Kalender-, Feiertags- und Zeitindex-Features
 - `cyclical_encoder` – Zyklische Sin/Cos-Kodierung für Zeitmerkmale
 - `lag_features` – Lag- und Rolling-Features für historische Abhängigkeiten
 
-**Eingabe:** `data/raw/<dataset_name>/train.csv`  
+**Eingabe:** `data/raw/<dataset_name>/*.csv`  
 **Ausgabe:** `data/processed/<dataset_name>/train_features_cyc_lag.parquet`
 
 **Steuerung:** Einzelne Steps können in der Dataset-Config aktiviert/deaktiviert werden:
 ```yaml
 preprocessing:
+  - step: "load_raw"
+    enabled: true
   - step: "alignment"
     enabled: true
   - step: "cleaning"
@@ -208,8 +211,8 @@ Jeder Pipeline-Durchlauf erzeugt ein Manifest mit vollständiger Dokumentation:
 **Inhalt:**
 ```json
 {
-  "pipeline_run_id": "pipeline_20251121_223046",
-  "timestamp": "2025-11-21T22:30:46",
+  "pipeline_run_id": "pipeline_20251123_223046",
+  "timestamp": "2025-11-23T22:30:46",
   "dataset": {
     "name": "booksales",
     "config": { /* vollständige Dataset-YAML */ }
@@ -222,11 +225,11 @@ Jeder Pipeline-Durchlauf erzeugt ein Manifest mit vollständiger Dokumentation:
   "execution": {
     "steps_requested": ["preprocessing", "model_dataset", "dataset_tft", "training"],
     "steps_executed": {
-      "preprocessing": ["alignment", "cleaning", "feature_engineering", 
+      "preprocessing": ["load_raw", "alignment", "cleaning", "feature_engineering", 
                        "cyclical_encoder", "lag_features"],
       "model_dataset": true,
       "dataset_tft": true,
-      "training": {"run_id": "run_20251121_223309_baseline"}
+      "training": {"run_id": "run_20251123_223309_baseline"}
     }
   }
 }
@@ -321,7 +324,7 @@ Die Pipeline gibt klare Fehlermeldungen bei:
 
 ```bash
 # Nach Training: Evaluation durchführen
-python -m src.evaluation.evaluate_tft --run-id run_20251121_223309_baseline
+python -m src.evaluation.evaluate_tft --run-id run_20251123_223309_baseline
 
 # Alle Evaluationen aggregieren
 python -m src.evaluation.aggregate_tft_eval
