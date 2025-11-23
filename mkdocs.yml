@@ -48,5 +48,5 @@ nav:
       - Trainer & Evaluator Struktur: shared/TrainerEvaluator_Stuktur.md
       - MkDocs Nutzung: shared/MkDocsUsage.md
   - Geplant:
-      - ARIMA und Prophet: project/ArimaProphetIntegration.md
-      - Integration in MLFlow: project/MLFlowKonzept.md
+      - ARIMA und Prophet: shared/ArimaProphetIntegration.md
+      - Integration in MLFlow: shared/MLFlowKonzept.md
