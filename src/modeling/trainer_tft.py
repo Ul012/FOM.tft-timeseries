@@ -3,17 +3,14 @@
 Trainiert einen Temporal Fusion Transformer (TFT) ausschließlich gesteuert über eine YAML-Konfiguration.
 Keinerlei Hyperparameter-Fallbacks im Code – alles kommt aus der YAML.
 
+WICHTIG: Immer über Pipeline aufrufen, da Dataset-Config benötigt wird!
+
 Aufrufbeispiele:
-    python -m src.modeling.trainer_tft --config configs/trainer_tft_baseline.yaml
+    # Booksales
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/baseline.yaml --steps training
 
-    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/optuna_tft_day_best.yaml --steps training
-
-    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/optuna_tft_day_trial_15.yaml --steps training
-
-    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/bs_small_lr0003.yaml --steps training
-
-
-
+    # Walmart
+    python -m src.pipeline --dataset configs/datasets/walmart.yaml --model configs/models/tft/walmart/baseline.yaml --steps training
 """
 
 from __future__ import annotations
@@ -49,7 +46,7 @@ ID_COLS = _schema["id_cols"]
 TIME_COL = _schema["time_col"]
 
 
-def _load_dataset_from_spec(processed_dir: Path):
+def _load_dataset_from_spec(processed_dir: Path, target_normalizer_transformation: str = "softplus"):
     """
     Lädt train/val Parquet anhand der dataset_spec.json und baut TimeSeriesDataSet-Objekte.
     Nutzt die Pfade aus der JSON-Spezifikation.
@@ -81,9 +78,15 @@ def _load_dataset_from_spec(processed_dir: Path):
     df_train = pd.read_parquet(train_pq)
     df_val = pd.read_parquet(val_pq)
 
-    # ===== FIX 2: NaN-Handling für Lag-Features =====
+    # ===== FIX 2: ID-Spalten zu String konvertieren (TFT benötigt kategorische als String) =====
+    for col in static_categoricals:
+        if col in df_train.columns:
+            df_train[col] = df_train[col].astype(str)
+            df_val[col] = df_val[col].astype(str)
+
+    # ===== FIX 3: NaN-Handling für Lag-Features =====
     # Zeilen mit NaN in Lags filtern (erste N Zeilen pro Gruppe)
-    lag_cols = [col for col in df_train.columns if col.startswith("lag_")]
+    lag_cols = [col for col in df_train.columns if col.startswith("lag_") and not col.startswith("lag_365")]
     if lag_cols:
         print(f"[INFO] Filtere Zeilen mit NaN in Lag-Features: {lag_cols}")
         n_before_train = len(df_train)
@@ -97,6 +100,18 @@ def _load_dataset_from_spec(processed_dir: Path):
     for df in (df_train, df_val):
         if TARGET_COL in df.columns:
             df[TARGET_COL] = pd.to_numeric(df[TARGET_COL], errors="coerce").astype("float32")
+
+    # NaN im Target entfernen (TFT erlaubt keine NaN im Target)
+    print(
+        f"[DEBUG] Target-NaN Check: Train hat {df_train[TARGET_COL].isna().sum()} NaNs, Val hat {df_val[TARGET_COL].isna().sum()} NaNs")
+    n_before_train_target = len(df_train)
+    n_before_val_target = len(df_val)
+    df_train = df_train[df_train[TARGET_COL].notna()].copy()
+    df_val = df_val[df_val[TARGET_COL].notna()].copy()
+    print(
+        f"[INFO] Target-NaN entfernt: Train {n_before_train_target} → {len(df_train)} (-{n_before_train_target - len(df_train)})")
+    print(
+        f"[INFO] Target-NaN entfernt: Val {n_before_val_target} → {len(df_val)} (-{n_before_val_target - len(df_val)})")
 
     time_idx_col = "time_idx" if "time_idx" in df_train.columns else TIME_COL
 
@@ -113,11 +128,12 @@ def _load_dataset_from_spec(processed_dir: Path):
         group_ids=ID_COLS,
         max_encoder_length=max_encoder_length,
         max_prediction_length=max_prediction_length,
+        min_encoder_length=max_encoder_length // 2,
         static_categoricals=static_categoricals,
         time_varying_known_reals=time_varying_known_reals,
         time_varying_unknown_reals=time_varying_unknown_reals,
         time_varying_known_categoricals=time_varying_known_categoricals,
-        target_normalizer=GroupNormalizer(groups=ID_COLS, transformation="softplus"),
+        target_normalizer=GroupNormalizer(groups=ID_COLS, transformation=target_normalizer_transformation),
         allow_missing_timesteps=True,  # wichtig für unregelmäßige Zeitreihen
     )
 
@@ -172,9 +188,17 @@ def main():
     dataset_processed_dir = BASE_DIR / "data" / "processed" / dataset_name
 
     # -----------------------------
+    # Target Normalizer Transformation aus Config (Dataset-spezifisch)
+    # -----------------------------
+    # Default: "softplus" (funktioniert für Booksales)
+    # Walmart benötigt: None (Standard-Normalisierung)
+    target_normalizer_transformation = cfg_dict.get("model", {}).get("target_normalizer_transformation", "softplus")
+    print(f"[INFO] Target Normalizer Transformation: {target_normalizer_transformation}")
+
+    # -----------------------------
     # Datasets + Dataloader
     # -----------------------------
-    train_ds, val_ds = _load_dataset_from_spec(dataset_processed_dir)
+    train_ds, val_ds = _load_dataset_from_spec(dataset_processed_dir, target_normalizer_transformation)
 
     print("[DEBUG] Erzeuge train_loader...")
     train_loader = train_ds.to_dataloader(
@@ -225,7 +249,8 @@ def main():
     cfg_stem = config_path.stem
     suffix = cfg_stem.replace("trainer_tft_", "") or cfg_stem
 
-    run_id = f"run_{ts_str}_{suffix}"
+    dataset_name = _dataset_config["name"]
+    run_id = f"run_{ts_str}_{dataset_name}_{suffix}"
 
     # NEU: ein gemeinsamer Run-Ordner
     run_dir = Path("results") / "tft" / "runs" / run_id

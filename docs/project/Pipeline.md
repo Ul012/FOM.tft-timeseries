@@ -161,7 +161,16 @@ python -m src.pipeline \
     --dataset configs/datasets/booksales.yaml \
     --model configs/models/tft/baseline.yaml
 ```
+
+**Was passiert:** Führt **alle Steps** aus (Default-Verhalten):
+1. `preprocessing` (load_raw, alignment, cleaning, feature_engineering, cyclical_encoder, lag_features)
+2. `model_dataset`
+3. `dataset_tft`
+4. `training`
+
 **Entspricht:** `--steps preprocessing,model_dataset,dataset_tft,training`
+
+**Hinweis:** Wenn `--steps` nicht angegeben wird, werden automatisch alle Steps ausgeführt.
 
 ---
 

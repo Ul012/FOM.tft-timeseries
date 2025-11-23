@@ -58,6 +58,41 @@ Im Script sind zusätzlich Heuristiken für Kalender- und Feiertagsmerkmale hint
 
 ---
 
+## Dataset-spezifische Anpassungen
+
+`dataset_tft.py` unterstützt zwei Config-Parameter für dataset-spezifische Anpassungen:
+
+### 1. Imputing (`impute_cols`)
+Füllt NaN-Werte in spezifizierten Spalten mit festen Werten.
+
+**Beispiel (walmart.yaml):**
+```yaml
+tft:
+  impute_cols:
+    MarkDown1: 0.0
+    MarkDown2: 0.0
+    MarkDown3: 0.0
+    MarkDown4: 0.0
+    MarkDown5: 0.0
+```
+
+**Anwendungsfall:** MarkDown-Features mit 78% NaN (keine Promotion = 0)
+
+### 2. Spalten-Exclusion (`exclude_cols`)
+Entfernt Spalten aus allen Splits vor der Feature-Ableitung.
+
+**Beispiel (walmart.yaml):**
+```yaml
+tft:
+  exclude_cols: ["lag_365"]
+```
+
+**Anwendungsfall:** lag_365 nur bei täglichen Daten sinnvoll (Booksales), bei wöchentlichen Daten (Walmart) nicht verfügbar.
+
+Beide Parameter sind optional und werden nur angewendet wenn in der Dataset-Config definiert.
+
+---
+
 ## Vorgehen
 
 ### 1. Grundprüfung
@@ -151,4 +186,4 @@ python -m src.modeling.dataset_tft
 ## Ergebnis und Nutzen
 - konsistente, maschinenlesbare Beschreibung der TFT-Datenstruktur  
 - automatisierte, konfigurationsgestützte Ableitung der Feature-Listen  
-- zentrale Spezifikation als Grundlage für das Modelltraining in `trainer_tft.py`  
+- zentrale Spezifikation als Grundlage für das Modelltraining in `trainer_tft.py`

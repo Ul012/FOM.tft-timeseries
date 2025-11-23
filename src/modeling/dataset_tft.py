@@ -61,6 +61,34 @@ class TFTDatasetSpecBuilder:
 
         # 2) Trainingssatz einlesen und prüfen
         train = pd.read_parquet(paths["train"])
+
+        # Imputing aus Config
+        impute_cfg = self.tft_cfg.get("impute_cols", {})
+        if impute_cfg:
+            print(f"[dataset_tft] Impute {len(impute_cfg)} Spalten aus Config")
+            for col, fill_val in impute_cfg.items():
+                if col in train.columns:
+                    train[col] = train[col].fillna(fill_val)
+                    # Auch val/test imputen
+                    for split in ["val", "test"]:
+                        df_split = pd.read_parquet(paths[split])
+                        if col in df_split.columns:
+                            df_split[col] = df_split[col].fillna(fill_val)
+                            df_split.to_parquet(paths[split], index=False)
+            train.to_parquet(paths["train"], index=False)
+
+        # Exclude-Spalten aus Config
+        exclude_cols = self.tft_cfg.get("exclude_cols", [])
+        if exclude_cols:
+            print(f"[dataset_tft] Entferne {len(exclude_cols)} Spalten aus Config: {exclude_cols}")
+            train = train.drop(columns=[c for c in exclude_cols if c in train.columns], errors='ignore')
+            for split in ["val", "test"]:
+                df_split = pd.read_parquet(paths[split])
+                df_split = df_split.drop(columns=[c for c in exclude_cols if c in df_split.columns],
+                                             errors='ignore')
+                df_split.to_parquet(paths[split], index=False)
+            train.to_parquet(paths["train"], index=False)
+
         self._basic_checks(train)
 
         all_cols = list(train.columns)
@@ -200,6 +228,10 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   python -m src.modeling.dataset_tft
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.dataset_tft
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.dataset_tft
+#
 # Via Pipeline:
-#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps dataset_tft
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps model_dataset
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps model_dataset
+

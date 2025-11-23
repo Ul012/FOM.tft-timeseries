@@ -1,17 +1,16 @@
-# configs/models/tft/baseline.yaml
+# configs/models/tft/walmart/baseline.yaml
 # ============================================================================
-# TFT Baseline-Konfiguration
+# TFT Baseline-Konfiguration für Walmart
 # ============================================================================
 # Stabile Referenzkonfiguration für Temporal Fusion Transformer
-# Datum: 2025-11-21
-# Basiert auf: trainer_tft_baseline02.yaml
+# Datum: 2025-11-23
 #
-# Diese Config ist für Pipeline-Orchestrierung optimiert.
+# Walmart-spezifisch: Wöchentliche Daten, 52 Wochen Encoder, 8 Wochen Forecast
 # ============================================================================
 
 type: "tft"
-name: "baseline_v02"
-description: "Stabile Referenz für TFT - mittlere Modellgröße, 30 Epochen"
+name: "baseline"
+description: "Stabile Referenz für TFT Walmart - mittlere Modellgröße, 30 Epochen"
 
 # ----------------------------------------------------------------------------
 # Training-Hyperparameter
@@ -22,7 +21,7 @@ training:
 
   # Epochen & Batching
   max_epochs: 30
-  batch_size: 128
+  batch_size: 256  # Größer als Booksales (mehr Daten)
 
   # Optimizer
   learning_rate: 0.001
@@ -32,7 +31,7 @@ training:
   early_stopping_patience: 5
 
   # Hardware
-  accelerator: "gpu"  # bei GPU: "gpu"
+  accelerator: "gpu"
   devices: 1
 
   # Dataloader
@@ -44,6 +43,7 @@ training:
 # Modell-Architektur (TFT-spezifisch)
 # ----------------------------------------------------------------------------
 model:
+  target_normalizer_transformation: null
   loss: "quantile"
   output_size: 7  # 7 Quantile für probabilistische Vorhersagen
 
@@ -62,5 +62,5 @@ model:
 # Evaluation-Parameter (optional, für evaluate_tft.py)
 # ----------------------------------------------------------------------------
 evaluation:
-  batch_size: 256  # größer als Training (kein Gradient)
+  batch_size: 512  # Größer als Training (kein Gradient)
   num_workers: 0

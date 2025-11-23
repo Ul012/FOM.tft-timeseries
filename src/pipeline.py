@@ -4,14 +4,16 @@ Minimale Pipeline-Orchestrierung für reproduzierbare Experimente.
 
 Aufruf-Beispiele:
     # Kompletter Run (Preprocessing + Training)
-    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/baseline.yaml
+    python -m src.pipeline --dataset configs/datasets/walmart.yaml --model configs/models/tft/walmart/baseline.yaml
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/baseline.yaml
 
     # Nur Preprocessing
+    python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps preprocessing,model_dataset,dataset_tft
     python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing,model_dataset,dataset_tft
 
     # Nur Training (Preprocessing bereits erledigt)
-    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/baseline.yaml --steps training
-    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/lr_high.yaml --steps training
+    python -m src.pipeline --dataset configs/datasets/walmart.yaml --model configs/models/tft/walmart/baseline.yaml --steps training
+    python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/baseline.yaml --steps training
 
 Philosophie:
 - Nutzt bestehende Module via subprocess (kein Refactoring nötig)
@@ -344,3 +346,18 @@ Beispiele:
 
 if __name__ == "__main__":
     main()
+
+
+# Aufruf-Beispiele:
+#
+# Kompletter Run (Preprocessing + Training):
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --model configs/models/tft/walmart/baseline.yaml
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/baseline.yaml
+#
+# Nur Preprocessing:
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps preprocessing,model_dataset,dataset_tft
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing,model_dataset,dataset_tft
+#
+# Nur Training (Preprocessing bereits erledigt):
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --model configs/models/tft/walmart/baseline.yaml --steps training
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/baseline.yaml --steps training

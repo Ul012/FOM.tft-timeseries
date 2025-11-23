@@ -37,7 +37,20 @@ Das Script selbst enthält **keine Feature-Erzeugung** mehr – es arbeitet auss
    - Optimierer-Einstellungen (Lernrate, Gewichtung der Loss-Funktion),
    - Logging-Optionen (Ausgabeintervall, Speichern von Metriken).
 
-3. **Globale Konstanten aus `src/config.py`**  
+3. **Target Normalizer Transformation** (dataset-spezifisch)  
+   Optional in Model-YAML unter `model.target_normalizer_transformation`:
+   - `"softplus"` (Default) - Funktioniert für positive Werte (Booksales)
+   - `null` - Standard-Normalisierung (z-score) für robustere Daten (Walmart)
+   - `"relu"` - Clippt negative Werte auf 0
+   - `"log"` - Für log-normalverteilte Daten
+
+   **Beispiel (walmart/baseline.yaml):**
+   ```yaml
+   model:
+     target_normalizer_transformation: null  # Standard statt softplus
+   ```
+
+4. **Globale Konstanten aus `src/config.py`**  
    - Pfade wie `PROCESSED_DIR` und `BASE_DIR`,  
    - Spaltenkonstanten (`TIME_COL`, `ID_COLS`, `TARGET_COL`),  
    - Sequenzlängen (`TFT_DATASET["max_encoder_length"]`, `max_prediction_length`).

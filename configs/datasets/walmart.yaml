@@ -76,7 +76,7 @@ preprocessing:
     enabled: true
     description: "Lag- und Rolling-Features (angepasst für wöchentlich)"
     params:
-      lags: [1, 4, 8, 12]  # Wochen statt Tage! (1W, 1M, 2M, 3M)
+      lags: [1, 4, 8]  # Wochen statt Tage! (1W, 1M, 2M)
       roll_windows: [4, 8]  # 4 Wochen = ~1 Monat, 8 Wochen = ~2 Monate
       roll_stats: ["mean"]
       prefix: "lag_"
@@ -94,8 +94,8 @@ split:
 # ----------------------------------------------------------------------------
 tft:
   # Sequenz-Längen
-  max_encoder_length: 52  # Historie die das Modell sieht (~1 Jahr bei wöchentlich)
-  max_prediction_length: 8  # Forecast-Horizont (~2 Monate)
+  max_encoder_length: 16  # Historie die das Modell sieht (~6 Monate bei wöchentlich)
+  max_prediction_length: 4  # Forecast-Horizont (~1 Monate)
 
   # Feature-Klassifikation (basierend auf Spalten-Prefixes)
   known_real_prefixes: ["cyc_"]  # Bekannte kontinuierliche Features
@@ -106,3 +106,15 @@ tft:
 
   # Explizite Flag-Spalten (binär)
   flag_cols: []  # Keine Lockdown-Flag bei Walmart
+
+  # MarkDown-Features: NaN = keine Promotion → mit 0 imputen
+  impute_cols:
+    MarkDown1: 0.0
+    MarkDown2: 0.0
+    MarkDown3: 0.0
+    MarkDown4: 0.0
+    MarkDown5: 0.0
+
+  # lag_365 nur bei täglichen Daten sinnvoll (Booksales)
+  # Walmart: wöchentliche Daten → ausschließen
+  exclude_cols: [ "lag_365" ]

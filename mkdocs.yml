@@ -25,6 +25,7 @@ nav:
       - Pipeline Script: project/Pipeline.md
   - Projekt Schritte:
       - Data Preprocessing:
+        - Load Data: projct/LoadRaw.md
         - Data Alignment: project/DataAlignment.md
         - Data Cleaning: project/DataCleaning.md
         - Data Cleaning Plot: project/DataCleaningPlot.md
@@ -38,6 +39,8 @@ nav:
       - Evaluation:
         - Evaluation TFT: project/EvaluatorTFT.md
         - Evaluation TFT Plot: project/EvaluatorTFTPlot.md
+  - Hyperparameter Optimierung:
+      - Optuna: project/Optuna.md
   - Allgemeine Dokumentation:
       - Projektstruktur: shared/Projektstruktur.md
       - Projekt Arbeitsweise: shared/ProjektArbeitsweise.md
@@ -46,5 +49,4 @@ nav:
       - MkDocs Nutzung: shared/MkDocsUsage.md
   - Geplant:
       - ARIMA und Prophet: project/ArimaProphetIntegration.md
-      - Hyperparameter Optimierung: project/OptunaPreparation.md
       - Integration in MLFlow: project/MLFlowKonzept.md

@@ -63,17 +63,19 @@ src/
 
 configs/
 ├── datasets/          # booksales.yaml, walmart.yaml (Dataset-Configs)
-└── models/tft/        # baseline.yaml + Experimente
+└── models/tft/        # Nach Dataset organisiert:
+    ├── booksales/     #   - baseline.yaml, experiments/
+    └── walmart/       #   - baseline.yaml, experiments/
 
 data/
 ├── raw/<dataset>/     # Rohdaten (nicht versioniert)
 ├── interim/<dataset>/ # Zwischenschritte (raw, aligned, cleaned)
 └── processed/<dataset>/ # Features, Splits (train/val/test)
 
-logs/tft/              # Training-Logs (metrics.csv)
+logs/tft/              # Training-Logs: run_YYYYMMDD_HHMMSS_<dataset>_<config>/
 
 results/tft/
-├── runs/              # Checkpoints + Training-Summaries
+├── runs/              # Checkpoints + Summaries: run_YYYYMMDD_HHMMSS_<dataset>_<config>/
 ├── eval/              # Evaluation-Ergebnisse
 └── plots/             # Visualisierungen
 
@@ -84,36 +86,68 @@ docs/                  # Detaillierte Dokumentation
 
 ## 4. Pipeline – Ausführung
 
-### 4.1 Via Pipeline (empfohlen)
+### 4.1 Kompletter Durchlauf (empfohlen)
 
 ```bash
-# Kompletter Run (Preprocessing + Training) - Booksales
-python -m src.pipeline \
-    --dataset configs/datasets/booksales.yaml \
-    --model configs/models/tft/baseline.yaml
-
-# Kompletter Run - Walmart
+# Alle Steps: Preprocessing + Modeling + Training
 python -m src.pipeline \
     --dataset configs/datasets/walmart.yaml \
-    --model configs/models/tft/baseline.yaml
+    --model configs/models/tft/walmart/baseline.yaml
 
-# Nur Preprocessing
+python -m src.pipeline \
+    --dataset configs/datasets/booksales.yaml \
+    --model configs/models/tft/booksales/baseline.yaml
+```
+
+**Was passiert:** Führt automatisch alle Steps aus:
+1. `preprocessing` (load_raw, alignment, cleaning, feature_engineering, cyclical_encoder, lag_features)
+2. `model_dataset` (Train/Val/Test-Split)
+3. `dataset_tft` (TFT-Spezifikation)
+4. `training` (TFT-Training)
+
+**Hinweis:** Wenn `--steps` nicht angegeben wird, werden alle Steps ausgeführt.
+
+---
+
+### 4.2 Nur Preprocessing
+
+```bash
+python -m src.pipeline \
+    --dataset configs/datasets/walmart.yaml \
+    --steps preprocessing,model_dataset,dataset_tft
+
 python -m src.pipeline \
     --dataset configs/datasets/booksales.yaml \
     --steps preprocessing,model_dataset,dataset_tft
+```
 
-# Nur Training (wenn Preprocessing bereits erledigt)
+**Nutzen:** Daten einmalig vorbereiten, danach verschiedene Modell-Configs trainieren.
+
+---
+
+### 4.3 Nur Training
+
+```bash
+# Training mit verschiedenen Hyperparametern (Preprocessing bereits erledigt)
 python -m src.pipeline \
-    --dataset configs/datasets/booksales.yaml \
-    --model configs/models/tft/baseline.yaml \
+    --dataset configs/datasets/walmart.yaml \
+    --model configs/models/tft/walmart/baseline.yaml \
+    --steps training
+
+python -m src.pipeline \
+    --dataset configs/datasets/walmart.yaml \
+    --model configs/models/tft/walmart/lr_high.yaml \
     --steps training
 ```
 
-### 4.2 Einzelne Schritte (manuell)
+**Nutzen:** Verschiedene Modell-Konfigurationen testen ohne Preprocessing zu wiederholen.
+
+---
+
+### 4.4 Einzelne Schritte (manuell, für Debugging)
 
 **Preprocessing:**
 ```bash
-# Mit Umgebungsvariable (für einzelne Schritte)
 $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.load_raw
 $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.feature_engineering
 $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.cyclical_encoder
@@ -122,21 +156,15 @@ $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.lag_feat
 
 **Modeling:**
 ```bash
-python -m src.modeling.model_dataset
-python -m src.modeling.dataset_tft
-python -m src.modeling.trainer_tft --config configs/models/tft/baseline.yaml
+$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.model_dataset
+$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.dataset_tft
+python -m src.modeling.trainer_tft --config configs/models/tft/walmart/baseline.yaml
 ```
 
 **Evaluation:**
 ```bash
-python -m src.evaluation.evaluate_tft --run-id <run_id>
+python -m src.evaluation.evaluate_tft --run-id run_20251123_140000_walmart_baseline
 python -m src.evaluation.aggregate_tft_eval
-```
-
-**Visualization:**
-```bash
-python -m src.visualization.live_loss_plot --run_dir logs/tft/<run_id>
-python -m src.visualization.plot_tft_eval_comparison --metric smape --split test
 ```
 
 ---
@@ -209,26 +237,11 @@ Detaillierte Dokumentation in `docs/`:
    └── ...
    ```
 
-2. **Config erstellen:**
-   ```yaml
-   # configs/datasets/neuer_datensatz.yaml
-   name: "neuer_datensatz"
-   
-   raw_data:
-     type: "single_file"  # oder "multiple_files"
-     files:
-       - path: "data/raw/neuer_datensatz/train.csv"
-         role: "main"
-   
-   schema:
-     time_col: "date"
-     id_cols: ["id1", "id2"]
-     target_col: "value"
-   
-   preprocessing:
-     - step: "load_raw"
-       enabled: true
-     # ... weitere Steps
+2. **Config erstellen (als Kopie einer bestehenden Config):**
+   ```bash
+   # Kopiere z.B. booksales.yaml als Vorlage
+   Copy-Item configs/datasets/booksales.yaml configs/datasets/neuer_datensatz.yaml
+   # Dann anpassen: name, paths, schema, preprocessing
    ```
 
 3. **Pipeline ausführen:**
@@ -237,6 +250,8 @@ Detaillierte Dokumentation in `docs/`:
        --dataset configs/datasets/neuer_datensatz.yaml \
        --model configs/models/tft/baseline.yaml
    ```
+
+**Details zur Config-Struktur:** Siehe bestehende Configs in `configs/datasets/` als Vorlage.
 
 ---
 
@@ -261,24 +276,3 @@ Detaillierte Dokumentation in `docs/`:
 Die modulare Struktur ermöglicht paralleles Arbeiten und reproduzierbare Ergebnisse.
 
 Alle Schritte sind konfigurationsgetrieben und klar dokumentiert. Änderungen werden minimalinvasiv umgesetzt, sodass die Gesamtstruktur stabil bleibt.
-
----
-
-## 11. Aktueller Stand 23.11.2025
-
-✅ **Komplett generalisiert:**
-- load_raw.py (Single-File + Multi-File mit Merge)
-- data_cleaning.py (Outlier-Dates + Lockdown aus YAML)
-- feature_engineering.py (Country-spezifische Feiertage)
-- cyclical_encoder.py (Periodicities aus YAML)
-- lag_features.py (Bereits generalisiert)
-- pipeline.py (Dataset-Config-Weitergabe)
-
-✅ **Funktionierende Datensätze:**
-- Booksales (tägliche Daten, 3 ID-Spalten)
-- Walmart (wöchentliche Daten, 2 ID-Spalten, Merge von 2 CSVs)
-
-🔄 **In Arbeit:**
-- model_dataset.py (Split generalisieren)
-- dataset_tft.py (TFT-Features generalisieren)
-- trainer_tft.py (Training anpassen)

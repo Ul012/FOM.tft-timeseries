@@ -286,6 +286,9 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   python -m src.modeling.model_dataset
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.model_dataset
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.model_dataset
+#
 # Via Pipeline:
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps model_dataset
 #   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps model_dataset
