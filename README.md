@@ -14,18 +14,35 @@ Die Architektur ist so aufgebaut, dass weitere Datensätze einfach hinzugefügt 
 
 Die Pipeline unterstützt **mehrere Datensätze** gleichzeitig.
 
-**Beispiel: Booksales**
-- Dateien: `train.csv`, optional `test.csv`
-- Ablageort: `data/raw/booksales/`
+### Booksales
+- **Quelle:** [Kaggle Tabular Playground Series - Sep 2022](https://www.kaggle.com/competitions/tabular-playground-series-sep-2022/data)
+- **Dateien:** `train.csv`, optional `test.csv`
+- **Ablageort:** `data/raw/booksales/`
 
-**Beispiel: Walmart**
-- Dateien: `train.csv`, `features.csv`, optional `test.csv`
-- Ablageort: `data/raw/walmart/`
+### Walmart
+- **Quelle:** [Kaggle Store Sales Forecasting](https://www.kaggle.com/competitions/walmart-recruiting-store-sales-forecasting/data)
+- **Dateien:** `train.csv`, `features.csv`, optional `test.csv`
+- **Ablageort:** `data/raw/walmart/`
 
-Rohdaten werden nicht versioniert.
+### Download-Anleitung
+
+1. Kaggle-Account erstellen (falls nicht vorhanden)
+2. Datensatz-Seite besuchen und "Download All" klicken
+3. ZIP entpacken und Dateien in den entsprechenden Ordner kopieren:
+   ```
+   data/raw/booksales/
+   ├── train.csv
+   └── test.csv (optional)
+   
+   data/raw/walmart/
+   ├── train.csv
+   ├── features.csv
+   └── test.csv (optional)
+   ```
+
+**Hinweis:** Rohdaten werden nicht versioniert (siehe `.gitignore`).
 
 **Erweiterbarkeit:** Jeder Datensatz erhält einen eigenen Unterordner (`data/raw/<dataset_name>/`) und eine eigene Config (`configs/datasets/<dataset_name>.yaml`).
-
 ---
 
 ## 2. Installation und Setup

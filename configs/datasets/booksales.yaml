@@ -58,8 +58,10 @@ preprocessing:
     description: "Zyklische Sin/Cos-Kodierung"
     params:
       periodicities:
-        dow: ["dow", 7]
-        month: ["month", 12]
+        dow: [ "dow", 7 ]           # Wochentag
+        month: [ "month", 12 ]      # Monat
+        doy: [ "doy", 365 ]         # Tag im Jahr (Jahressaisonalität)
+        week: [ "week", 52 ]        # Kalenderwoche
 
   - step: "lag_features"
     enabled: true

@@ -30,6 +30,7 @@ ID_COLS = _schema["id_cols"]
 TARGET_COL = _schema["target_col"]
 TFT_DATASET = get_tft_config(_dataset_config)
 
+
 def _mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     diff = np.abs(y_true - y_pred)
     return float(np.mean(diff))
@@ -54,20 +55,10 @@ def _smape(y_true: np.ndarray, y_pred: np.ndarray, eps: float = 1e-8) -> float:
 def _r2(y_true: np.ndarray, y_pred: np.ndarray, eps: float = 1e-8) -> float:
     """
     Berechnet R² (Coefficient of Determination).
-
-    R² = 1 - (SS_res / SS_tot)
-    wobei:
-    - SS_res = Summe der quadratischen Residuen
-    - SS_tot = Totale Quadratsumme
-
-    R² = 1.0 bedeutet perfekte Vorhersage
-    R² = 0.0 bedeutet Modell ist nicht besser als Mittelwert
-    R² < 0.0 bedeutet Modell ist schlechter als Mittelwert
     """
     ss_res = np.sum((y_true - y_pred) ** 2)
     ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
 
-    # Verhindere Division durch Null
     if ss_tot < eps:
         return 0.0
 
@@ -118,11 +109,6 @@ class EvalLogger:
         return path
 
     def log_csv(self, row: Dict[str, Any], filename: str = "eval_summary.csv") -> Path:
-        """
-        Schreibt eine Zeile in eine CSV im output_dir.
-        - Falls die Datei noch nicht existiert: neue Datei mit Header.
-        - Falls sie existiert: Zeile anhängen ohne Header.
-        """
         path = self.output_dir / filename
         df_new = pd.DataFrame([row])
 
@@ -168,49 +154,54 @@ def _load_splits(data_cfg: Dict[str, Any]) -> Tuple[pd.DataFrame, pd.DataFrame]:
     return df_val, df_test
 
 
-def _load_dataset_spec() -> Dict[str, Any]:
-    spec_path = BASE_DIR / "data" / "processed" / _dataset_name / "dataset_spec.json"
-    if not spec_path.exists():
-        raise FileNotFoundError(f"dataset_spec.json nicht gefunden: {spec_path}")
-    return json.loads(spec_path.read_text(encoding="utf-8"))
-
-
 def _evaluate_split(
         model: TemporalFusionTransformer,
         df: pd.DataFrame,
-        dataset_spec: Dict[str, Any],
         eval_cfg: Dict[str, Any],
 ) -> SplitMetrics:
+    """
+    Evaluiert einen Split mit den Feature-Listen aus dem Modell-Checkpoint.
+
+    WICHTIG: Verwendet model.hparams.dataset_parameters um exakt die Features zu bekommen,
+    mit denen das Modell trainiert wurde - nicht die aktuelle dataset_spec.json!
+    """
     if TARGET_COL not in df.columns:
         raise KeyError(f"Zielspalte {TARGET_COL!r} fehlt im DataFrame.")
 
-    fl = dataset_spec["feature_lists"]
-    lengths = dataset_spec["lengths"]
+    # Dataset-Parameter aus Modell-Checkpoint extrahieren
+    dp = model.hparams.dataset_parameters
 
-    lag_cols = [col for col in df.columns if col.startswith("lag_")]
-    if lag_cols:
-        df = df.dropna(subset=lag_cols)
-
-    # Ensure correct temporal ordering (critical for TFT)
+    # Sortierung nach Gruppen und Zeit
     df = df.sort_values(by=ID_COLS + [TIME_COL]).reset_index(drop=True)
 
+    # Target als float32
     df[TARGET_COL] = pd.to_numeric(df[TARGET_COL], errors="coerce").astype("float32")
 
-    time_idx_col = "time_idx" if "time_idx" in df.columns else TIME_COL
+    # Static categoricals zu String (TFT-Anforderung)
+    for cat_col in dp['static_categoricals']:
+        if cat_col in df.columns:
+            df[cat_col] = df[cat_col].astype(str)
 
+    time_idx_col = dp.get('time_idx', 'time_idx')
+
+    # TimeSeriesDataSet mit Feature-Listen aus Modell-Checkpoint
+    # WICHTIG: add_encoder_length muss identisch zum Training sein!
     dataset = TimeSeriesDataSet(
         df,
         time_idx=time_idx_col,
         target=TARGET_COL,
-        group_ids=ID_COLS,
-        max_encoder_length=lengths["max_encoder_length"],
-        max_prediction_length=lengths["max_prediction_length"],
-        static_categoricals=fl["static_categoricals"],
-        time_varying_known_reals=fl["time_varying_known_reals"],
-        time_varying_unknown_reals=fl["time_varying_unknown_reals"],
-        time_varying_known_categoricals=fl.get("time_varying_known_categoricals", []),
+        group_ids=dp['group_ids'],
+        max_encoder_length=dp['max_encoder_length'],
+        max_prediction_length=dp['max_prediction_length'],
+        static_categoricals=dp['static_categoricals'],
+        time_varying_known_reals=dp['time_varying_known_reals'],
+        time_varying_unknown_reals=dp['time_varying_unknown_reals'],
+        time_varying_known_categoricals=dp.get('time_varying_known_categoricals') or [],
         target_normalizer=GroupNormalizer(groups=ID_COLS, transformation="softplus"),
         allow_missing_timesteps=True,
+        add_encoder_length=dp.get('add_encoder_length', True),
+        add_relative_time_idx=dp.get('add_relative_time_idx', False),
+        add_target_scales=dp.get('add_target_scales', False),
     )
 
     dataloader = dataset.to_dataloader(
@@ -219,30 +210,26 @@ def _evaluate_split(
         num_workers=eval_cfg["num_workers"],
     )
 
-    # Predict: model.predict() returns predictions directly when used with dataloader
+    # Prediction
     model.eval()
     with torch.no_grad():
         y_pred_raw = model.predict(dataloader, mode="prediction")
 
     y_pred = y_pred_raw.cpu().numpy()
 
-    # Extract actuals from dataloader by iterating once
+    # Actuals extrahieren
     actuals = []
     for batch_x, batch_y in dataloader:
-        # batch_y is tuple (target, weight), we want target
-        # target shape: (batch_size, max_prediction_length)
         target = batch_y[0]
         actuals.append(target)
 
     y_true = torch.cat(actuals, dim=0).cpu().numpy()
 
-    # Handle quantile predictions (if output_size > 1)
-    # y_pred shape: (n_samples, max_prediction_length) or (n_samples, max_prediction_length, n_quantiles)
+    # Quantile-Predictions: Median nehmen
     if y_pred.ndim == 3:
-        # Use median quantile (middle one) for evaluation
         y_pred = y_pred[:, :, y_pred.shape[2] // 2]
 
-    # Flatten to 1D for metric computation
+    # Flatten für Metrik-Berechnung
     y_pred = y_pred.reshape(-1)
     y_true = y_true.reshape(-1)
 
@@ -267,14 +254,14 @@ def evaluate_tft_run(
 ) -> Dict[str, Any]:
     run_id = model_cfg["run_id"]
 
-    dataset_spec = _load_dataset_spec()
     ckpt_path = _find_best_checkpoint(model_cfg)
     model = TemporalFusionTransformer.load_from_checkpoint(str(ckpt_path))
 
     df_val, df_test = _load_splits(data_cfg)
 
-    metrics_val = _evaluate_split(model, df_val, dataset_spec, eval_cfg)
-    metrics_test = _evaluate_split(model, df_test, dataset_spec, eval_cfg)
+    # Feature-Listen kommen jetzt aus dem Modell-Checkpoint
+    metrics_val = _evaluate_split(model, df_val, eval_cfg)
+    metrics_test = _evaluate_split(model, df_test, eval_cfg)
 
     eval_root = Path(eval_cfg["eval_root"])
     eval_dir = eval_root / run_id
@@ -296,13 +283,12 @@ def evaluate_tft_run(
 
     summary_path = eval_logger.log_json(payload, filename="eval_summary.json")
 
-    # NEU: einfache CSV pro Run im gleichen Ordner
+    # CSV pro Run
     csv_row: Dict[str, Any] = {
         "run_id": run_id,
         "checkpoint_path": str(ckpt_path),
     }
 
-    # Dynamisch alle Metriken hinzufügen
     val_dict = asdict(metrics_val)
     test_dict = asdict(metrics_test)
 
@@ -318,7 +304,7 @@ def evaluate_tft_run(
         "checkpoint_path": str(ckpt_path),
         "artifacts": {
             "eval_summary_path": str(summary_path),
-            "eval_summary_csv_path": str(csv_path),  # NEU
+            "eval_summary_csv_path": str(csv_path),
             "eval_dir": str(eval_dir),
         },
     }
@@ -352,7 +338,6 @@ def main() -> None:
         "checkpoint_pattern": "*.ckpt",
     }
 
-    # Hardcoded eval params (rarely changed, will be tracked by MLflow later)
     eval_cfg: Dict[str, Any] = {
         "eval_root": str(BASE_DIR / "results" / "tft" / "eval"),
         "batch_size": 128,
@@ -364,6 +349,7 @@ def main() -> None:
     print("[evaluate_tft] Evaluierung abgeschlossen.")
     print(f"- Run-ID           : {result['run_id']}")
     print(f"- Checkpoint       : {result['checkpoint_path']}")
+
     val_metrics = result['metrics']['val']
     test_metrics = result['metrics']['test']
 
@@ -372,14 +358,12 @@ def main() -> None:
 
     print(f"- Val-Metriken     : {val_str}")
     print(f"- Test-Metriken    : {test_str}")
-
     print(f"- Eval-Summary     : {result['artifacts']['eval_summary_path']}")
 
 
 if __name__ == "__main__":
     main()
 
-# Aufruf (nach abgeschlossenem Training):
-#   python -m src.evaluation.evaluate_tft --run-id run_20251122_230253_optuna_tft_day_trial_15
-#
-# Hinweis: Pipeline macht dies nicht automatisch - bewusst manueller Schritt
+# Aufruf:
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+#   python -m src.evaluation.evaluate_tft --run-id run_20251124_233509_booksales_baseline

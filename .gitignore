@@ -1,7 +1,7 @@
 # ============================================================================
 # GitIgnore – FOM.tft-timeseries
 # ============================================================================
-# Datum: 2025-11-22
+# Datum: 2025-11-25
 # ============================================================================
 
 # ============================================================================
@@ -29,38 +29,40 @@ Thumbs.db
 # ============================================================================
 # DATA DIRECTORIES
 # ============================================================================
-# Raw Data (außer .gitkeep)
-data/raw/**/*.csv
-data/raw/**/*.parquet
-!data/raw/booksales/.gitkeep
-!data/raw/walmart/.gitkeep
+# Raw Data - nicht versioniert (Kaggle-Lizenz, Download-Links in README)
+data/raw/
 
-# Processed Data
 data/interim/
 data/processed/
 
 # ============================================================================
 # MODEL ARTIFACTS & OUTPUTS
 # ============================================================================
-# Training Results
-results/
-
-# Logs
+# Logs - ignorieren (TensorBoard, regenerierbar)
 logs/
 lightning_logs/
 
+# Results - alles ignorieren, dann Ausnahmen
+results/
+!results/tft/
+!results/tft/runs/
+!results/tft/runs/*/
+!results/tft/runs/*/**
+!results/tft/eval/
+!results/tft/eval/**
+
+# Checkpoints ausschließen (zu groß ~50-100MB pro Stück)
+**/checkpoints/
+
 # ============================================================================
-# EXPERIMENTAL & ARCHIVE
+# OPTUNA
 # ============================================================================
-experimental/
+optuna/
+
+# ============================================================================
+# ARCHIVE & NOTES
+# ============================================================================
 archive/
-
-# Experiment Configs
-configs/models/tft/experiments/
-
-# ============================================================================
-# DOCUMENTATION & NOTES
-# ============================================================================
 notes/
 
 # ============================================================================
