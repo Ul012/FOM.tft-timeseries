@@ -1,79 +1,106 @@
-# DataCleaning – Bereinigung von Ausreißern und Lockdown-Zeiträumen
+# DataCleaning – Bereinigung von Ausreißern und Datenqualitätsproblemen
 
-**Datum:** 2025-11-17  
+**Datum:** 2025-11-24 (aktualisiert)  
 **Script:** `src/data/data_cleaning.py`  
-**Ziel & Inhalt:** Bereinigung eines Einzelausreißers sowie Glättung der Lockdown-Monate 2020. Beschreibt Vorgehen, Algorithmik und Nutzen für tägliche Buchverkaufszeitreihen.
+**Ziel & Inhalt:** Bereinigung von Ausreißern, Lockdown-Zeiträumen, negativen Werten und NaN im Target. Universell für verschiedene Datensätze (Booksales, Walmart, etc.).
 
 ---
 
 ## Überblick
-Das Modul **DataCleaning** korrigiert Auffälligkeiten in den täglichen Verkaufsdaten. Zwei Bereiche werden behandelt:
+Das Modul **DataCleaning** korrigiert Datenqualitätsprobleme in den Verkaufsdaten:
 
-- ein **Einzelausreißer am 01.01.2020**  
-- die **Lockdown-Monate März–Mai 2020**, deren Werte geglättet werden  
-
-Die Methode orientiert sich am Medium-Artikel „Forecasting Book Sales“, wurde jedoch auf **Daily-Daten** angepasst.
+- **Einzelausreißer** an bestimmten Daten (z.B. 01.01.2020)
+- **Lockdown-Perioden** mit Glättung (März–Mai 2020)
+- **Negative Werte** im Target clippen (z.B. auf 0)
+- **NaN im Target** entfernen (TFT-Anforderung)
+- **Datentyp-Konvertierung** auf float32
 
 ---
 
-## Ziel
-Ziel des Bereinigungsschritts ist es:
+## Konfiguration (YAML)
 
-- fehlerhafte Tageswerte zu korrigieren  
-- außergewöhnlich verzerrte Zeiträume (Lockdown) zu glätten  
-- die Imputation **pro Zeitreihe** durchzuführen (`country`, `store`, `product`)  
+Die Parameter werden aus der Dataset-YAML geladen:
 
-Damit entsteht eine konsistente Grundlage für Feature-Engineering und Modellierung.
+```yaml
+preprocessing:
+  - step: "cleaning"
+    enabled: true
+    params:
+      # Booksales-spezifisch:
+      outlier_dates: ["2020-01-01"]
+      lockdown_start: "2020-03-15"
+      lockdown_end: "2020-05-31"
+      
+      # Walmart-spezifisch:
+      clip_target_min: 0  # Negative Werte auf 0 setzen
+      remove_nan: true    # NaN im Target entfernen
+```
+
+### Parameter
+
+| Parameter | Typ | Beschreibung |
+|-----------|-----|--------------|
+| `outlier_dates` | Liste | Einzelne Ausreißer-Daten (werden auf NaN gesetzt und interpoliert) |
+| `lockdown_start` | String | Start der Lockdown-Periode |
+| `lockdown_end` | String | Ende der Lockdown-Periode |
+| `clip_target_min` | Float | Minimaler Target-Wert (kleinere werden geclippt) |
+| `clip_target_max` | Float | Maximaler Target-Wert (größere werden geclippt) |
+| `remove_nan` | Bool | Ob NaN im Target entfernt werden (default: true) |
 
 ---
 
 ## Vorgehen
-Im Gegensatz zum Originalartikel (48×365 Minutenintervalle) werden in diesem Projekt **365 Tagesperioden** genutzt.
 
-```python
-self._fill_with_shifted_mean(periods=365, repeats=3)
-```
-
----
-
-## Algorithmik
-
-### 1. Ausreißer (01.01.2020)
+### 1. Ausreißer (Einzeldaten)
 ```python
 self.handle_single_day_outlier("2020-01-01")
 self._fill_with_shifted_mean(periods=365, repeats=3)
 ```
 
-### 2. Lockdown-Glättung (März–Mai 2020)
+### 2. Lockdown-Glättung
 ```python
-self.handle_lockdown_period(2020, (3, 4, 5))
+self.handle_lockdown_period("2020-03-15", "2020-05-31")
 self._fill_with_shifted_mean(periods=365, repeats=3)
 ```
 
-Beide Schritte arbeiten **gruppenweise**, sodass jede Kombination aus Land, Store und Produkt separat behandelt wird.
-
----
-
-## Gruppenweise Imputation
+### 3. Target clippen (NEU)
 ```python
-self.df.groupby(["country", "store", "product"])["num_sold"].shift(periods)
+self.clip_target(clip_min=0)  # Negative → 0
 ```
 
-Die Verschiebung erfolgt zeitlich sortiert und innerhalb jeder Gruppe.
+### 4. Datentyp konvertieren (NEU)
+```python
+self.convert_target_dtype()  # → float32
+```
+
+### 5. Target-NaN entfernen (NEU)
+```python
+self.remove_target_nan()  # Zeilen mit NaN im Target entfernen
+```
+
+Alle Schritte arbeiten **gruppenweise** (nach ID-Spalten sortiert).
 
 ---
 
-## Nutzung
+## Beispielaufruf
+
 ```bash
-python -m src.data.data_cleaning
+# Walmart
+$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.data_cleaning
+
+# Booksales
+$env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.data_cleaning
 ```
 
 **Output:**  
-`data/interim/train_cleaned.parquet`
+`data/interim/<dataset_name>/train_cleaned.parquet`
+
+```
 
 ---
 
 ## Ergebnis und Nutzen
-- Korrektur des Einzelausreißers  
-- Glättung des Lockdown-Zeitraums  
-- konsistente Daily-Zeitreihen für das weitere Feature-Engineering  
+- Korrektur von Einzelausreißern und Lockdown-Zeiträumen
+- Negative Werte werden auf 0 geclippt (wichtig für Walmart)
+- Target ist float32 und NaN-frei (TFT-Anforderung)
+- Konsistente Zeitreihen für das weitere Feature-Engineering

@@ -24,7 +24,6 @@ training:
   limit_val_batches: 1.0
 
 model:
-  target_normalizer_transformation: null
   loss: "quantile"
   output_size: 7
   hidden_size: 64  # 2x größer

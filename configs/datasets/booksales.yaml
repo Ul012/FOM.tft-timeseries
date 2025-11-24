@@ -65,7 +65,8 @@ preprocessing:
     enabled: true
     description: "Lag- und Rolling-Features"
     params:
-      lags: [1, 7, 14]
+      min_group_length: 400 # ohne lag_365 wäre min_group_lenght 67
+      lags: [1, 7, 14, 365]
       roll_windows: [7]
       roll_stats: ["mean"]
       prefix: "lag_"

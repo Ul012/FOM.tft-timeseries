@@ -1,14 +1,14 @@
 # TrainerTFT – Training des Temporal Fusion Transformer
 
-**Datum:** 2025-11-17  
+**Datum:** 2025-11-24 (aktualisiert)  
 **Script:** `src/modeling/trainer_tft.py`  
-**Ziel & Inhalt:** Beschreibt den Ablauf des TFT-Trainings auf Basis der vorbereiteten Datensätze und der YAML-Konfiguration. Erläutert Eingaben, Konfigurationsblöcke, Artefakte pro Run und die interne Auswertung der Trainingsmetriken.
+**Ziel & Inhalt:** Beschreibt den Ablauf des TFT-Trainings auf Basis der vorbereiteten Datensätze und der YAML-Konfiguration.
 
 ---
 
 ## Überblick
 
-`trainer_tft.py` führt das eigentliche Training des **Temporal Fusion Transformer (TFT)** aus.  
+`trainer_tft.py` führt das Training des **Temporal Fusion Transformer (TFT)** aus.  
 Ausgehend von der Datensatzspezifikation (`dataset_spec.json`) und den Train-/Val-Daten werden:
 
 - ein `TimeSeriesDataSet` für Training und Validation aufgebaut,
@@ -16,7 +16,18 @@ Ausgehend von der Datensatzspezifikation (`dataset_spec.json`) und den Train-/Va
 - das Modell mit PyTorch Lightning trainiert (inkl. Early Stopping und Checkpointing),
 - Trainings- und Validierungsmetriken protokolliert und als Run-Artefakte abgelegt.
 
-Das Script selbst enthält **keine Feature-Erzeugung** mehr – es arbeitet ausschließlich auf den modellfertigen Eingaben aus `dataset_tft.py`.
+Das Script enthält **keine Feature-Erzeugung oder Datenbereinigung** – es arbeitet ausschließlich auf den modellfertigen Eingaben.
+
+---
+
+## Voraussetzungen (Preprocessing)
+
+Folgende Schritte müssen **vor** dem Training abgeschlossen sein:
+
+1. **`data_cleaning.py`** – Target bereinigt (float32, keine NaN, optional geclippt)
+2. **`lag_features.py`** – Lag-Features erstellt, NaN imputiert, kurze Gruppen gefiltert
+3. **`model_dataset.py`** – Train/Val/Test Split
+4. **`dataset_tft.py`** – Feature-Listen in `dataset_spec.json`
 
 ---
 
@@ -24,159 +35,127 @@ Das Script selbst enthält **keine Feature-Erzeugung** mehr – es arbeitet auss
 
 ### Eingaben
 
-1. **Modellfertige Datensätze** (aus `model_dataset.py` und `dataset_tft.py`):  
-   - `data/processed/train.parquet`  
-   - `data/processed/val.parquet`  
-   - `data/processed/test.parquet` (optional, für spätere Evaluation)  
-   - `data/processed/dataset_spec.json` (Feature-Listen, Sequenzlängen, Spaltenkonfiguration)
+1. **Modellfertige Datensätze**:
+   - `data/processed/<dataset>/train.parquet`
+   - `data/processed/<dataset>/val.parquet`
+   - `data/processed/<dataset>/dataset_spec.json`
 
-2. **YAML-Konfiguration** im Ordner `configs/`  
-   Eine ausgewählte Datei (z. B. `configs/tft_baseline.yaml`) steuert u. a.:
-   - Trainingsparameter (Epochenzahl, Batchgröße, Early-Stopping-Patience),
-   - Modellarchitektur (Hidden Size, Anzahl Attention-Heads, Dropout),
-   - Optimierer-Einstellungen (Lernrate, Gewichtung der Loss-Funktion),
-   - Logging-Optionen (Ausgabeintervall, Speichern von Metriken).
+2. **YAML-Konfiguration** (z.B. `configs/models/tft/<dataset>/baseline.yaml`)
 
-3. **Target Normalizer Transformation** (dataset-spezifisch)  
-   Optional in Model-YAML unter `model.target_normalizer_transformation`:
-   - `"softplus"` (Default) - Funktioniert für positive Werte (Booksales)
-   - `null` - Standard-Normalisierung (z-score) für robustere Daten (Walmart)
-   - `"relu"` - Clippt negative Werte auf 0
-   - `"log"` - Für log-normalverteilte Daten
-
-   **Beispiel (walmart/baseline.yaml):**
-   ```yaml
-   model:
-     target_normalizer_transformation: null  # Standard statt softplus
-   ```
-
-4. **Globale Konstanten aus `src/config.py`**  
-   - Pfade wie `PROCESSED_DIR` und `BASE_DIR`,  
-   - Spaltenkonstanten (`TIME_COL`, `ID_COLS`, `TARGET_COL`),  
-   - Sequenzlängen (`TFT_DATASET["max_encoder_length"]`, `max_prediction_length`).
+3. **Target Normalizer Transformation** (optional, dataset-spezifisch):
+   - `"softplus"` (Default) – Für strikt positive Werte
+   - `null` – Standard z-score Normalisierung
+   - `"relu"` – Clippt negative auf 0
+   - `"log"` – Für log-normalverteilte Daten
 
 ### Ausgaben
 
-Pro Training entsteht ein **Run-Ordner**, typischerweise:
+```
+results/tft/runs/run_<timestamp>_<dataset>_<config>/
+├── checkpoints/
+│   └── tft-epoch=XX-val_loss=Y.YYYY.ckpt
+├── results.json
+└── summary.json
 
-```text
-results/
-└─ tft/
-   └─ runs/
-      └─ run_YYYYMMDD_HHMMSS_suffix/
-         ├─ checkpoints/
-         │  ├─ best.ckpt
-         │  └─ last.ckpt
-         ├─ metrics.csv
-         └─ train_summary.json
+logs/tft/run_<timestamp>_<dataset>_<config>/
+├── metrics.csv
+└── hparams.yaml
 ```
 
-Zusätzlich werden Logger-Artefakte (z. B. für TensorBoard oder CSV-Logger) im Ordner `logs/tft/` abgelegt, meist gespiegelt zur Run-ID.
+---
 
-- **`checkpoints/`** – enthält mindestens das beste und das letzte Modellcheckpoint.  
-- **`metrics.csv`** – tabellarische Übersicht der Trainings- und Validierungsmetriken pro Epoche.  
-- **`train_summary.json`** – kompakte Zusammenfassung des Runs (beste Epoche, zugehörige Metriken, verwendete Konfiguration).
+## Verarbeitungsschritte im Trainer
 
-Diese Artefakte dienen als Grundlage für spätere Auswertungen (`evaluate_tft.py`, Plot-Skripte und ggf. MLflow-Integration).
+### 1. ID-Spalten zu String konvertieren
+TFT benötigt kategorische Variablen als String:
+```python
+for col in static_categoricals:
+    df[col] = df[col].astype(str)
+```
+
+### 2. TimeSeriesDataSet erstellen
+Feature-Listen werden aus `dataset_spec.json` geladen und explizit übergeben.
+
+### 3. Training mit PyTorch Lightning
+- Early Stopping auf `val_loss`
+- ModelCheckpoint (bestes Modell)
+- LearningRateMonitor
 
 ---
 
-## Konfiguration (YAML-Struktur auf hoher Ebene)
+## Konfiguration (YAML-Struktur)
 
-Die konkrete YAML-Struktur kann variieren, folgt aber typischerweise diesen Blöcken:
+```yaml
+type: "tft"
+name: "<config_name>"
 
-1. **Allgemein / Run-Metadaten**  
-   - Name oder Kürzel des Experiments  
-   - Seed-Einstellungen für Reproduzierbarkeit
+training:
+  seed: <int>
+  max_epochs: <int>
+  batch_size: <int>
+  learning_rate: <float>
+  gradient_clip_val: <float>
+  early_stopping_patience: <int>
+  accelerator: "gpu" | "cpu"
+  devices: <int>
+  num_workers: <int>
 
-2. **Datenblock**  
-   - Pfad zu `dataset_spec.json`  
-   - Hinweis, welche Splits verwendet werden (Train/Val, optional Test)
-
-3. **Modellblock**  
-   - TFT-spezifische Hyperparameter (z. B. `hidden_size`, `attention_head_size`, `dropout`, `loss`)  
-   - Aktivierung der Quantile-Loss-Funktion (falls genutzt)
-
-4. **Trainerblock**  
-   - `max_epochs`  
-   - `gradient_clip_val`  
-   - Early-Stopping-Kriterien (z. B. überwachte Metrik, Patience)  
-   - Anzahl Devices / GPU-Nutzung
-
-5. **Logging- und Checkpointing-Block**  
-   - Speicherorte für Logs und Checkpoints (unterhalb von `BASE_DIR`)  
-   - Namensschema für Run-Ordner und Checkpoints
-
-Die YAML-Datei wird im Script geladen und in geeignete Konfigurationsobjekte oder Dictionaries überführt.
+model:
+  target_normalizer_transformation: "softplus" | null | "relu" | "log"
+  loss: "quantile" | "mse"
+  output_size: <int>           # Anzahl Quantile (bei quantile loss)
+  hidden_size: <int>
+  attention_head_size: <int>
+  hidden_continuous_size: <int>
+  dropout: <float>
+  reduce_on_plateau_patience: <int>
+```
 
 ---
 
-## Ablauf (End-to-End)
+## Beispielaufruf
 
-1. **Aufruf des Scripts**  
+```bash
+# Via Pipeline (empfohlen)
+python -m src.pipeline \
+    --dataset configs/datasets/<dataset>.yaml \
+    --model configs/models/tft/<dataset>/<config>.yaml \
+    --steps training
 
-   Im Projektkontext wird das Training über das Modul gestartet, z. B.:
+# Einzeln
+$env:DATASET_CONFIG="configs/datasets/<dataset>.yaml"
+python -m src.modeling.trainer_tft --config configs/models/tft/<dataset>/<config>.yaml
+```
 
-   ```bash
-   python -m src.modeling.trainer_tft
-   ```
+---
 
-   Die Auswahl der YAML-Konfiguration erfolgt entweder über ein Kommandozeilenargument oder eine im Script hinterlegte Standardkonfiguration.
+## Aufgabenverteilung
 
-2. **Laden von Konfiguration und Datensatzspezifikation**  
-   - YAML-Datei einlesen  
-   - `dataset_spec.json` aus `PROCESSED_DIR` laden  
-   - Pfade zu Train-/Val-Dateien bestimmen
+### Im Preprocessing (vor Trainer)
 
-3. **Aufbau von `TimeSeriesDataSet` und Dataloaders**  
-   - `TimeSeriesDataSet` für Training gemäß `dataset_spec` erzeugen  
-   - separates `TimeSeriesDataSet` für Validation erzeugen  
-   - Konfiguration von Batchgröße und Num-Workers gemäß YAML
+| Aufgabe | Modul |
+|---------|-------|
+| Target clippen | `data_cleaning.py` |
+| Target auf float32 | `data_cleaning.py` |
+| Target-NaN entfernen | `data_cleaning.py` |
+| Lag-NaN Imputation | `lag_features.py` |
+| Kurze Gruppen filtern | `lag_features.py` |
 
-4. **Initialisierung des TFT-Modells**  
-   - Erzeugen eines `TemporalFusionTransformer`-Modells mit den Hyperparametern aus dem Modellblock  
-   - Anbindung der Loss-Funktion und weiteren Optionen (z. B. Quantile-Loss, Output-Quantile)
+### Im Trainer
 
-5. **Einrichten von Trainer und Callbacks**  
-   - PyTorch-Lightning-Trainer mit:
-     - Early-Stopping-Callback (Überwachung einer Validierungsmetrik)  
-     - ModelCheckpoint-Callback (Speichern des besten Checkpoints)  
-     - optionalem Learning-Rate-Monitor
-   - Konfiguration von Device (CPU/GPU) und Präzision
-
-6. **Durchführen des Trainingslaufs**  
-   - Aufruf von `trainer.fit(model, train_dataloader, val_dataloader)`  
-   - Pro Epoche: Logging von Trainings- und Validierungsmetriken  
-   - Speichern der Checkpoints im Run-Ordner
-
-7. **Interne Auswertung der Trainingsmetriken**  
-   Nach Abschluss des Trainings werden die protokollierten Metriken ausgewertet, typischerweise:
-
-   1. Laden der Metrikhistorie (z. B. aus dem Logger).  
-   2. Identifikation der Epoche mit der besten Validierungskennzahl (z. B. minimaler `val_loss`).  
-   3. Schreiben eines kompakten `train_summary.json` mit:
-      - `run_id`  
-      - Pfad zum besten Checkpoint  
-      - Metriken der besten Epoche (Train/Val)  
-      - Hinweisen auf die verwendete YAML-Konfiguration.
-
-   Diese Auswertung verändert keine Modellparameter, sondern fasst lediglich die wichtigsten Ergebnisse des Runs zusammen.
+| Aufgabe | Grund |
+|---------|-------|
+| ID-Spalten zu String | TFT-spezifische Anforderung |
+| TimeSeriesDataSet erstellen | TFT-spezifisch |
+| Training durchführen | Kernaufgabe |
 
 ---
 
 ## Ergebnis und Nutzen
 
-Nach einem erfolgreichen Lauf von `trainer_tft.py` liegen für einen Run:
+Nach einem erfolgreichen Lauf liegen vor:
 
-- ein trainiertes TFT-Modell (inkl. bestmöglichem Checkpoint),
-- vollständige Trainings- und Validierungsmetriken je Epoche,
-- eine verdichtete Run-Zusammenfassung in JSON-Form,
-- Logger-Artefakte für weitergehende Analysen (z. B. in TensorBoard)
-
-vor.
-
-Danach geht es weiter mit:
-
-- detaillierte Evaluierungen mit `evaluate_tft.py`,  
-- den Vergleich mehrerer Runs (z. B. mit `aggregate_tft_eval.py`),  
-- die spätere Einbindung von Tools wie MLflow, ohne die Struktur des Trainers grundlegend ändern zu müssen.
+- Trainiertes TFT-Modell (Checkpoint)
+- Trainings- und Validierungsmetriken je Epoche
+- Run-Zusammenfassung in JSON-Form
+- Logger-Artefakte für weitergehende Analysen

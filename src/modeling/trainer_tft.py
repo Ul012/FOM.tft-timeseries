@@ -68,7 +68,7 @@ def _load_dataset_from_spec(processed_dir: Path, target_normalizer_transformatio
     max_encoder_length = spec["lengths"]["max_encoder_length"]
     max_prediction_length = spec["lengths"]["max_prediction_length"]
 
-    # ===== FIX 1: Feature-Listen aus spec extrahieren =====
+    # Feature-Listen aus spec extrahieren
     feature_lists = spec["feature_lists"]
     static_categoricals = feature_lists["static_categoricals"]
     time_varying_known_reals = feature_lists["time_varying_known_reals"]
@@ -78,40 +78,18 @@ def _load_dataset_from_spec(processed_dir: Path, target_normalizer_transformatio
     df_train = pd.read_parquet(train_pq)
     df_val = pd.read_parquet(val_pq)
 
-    # ===== FIX 2: ID-Spalten zu String konvertieren (TFT benötigt kategorische als String) =====
+    # ID-Spalten zu String konvertieren (TFT benötigt kategorische als String)
     for col in static_categoricals:
         if col in df_train.columns:
             df_train[col] = df_train[col].astype(str)
             df_val[col] = df_val[col].astype(str)
 
-    # ===== FIX 3: NaN-Handling für Lag-Features =====
-    # Zeilen mit NaN in Lags filtern (erste N Zeilen pro Gruppe)
-    lag_cols = [col for col in df_train.columns if col.startswith("lag_") and not col.startswith("lag_365")]
-    if lag_cols:
-        print(f"[INFO] Filtere Zeilen mit NaN in Lag-Features: {lag_cols}")
-        n_before_train = len(df_train)
-        n_before_val = len(df_val)
-        df_train = df_train.dropna(subset=lag_cols)
-        df_val = df_val.dropna(subset=lag_cols)
-        print(f"[INFO] Train: {n_before_train} → {len(df_train)} Zeilen (-{n_before_train - len(df_train)})")
-        print(f"[INFO] Val: {n_before_val} → {len(df_val)} Zeilen (-{n_before_val - len(df_val)})")
-
-    # Zielvariable auf float32 casten
-    for df in (df_train, df_val):
-        if TARGET_COL in df.columns:
-            df[TARGET_COL] = pd.to_numeric(df[TARGET_COL], errors="coerce").astype("float32")
-
-    # NaN im Target entfernen (TFT erlaubt keine NaN im Target)
-    print(
-        f"[DEBUG] Target-NaN Check: Train hat {df_train[TARGET_COL].isna().sum()} NaNs, Val hat {df_val[TARGET_COL].isna().sum()} NaNs")
-    n_before_train_target = len(df_train)
-    n_before_val_target = len(df_val)
-    df_train = df_train[df_train[TARGET_COL].notna()].copy()
-    df_val = df_val[df_val[TARGET_COL].notna()].copy()
-    print(
-        f"[INFO] Target-NaN entfernt: Train {n_before_train_target} → {len(df_train)} (-{n_before_train_target - len(df_train)})")
-    print(
-        f"[INFO] Target-NaN entfernt: Val {n_before_val_target} → {len(df_val)} (-{n_before_val_target - len(df_val)})")
+    # Debug-Check: Sollten nach data_cleaning keine NaN mehr sein
+    train_nan = df_train[TARGET_COL].isna().sum()
+    val_nan = df_val[TARGET_COL].isna().sum()
+    if train_nan > 0 or val_nan > 0:
+        print(f"[WARNUNG] Target-NaN gefunden: Train={train_nan}, Val={val_nan}")
+        print(f"          → Bitte data_cleaning.py mit remove_nan=true ausführen!")
 
     time_idx_col = "time_idx" if "time_idx" in df_train.columns else TIME_COL
 
@@ -120,7 +98,7 @@ def _load_dataset_from_spec(processed_dir: Path, target_normalizer_transformatio
     print(f"  - time_varying_known_reals: {len(time_varying_known_reals)}")
     print(f"  - time_varying_unknown_reals: {len(time_varying_unknown_reals)}")
 
-    # ===== FIX 3: Feature-Listen explizit übergeben =====
+    # Feature-Listen explizit übergeben
     train_ds = TimeSeriesDataSet(
         df_train,
         time_idx=time_idx_col,
@@ -383,12 +361,7 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   python -m src.modeling.trainer_tft --config configs/models/tft/baseline.yaml
-#   python -m src.modeling.trainer_tft --config configs/models/tft/bs_small.yaml
-#   python -m src.modeling.trainer_tft --config configs/models/tft/lr_high.yaml
-#   python -m src.modeling.trainer_tft --config configs/models/tft/model_large.yaml
+#   $env:DATASET_CONFIG='configs/datasets/booksales.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/booksales/baseline.yaml
 #
 # Via Pipeline (empfohlen):
-#   python -m src.pipeline --dataset configs/datasets/booksales.yaml \
-#                          --model configs/models/tft/baseline.yaml \
-#                          --steps training
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/baseline.yaml --steps training

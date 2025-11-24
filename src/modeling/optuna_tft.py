@@ -81,7 +81,7 @@ SEARCH_SPACE = {
 # Training-Parameter (feste Werte für alle Trials)
 TRAINING_CONFIG = {
     "seed": 42,
-    "max_epochs": 30,  # Reduziert für schnellere Trials
+    "max_epochs": 30, # für Testing 2, sonst 30
     "num_workers": 4,
     "accelerator": "gpu",  # Auf "cpu" ändern falls keine GPU
     "devices": 1,

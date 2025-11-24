@@ -123,7 +123,7 @@ def run_dataset_tft() -> None:
 
 def run_training(model_cfg_path: Path) -> str:
     """
-    Führt Training aus (trainer_tft.py mit Config).
+    Führt Training aus (trainer_tft_fehlerhaft.py mit Config).
 
     Args:
         model_cfg_path: Pfad zur Model-YAML

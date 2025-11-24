@@ -33,7 +33,7 @@ raw_data:
 # ----------------------------------------------------------------------------
 schema:
   time_col: "Date"  # Achtung: Großschreibung bei Walmart!
-  id_cols: ["Store", "Dept"]  # Nur 2 statt 3 Group-Columns
+  id_cols: ["Store", "Dept"]
   target_col: "Weekly_Sales"
 
 # ----------------------------------------------------------------------------
@@ -54,7 +54,9 @@ preprocessing:
     enabled: true
     description: "Bereinigt Ausreißer (KEIN Lockdown bei Walmart)"
     params:
-      outlier_dates: []  # Keine bekannten Outlier-Dates
+      clip_target_min: 0  # Werte unter diesem Minimum werden auf diesen Wert gesetzt (0 = keine negativen Sales)
+      remove_nan: true    # NaN im Target entfernen
+      outlier_dates: []   # Keine bekannten Outlier-Dates
       # KEIN lockdown_start/lockdown_end bei Walmart!
 
   - step: "feature_engineering"
@@ -76,6 +78,7 @@ preprocessing:
     enabled: true
     description: "Lag- und Rolling-Features (angepasst für wöchentlich)"
     params:
+      min_group_length: 30  # Gruppen mit weniger Zeitschritten werden entfernt
       lags: [1, 4, 8]  # Wochen statt Tage! (1W, 1M, 2M)
       roll_windows: [4, 8]  # 4 Wochen = ~1 Monat, 8 Wochen = ~2 Monate
       roll_stats: ["mean"]
@@ -85,8 +88,10 @@ preprocessing:
 # Split-Konfiguration (zeitbasiert)
 # ----------------------------------------------------------------------------
 split:
-  method: "ratio"  # "ratio" oder "fixed"
-  ratios: [0.80, 0.10, 0.10]  # Train, Val, Test
+  method: "fixed" # vorher: "ratio"
+  # ratios: [0.80, 0.10, 0.10]
+  val_start: "2011-10-28"  # 20 Wochen für Val
+  test_start: "2012-03-30"  # 30 Wochen für Test
   scale_cols: []  # Optional: Spalten für MinMax-Skalierung
 
 # ----------------------------------------------------------------------------

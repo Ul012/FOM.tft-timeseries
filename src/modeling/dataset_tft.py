@@ -232,6 +232,6 @@ if __name__ == "__main__":
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.dataset_tft
 #
 # Via Pipeline:
-#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps model_dataset
-#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps model_dataset
+#   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps dataset_tft
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps dataset_tft
 
