@@ -32,6 +32,7 @@ Thumbs.db
 # Raw Data - nicht versioniert (Kaggle-Lizenz, Download-Links in README)
 data/raw/
 
+# Processed Data (wird generiert)
 data/interim/
 data/processed/
 
@@ -42,14 +43,12 @@ data/processed/
 logs/
 lightning_logs/
 
-# Results - alles ignorieren, dann Ausnahmen
-results/
+# Results - selektiv ignorieren
+results/*
 !results/tft/
+results/tft/*
 !results/tft/runs/
-!results/tft/runs/*/
-!results/tft/runs/*/**
 !results/tft/eval/
-!results/tft/eval/**
 
 # Checkpoints ausschließen (zu groß ~50-100MB pro Stück)
 **/checkpoints/

@@ -1,0 +1,68 @@
+{
+  "run_id": "run_20251121_125758_baseline",
+  "logs_dir": "logs\\tft\\run_20251121_125758_baseline",
+  "n_epochs": 11,
+  "metrics": {
+    "final_train_loss": 5.062253952026367,
+    "final_val_loss": 6.077467441558838,
+    "best_val_loss": 5.8052592277526855,
+    "best_val_epoch": 5,
+    "initial_lr": NaN,
+    "final_lr": NaN
+  },
+  "meta": {
+    "seed": null,
+    "config_file": "configs\\models\\tft\\baseline.yaml",
+    "config_values": {
+      "type": "tft",
+      "name": "baseline_v02",
+      "description": "Stabile Referenz für TFT - mittlere Modellgröße, 30 Epochen",
+      "training": {
+        "seed": 42,
+        "max_epochs": 30,
+        "batch_size": 128,
+        "learning_rate": 0.001,
+        "gradient_clip_val": 0.1,
+        "early_stopping_patience": 5,
+        "accelerator": "cpu",
+        "devices": 1,
+        "num_workers": 4,
+        "limit_train_batches": 1.0,
+        "limit_val_batches": 1.0
+      },
+      "model": {
+        "loss": "quantile",
+        "output_size": 7,
+        "hidden_size": 32,
+        "attention_head_size": 4,
+        "hidden_continuous_size": 16,
+        "dropout": 0.1,
+        "reduce_on_plateau_patience": 2
+      },
+      "evaluation": {
+        "batch_size": 256,
+        "num_workers": 0
+      }
+    },
+    "fit_time_sec": 2573.25,
+    "epochs_trained": 12,
+    "avg_epoch_time_sec": 214.44,
+    "learning_rate": null,
+    "batch_size": null,
+    "max_epochs": null,
+    "early_stopping_patience": null,
+    "gradient_clip_val": null,
+    "accelerator": null,
+    "devices": null,
+    "model": {
+      "loss": "quantile",
+      "output_size": 7,
+      "hidden_size": 32,
+      "attention_head_size": 4,
+      "hidden_continuous_size": 16,
+      "dropout": 0.1,
+      "reduce_on_plateau_patience": 2
+    },
+    "best_checkpoint_path": "C:\\Users\\ulrik\\Projekte\\TFT-TimeSeries\\results\\tft\\runs\\run_20251121_125758_baseline\\checkpoints\\tft-05-5.8053.ckpt"
+  }
+}

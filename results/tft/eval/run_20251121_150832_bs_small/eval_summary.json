@@ -1,0 +1,29 @@
+{
+  "run_id": "run_20251121_150832_bs_small",
+  "checkpoint_path": "results\\tft\\runs\\run_20251121_150832_bs_small\\checkpoints\\tft-00-5.4897.ckpt",
+  "metrics": {
+    "val": {
+      "mae": 12.097750663757324,
+      "rmse": 17.605976104736328,
+      "mape": 5.533891677856445,
+      "smape": 5.560932159423828,
+      "r2": 0.9793006777763367
+    },
+    "test": {
+      "mae": 18.541488647460938,
+      "rmse": 31.299945831298828,
+      "mape": 7.388833045959473,
+      "smape": 7.338809967041016,
+      "r2": 0.9497629404067993
+    }
+  },
+  "meta": {
+    "time_col": "date",
+    "id_cols": [
+      "country",
+      "store",
+      "product"
+    ],
+    "target_col": "num_sold"
+  }
+}
