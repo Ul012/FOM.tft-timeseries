@@ -285,7 +285,39 @@ def main() -> None:
 
     _plot_series_forecast(df_series_fc, run_id, split, series_ids, output_path)
 
-    print("[plot_tft_forecast_series] Plot erstellt.")
+    # === NEU: Zahlenausgabe für Forecast-Bereich ===
+    df_forecast = df_series_fc[df_series_fc["is_forecast"]].copy()
+    df_forecast["error"] = df_forecast["y_pred"] - df_forecast["y_true"]
+    df_forecast["abs_error"] = df_forecast["error"].abs()
+    df_forecast["pct_error"] = (df_forecast["error"] / df_forecast["y_true"]) * 100
+
+    print("\n" + "=" * 70)
+    print("FORECAST-DETAILS (pro Tag)")
+    print("=" * 70)
+    print(f"{'Datum':<12} {'Ist':>10} {'Prognose':>10} {'Fehler':>10} {'Fehler %':>10}")
+    print("-" * 70)
+
+    for _, row in df_forecast.iterrows():
+        date_str = str(row[TIME_COL])[:10] if hasattr(row[TIME_COL], 'strftime') else str(row[TIME_COL])[:10]
+        print(f"{date_str:<12} {row['y_true']:>10.1f} {row['y_pred']:>10.1f} {row['error']:>+10.1f} {row['pct_error']:>+9.1f}%")
+
+    # Zusammenfassung
+    mae = df_forecast["abs_error"].mean()
+    rmse = np.sqrt((df_forecast["error"] ** 2).mean())
+    mape = df_forecast["pct_error"].abs().mean()
+
+    print("-" * 70)
+    print(f"{'MAE:':<12} {mae:>10.2f}")
+    print(f"{'RMSE:':<12} {rmse:>10.2f}")
+    print(f"{'MAPE:':<12} {mape:>9.2f}%")
+    print("=" * 70)
+
+    # CSV speichern
+    csv_path = plots_root / f"{run_id}_{split}_forecast_details.csv"
+    df_forecast[[TIME_COL, "y_true", "y_pred", "error", "abs_error", "pct_error"]].to_csv(csv_path, index=False)
+    print(f"\n✓ Forecast-Details als CSV: {csv_path}")
+
+    print("\n[plot_tft_forecast_series] Plot erstellt.")
     print(f"- Run-ID : {run_id}")
     print(f"- Split  : {split}")
     print(f"- Datei  : {output_path}")
@@ -295,5 +327,6 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
-#   python -m src.visualization.plot_tft_forecast_series --run-id run_20251125_003840_booksales_optuna_tft_day_best --split test --history-length 120
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id <RUN_ID> --split test --history-length 120
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id run_20251125_003840_booksales_optuna_tft_day_best --split test --history-length 120
 

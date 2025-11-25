@@ -35,6 +35,7 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
+import os
 
 import lightning.pytorch as pl
 import optuna
@@ -146,11 +147,16 @@ def _load_dataset_from_spec(processed_dir: Path) -> tuple[TimeSeriesDataSet, Tim
     df_train = pd.read_parquet(train_pq)
     df_val = pd.read_parquet(val_pq)
 
-    # NaN-Handling für Lag-Features
+    # NaN-Check für Lag-Features (Imputation erfolgt in lag_features.py)
     lag_cols = [col for col in df_train.columns if col.startswith("lag_")]
     if lag_cols:
-        df_train = df_train.dropna(subset=lag_cols)
-        df_val = df_val.dropna(subset=lag_cols)
+        train_nans = df_train[lag_cols].isna().sum().sum()
+        val_nans = df_val[lag_cols].isna().sum().sum()
+        if train_nans > 0 or val_nans > 0:
+            raise ValueError(
+                f"NaN in Lag-Features gefunden (Preprocessing-Bug)! "
+                f"Train: {train_nans}, Val: {val_nans}"
+            )
 
     # Zielvariable auf float32 casten
     for df in (df_train, df_val):
@@ -254,8 +260,10 @@ def objective(trial: optuna.Trial) -> float:
     # 2. Reproduzierbarkeit
     # -------------------------------------------------------------------------
     pl.seed_everything(seed, workers=True)
-    torch.use_deterministic_algorithms(False)
-    torch.backends.cudnn.benchmark = True
+
+    # Best-Effort Reproduzierbarkeit (GPU-Training ist nie 100% deterministisch)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
     torch.set_float32_matmul_precision("high")
 
     # -------------------------------------------------------------------------
@@ -597,3 +605,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Aufruf:
+# $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.optuna_tft --study-name tft_quicktest --n-trials 1

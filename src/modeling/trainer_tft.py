@@ -152,12 +152,10 @@ def main():
     # -----------------------------
     pl.seed_everything(cfg.seed, workers=True)
 
-    # Keine strikte Deterministik erzwingen – erlaubt schnellere/nichtdeterministische CUDA-Kernels
-    torch.use_deterministic_algorithms(False)
-
-    # GPU-Optimierungen aktivieren
-    torch.backends.cudnn.benchmark = True
-    torch.set_float32_matmul_precision("high")  # nutzt Tensor Cores besser aus
+    # Best-Effort Reproduzierbarkeit (GPU-Training ist nie 100% deterministisch)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    torch.set_float32_matmul_precision("high")
 
     # -----------------------------
     # Dataset-Pfad berechnen
@@ -364,4 +362,4 @@ if __name__ == "__main__":
 #   $env:DATASET_CONFIG='configs/datasets/booksales.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/booksales/baseline.yaml
 #
 # Via Pipeline (empfohlen):
-#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/baseline.yaml --steps training
+#   python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/bs_small_lr0003.yaml --steps training
