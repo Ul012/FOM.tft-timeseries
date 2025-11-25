@@ -294,6 +294,6 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-# Aufruf (nach Training):
-#   python -m src.visualization.plot_tft_forecast_series --run-id run_20251121_222313_lr_high --split test --history-length 120
+# Aufruf:
+#   python -m src.visualization.plot_tft_forecast_series --run-id run_20251125_003840_booksales_optuna_tft_day_best --split test --history-length 120
 
