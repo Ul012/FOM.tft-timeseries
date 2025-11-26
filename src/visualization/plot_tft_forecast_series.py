@@ -328,5 +328,5 @@ if __name__ == "__main__":
 
 # Aufruf:
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id <RUN_ID> --split test --history-length 120
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id run_20251125_003840_booksales_optuna_tft_day_best --split test --history-length 120
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id run_20251125_215131_booksales_optuna_tft_day_trial_15 --split test --history-length 120
 

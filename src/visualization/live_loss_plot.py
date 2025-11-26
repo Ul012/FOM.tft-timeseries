@@ -129,9 +129,7 @@ if __name__ == "__main__":
     main()
 
 # Aufruf (nach Training):
-#   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_123456_baseline
-#   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_150832_bs_small
-#   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251121_222313_lr_high
+#   python -m src.visualization.live_loss_plot --run_dir logs/tft/run_20251125_215131_booksales_optuna_tft_day_trial_15
 #
 # Output: results/tft/plots/training/<run_id>_loss.png
 

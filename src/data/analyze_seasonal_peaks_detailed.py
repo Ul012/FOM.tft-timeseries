@@ -1,12 +1,12 @@
 """
-src/data/analyze_seasonal_peaks.py
+src/data/analyze_seasonal_peaks_detailed.py
 
 Automatische Erkennung von saisonalen Peaks in Zeitreihendaten.
 Funktioniert datensatzübergreifend (booksales, walmart, etc.)
 
 Aufruf:
-    $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.analyze_seasonal_peaks
-    $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.analyze_seasonal_peaks
+    $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.analyze_seasonal_peaks_detailed
+    $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.analyze_seasonal_peaks_detailed
 
     # Mit angepassten Schwellwerten:
     python -m src.data.analyze_seasonal_peaks --elevated-threshold 10 --peak-threshold 25
@@ -504,5 +504,5 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.analyze_seasonal_peaks
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.analyze_seasonal_peaks
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.analyze_seasonal_peaks_detailed
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.analyze_seasonal_peaks_detailed

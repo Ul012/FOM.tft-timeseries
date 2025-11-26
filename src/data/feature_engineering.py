@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import pandas as pd
+from typing import Dict, List, Any
 import holidays
 
 from src.config import INTERIM_DIR, PROCESSED_DIR, BASE_DIR
@@ -14,6 +15,7 @@ _schema = get_schema(_dataset_config)
 _fe_params = get_preprocessing_params(_dataset_config, "feature_engineering")
 
 TIME_COL = _schema["time_col"]
+ID_COLS = _schema["id_cols"]
 
 
 class FeatureEngineer:
@@ -23,10 +25,19 @@ class FeatureEngineer:
     - gesamtdeutsches Feiertagsflag (is_holiday_de) + optional holiday_name
     """
 
-    def __init__(self, date_col: str, country: str = "DE", include_holiday_name: bool = False):
+    def __init__(
+            self,
+            date_col: str,
+            country: str = "DE",
+            include_holiday_name: bool = False,
+            date_flags: Dict[str, List[Dict[str, int]]] = None,
+            id_cols: List[str] = None,
+    ):
         self.country = country
         self.date_col = date_col
         self.include_holiday_name = include_holiday_name
+        self.date_flags = date_flags or {}
+        self.id_cols = id_cols or []
 
     def _ensure_datetime(self, df: pd.DataFrame) -> pd.DataFrame:
         out = df.copy()
@@ -48,10 +59,10 @@ class FeatureEngineer:
 
     def add_time_index(self, df: pd.DataFrame) -> pd.DataFrame:
         out = self._ensure_datetime(df).sort_values(self.date_col)
-        # Zeitindex als fortlaufende Integer-Skala (tägliche Frequenz → ein Index pro Datum)
-        # Falls mehrere Reihen pro Datum (z. B. Länder), gilt der gleiche time_idx
-        first_date = out[self.date_col].min()
-        out["time_idx"] = (out[self.date_col] - first_date).dt.days.astype("int64")
+        # Fortlaufender Index basierend auf unique Dates (funktioniert für täglich UND wöchentlich)
+        unique_dates = out[self.date_col].drop_duplicates().sort_values().reset_index(drop=True)
+        date_to_idx = {d: i for i, d in enumerate(unique_dates)}
+        out["time_idx"] = out[self.date_col].map(date_to_idx).astype("int64")
         return out
 
     def add_holiday_features(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -79,11 +90,52 @@ class FeatureEngineer:
 
         return out
 
+    def add_date_flags(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Fügt Custom Date Flags aus YAML hinzu.
+
+        YAML-Format:
+            date_flags:
+              is_newyear:
+                - {month: 12, day_start: 27, day_end: 31}
+                - {month: 1, day_start: 1, day_end: 2}
+        """
+        if not self.date_flags:
+            return df
+
+        out = self._ensure_datetime(df)
+        month = out[self.date_col].dt.month
+        day = out[self.date_col].dt.day
+
+        for flag_name, periods in self.date_flags.items():
+            mask = pd.Series(False, index=out.index)
+
+            for period in periods:
+                m = period.get("month")
+                d_start = period.get("day_start", 1)
+                d_end = period.get("day_end", 31)
+
+                period_mask = (month == m) & (day >= d_start) & (day <= d_end)
+                mask = mask | period_mask
+
+            out[flag_name] = mask.astype("int8")
+            print(f"  - {flag_name}: {mask.sum():,} Zeilen markiert")
+
+        return out
+
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
-        out = df.copy()
+        out = self._ensure_datetime(df)
+
+        # ID-Spalten zu String konvertieren (für PyTorch Forecasting)
+        for col in self.id_cols:
+            if col in out.columns and out[col].dtype in ["int64", "int32", "float64"]:
+                out[col] = out[col].astype(str)
+                print(f"  - {col}: zu String konvertiert")
+
         out = self.add_calendar_features(out)
         out = self.add_time_index(out)
         out = self.add_holiday_features(out)
+        out = self.add_date_flags(out)
         return out
 
 
@@ -101,8 +153,18 @@ def main() -> None:
 
     country = _fe_params.get("country", "DE")
     include_holiday_name = _fe_params.get("include_holiday_name", False)
+    date_flags = _fe_params.get("date_flags", {})
 
-    fe = FeatureEngineer(date_col=TIME_COL, country=country, include_holiday_name=include_holiday_name)
+    if date_flags:
+        print(f"[feature_engineering] Date Flags: {list(date_flags.keys())}")
+
+    fe = FeatureEngineer(
+        date_col=TIME_COL,
+        country=country,
+        include_holiday_name=include_holiday_name,
+        date_flags=date_flags,
+        id_cols=ID_COLS,
+    )
     df_feats = fe.transform(df)
 
     df_feats.to_parquet(outp, index=False)

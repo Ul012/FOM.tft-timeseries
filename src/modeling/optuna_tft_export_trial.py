@@ -5,8 +5,11 @@ Exportiert eine spezifische Trial-Config als YAML (nicht nur die beste).
 Nützlich wenn du z.B. Trial #15 nochmal trainieren willst.
 
 Aufruf:
-    python -m src.modeling.optuna_tft_export_trial --study-name tft_day --trial-number 15
-    python -m src.modeling.optuna_tft_export_trial --study-name tft_day --trial-number 15 --output configs/models/tft/optuna_tft_day_trial_15.yaml
+    Booksales:
+    $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.optuna_tft_export_trial --study-name tft_newyear --trial-number 2
+
+    Walmart:
+    $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_tft_export_trial --study-name walmart_full --trial-number 0
 """
 
 import argparse
@@ -16,8 +19,13 @@ import optuna
 import yaml
 
 from src.config import BASE_DIR
+from src.utils.load_dataset_config import load_dataset_config
 
-OPTUNA_STORAGE = "sqlite:///results/tft/optuna/tft_studies.db"
+_dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
+
+OPTUNA_BASE_DIR = BASE_DIR / "results" / "tft" / "optuna" / _dataset_name
+OPTUNA_STORAGE = f"sqlite:///{OPTUNA_BASE_DIR}/tft_studies.db"
 
 
 def export_trial_config(study_name: str, trial_number: int, output_path: Path | None = None):
@@ -107,7 +115,9 @@ def export_trial_config(study_name: str, trial_number: int, output_path: Path | 
 
     # Output-Pfad
     if output_path is None:
-        output_path = BASE_DIR / "configs" / "models" / "tft" / f"trial_{trial_number}.yaml"
+        dataset_config = load_dataset_config()
+        dataset_name = dataset_config["name"]
+        output_path = BASE_DIR / "configs" / "models" / "tft" / dataset_name / f"optuna_{study_name}_trial_{trial_number}.yaml"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -141,7 +151,7 @@ def main():
         "--output",
         type=str,
         default=None,
-        help="Output-Pfad (default: configs/models/tft/trial_<N>.yaml)",
+        help="Output-Pfad (default: configs/models/tft/optuna_<study_name>_trial_<N>.yaml)",
     )
 
     args = parser.parse_args()
@@ -153,3 +163,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Aufruf:
+#   Booksales:
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.optuna_tft_export_trial --study-name tft_newyear --trial-number 18
+#
+#   Walmart:
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_tft_export_trial --study-name walmart_full --trial-number 0

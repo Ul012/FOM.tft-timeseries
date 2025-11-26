@@ -359,7 +359,7 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   $env:DATASET_CONFIG='configs/datasets/booksales.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/booksales/baseline.yaml
+#   $env:DATASET_CONFIG='configs/datasets/booksales.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/booksales/optuna_tft_day_trial_15.yaml
 #
 # Via Pipeline (empfohlen):
 #   python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/bs_small_lr0003.yaml --steps training

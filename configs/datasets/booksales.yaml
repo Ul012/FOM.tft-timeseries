@@ -53,6 +53,12 @@ preprocessing:
       country: "EU"
       include_holiday_name: false
 
+      # Custom Date Flags (generisch, wiederverwendbar)
+      date_flags:
+        is_newyear:
+            - {month: 12, day_start: 27, day_end: 31}
+            - {month: 1, day_start: 1, day_end: 2}
+
   - step: "cyclical_encoder"
     enabled: true
     description: "Zyklische Sin/Cos-Kodierung"
@@ -106,7 +112,7 @@ tft:
   treat_calendar_as_known: true
 
   # Explizite Flag-Spalten (binär)
-  flag_cols: ["is_lockdown_period"]
+  flag_cols: ["is_lockdown_period", "is_newyear"]
 
   # Optional: Statische kategorische Features (falls vorhanden)
   # static_categoricals: []

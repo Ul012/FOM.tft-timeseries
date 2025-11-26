@@ -2,11 +2,6 @@
 """
 Exportiert die beste Optuna-Konfiguration als YAML-Datei.
 
-Aufruf:
-    python -m src.modeling.optuna_tft_export_best --study-name tft_hpo
-    python -m src.modeling.optuna_tft_export_best --study-name tft_hpo --output configs/models/tft/optuna_tft_hpo_best.yaml
-    python -m src.modeling.optuna_tft_export_best --study-name tft_day
-    python -m src.modeling.optuna_tft_export_best --study-name tft_day --output configs/models/tft/optuna_tft_day_best.yaml
 """
 
 import argparse
@@ -16,8 +11,13 @@ import optuna
 import yaml
 
 from src.config import BASE_DIR
+from src.utils.load_dataset_config import load_dataset_config
 
-OPTUNA_STORAGE = "sqlite:///results/tft/optuna/tft_studies.db"
+_dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
+
+OPTUNA_BASE_DIR = BASE_DIR / "results" / "tft" / "optuna" / _dataset_name
+OPTUNA_STORAGE = f"sqlite:///{OPTUNA_BASE_DIR}/tft_studies.db"
 
 
 def export_best_config(study_name: str, output_path: Path | None = None):
@@ -26,7 +26,7 @@ def export_best_config(study_name: str, output_path: Path | None = None):
 
     Args:
         study_name: Name der Optuna Study
-        output_path: Ziel-Pfad für YAML (default: configs/models/tft/optuna_tft_day_best.yaml)
+        output_path: Ziel-Pfad für YAML (default: configs/models/tft/optuna_<study-name>_best.yaml)
     """
     # Study laden
     study = optuna.load_study(study_name=study_name, storage=OPTUNA_STORAGE)
@@ -89,7 +89,9 @@ def export_best_config(study_name: str, output_path: Path | None = None):
 
     # Output-Pfad
     if output_path is None:
-        output_path = BASE_DIR / "configs" / "models" / "tft" / "optuna_tft_day_best.yaml"
+        dataset_config = load_dataset_config()
+        dataset_name = dataset_config["name"]
+        output_path = BASE_DIR / "configs" / "models" / "tft" / dataset_name / f"optuna_{study_name}_best.yaml"
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -120,7 +122,7 @@ def main():
         "--output",
         type=str,
         default=None,
-        help="Output-Pfad (default: configs/models/tft/optuna_tft_day_best.yaml)",
+        help="Output-Pfad (default: configs/models/tft/optuna_<study_name>_best.yaml)",
     )
 
     args = parser.parse_args()
@@ -132,3 +134,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Aufruf:
+#   Booksales:
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.optuna_tft_export_best --study-name tft_newyear
+#
+#   Walmart:
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_tft_export_best --study-name walmart

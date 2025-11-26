@@ -365,4 +365,4 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_tft --run-id run_20251125_003840_booksales_optuna_tft_day_best
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_tft --run-id run_20251125_215131_booksales_optuna_tft_day_trial_15

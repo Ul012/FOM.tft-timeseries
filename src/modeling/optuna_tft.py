@@ -36,6 +36,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 import os
+import yaml
 
 import lightning.pytorch as pl
 import optuna
@@ -64,6 +65,13 @@ TARGET_COL = _schema["target_col"]
 ID_COLS = _schema["id_cols"]
 TIME_COL = _schema["time_col"]
 
+# Dataset-Name für Pfade
+_dataset_name = _dataset_config["name"]
+
+# Pfade (dataset-spezifisch)
+OPTUNA_BASE_DIR = BASE_DIR / "results" / "tft" / "optuna" / _dataset_name
+OPTUNA_STORAGE = f"sqlite:///{OPTUNA_BASE_DIR}/tft_studies.db"
+
 # ============================================================================
 # HARDCODIERTE PARAMETER
 # ============================================================================
@@ -71,7 +79,7 @@ TIME_COL = _schema["time_col"]
 # Search Space (basierend auf baseline-Experimenten)
 SEARCH_SPACE = {
     "learning_rate": {"min": 0.0003, "max": 0.003, "log": True},
-    "batch_size": {"choices": [32, 64, 128]},
+    "batch_size": {"choices": [64, 128, 256]},
     "hidden_size": {"choices": [32, 64, 96]},
     "attention_head_size": {"min": 2, "max": 4},
     "dropout": {"min": 0.05, "max": 0.20},
@@ -101,6 +109,28 @@ OPTUNA_CONFIG = {
     },
 }
 
+
+def save_search_space_config(study_name: str) -> Path:
+    """
+    Speichert Search Space und Training Config als YAML für Reproduzierbarkeit.
+    """
+    config = {
+        "study_name": study_name,
+        "dataset": _dataset_name,
+        "timestamp": datetime.now().isoformat(),
+        "search_space": SEARCH_SPACE,
+        "training_config": TRAINING_CONFIG,
+        "optuna_config": OPTUNA_CONFIG,
+    }
+
+    OPTUNA_BASE_DIR.mkdir(parents=True, exist_ok=True)
+    config_path = OPTUNA_BASE_DIR / f"{study_name}_search_space.yaml"
+
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+    print(f"[optuna] Search Space gespeichert: {config_path}")
+    return config_path
 
 # ============================================================================
 # DATASET-FUNKTIONEN
@@ -309,11 +339,10 @@ def objective(trial: optuna.Trial) -> float:
     trial_id = f"trial_{trial.number:04d}"
     study_name = trial.study.study_name
 
-    results_dir = BASE_DIR / "results" / "tft" / "optuna"
-    ckpt_dir = results_dir / trial_id / "checkpoints"
+    ckpt_dir = OPTUNA_BASE_DIR / trial_id / "checkpoints"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    logs_dir = BASE_DIR / "logs" / "tft" / "optuna" / study_name / trial_id
+    logs_dir = BASE_DIR / "logs" / "tft" / "optuna" / _dataset_name / study_name / trial_id
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     early_stop = EarlyStopping(
@@ -451,8 +480,8 @@ def main():
     # -------------------------------------------------------------------------
     # Optuna Study erstellen/laden
     # -------------------------------------------------------------------------
-    storage_path = BASE_DIR / "results" / "tft" / "optuna" / "tft_studies.db"
-    storage_url = f"sqlite:///{storage_path}"
+    OPTUNA_BASE_DIR.mkdir(parents=True, exist_ok=True)
+    storage_url = OPTUNA_STORAGE
 
     print("=" * 80)
     print("OPTUNA HYPERPARAMETER-OPTIMIERUNG FÜR TFT")
@@ -476,8 +505,8 @@ def main():
     print("  - MAE, RMSE, MAPE, SMAPE")
     print()
 
-    # Storage-Verzeichnis sicherstellen
-    storage_path.parent.mkdir(parents=True, exist_ok=True)
+    # Search Space speichern für Reproduzierbarkeit
+    save_search_space_config(args.study_name)
 
     # Study erstellen
     study = optuna.create_study(
@@ -545,11 +574,10 @@ def main():
     # -------------------------------------------------------------------------
     # Ergebnisse speichern
     # -------------------------------------------------------------------------
-    results_dir = BASE_DIR / "results" / "tft" / "optuna"
-    results_dir.mkdir(parents=True, exist_ok=True)
+    OPTUNA_BASE_DIR.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    results_file = results_dir / f"study_{args.study_name}_{timestamp}.json"
+    results_file = OPTUNA_BASE_DIR / f"study_{args.study_name}_{timestamp}.json"
 
     results = {
         "study_name": args.study_name,
@@ -582,7 +610,7 @@ def main():
     print()
 
     # CSV Export
-    csv_file = results_dir / f"study_{args.study_name}_{timestamp}.csv"
+    csv_file = OPTUNA_BASE_DIR / f"study_{args.study_name}_{timestamp}.csv"
     df_trials.to_csv(csv_file, index=False)
     print(f"Alle Trials als CSV: {csv_file}")
     print()
@@ -608,3 +636,5 @@ if __name__ == "__main__":
 
 # Aufruf:
 # $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.optuna_tft --study-name tft_quicktest --n-trials 1
+# $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_tft --study-name tft_newyear --n-trials 20
+# $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_tft --study-name walmart_full --n-trials 20

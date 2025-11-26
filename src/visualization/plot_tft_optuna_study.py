@@ -3,8 +3,11 @@
 Visualisiert Optuna-Studien: Optimization History, Parameter Importance, etc.
 
 Aufruf:
-    python -m src.visualization.plot_tft_optuna_study --study-name tft_day
-    python -m src.visualization.plot_tft_optuna_study --study-name tft_day --plots history importance
+    Booksales (alle Plots):
+    $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_optuna_study --study-name tft_newyear
+
+    Walmart (nur bestimmte Plots):
+    $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.visualization.plot_tft_optuna_study --study-name walmart_full --plots history importance
 """
 
 import argparse
@@ -19,14 +22,19 @@ from optuna.visualization import (
 )
 
 from src.config import BASE_DIR
+from src.utils.load_dataset_config import load_dataset_config
 
 # ============================================================================
 # KONSTANTEN
 # ============================================================================
 
-STORAGE_PATH = BASE_DIR / "results" / "tft" / "optuna" / "tft_studies.db"
+_dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
+
+OPTUNA_BASE_DIR = BASE_DIR / "results" / "tft" / "optuna" / _dataset_name
+STORAGE_PATH = OPTUNA_BASE_DIR / "tft_studies.db"
 OPTUNA_STORAGE = f"sqlite:///{STORAGE_PATH}"
-PLOT_DIR = BASE_DIR / "results" / "tft" / "optuna" / "plots"
+PLOT_DIR = OPTUNA_BASE_DIR / "plots"
 
 
 # ============================================================================
@@ -127,3 +135,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Aufruf:
+#   Booksales:
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_optuna_study --study-name tft_newyear
+#
+#   Walmart:
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.visualization.plot_tft_optuna_study --study-name walmart_full

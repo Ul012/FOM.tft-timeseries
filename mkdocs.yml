@@ -24,6 +24,9 @@ nav:
       - Pipeline Übersicht: shared/PipelineOrder.md
       - Pipeline Script: project/Pipeline.md
   - Projekt Schritte:
+      - Datenqualitätsprüfung:
+          - Analyze Data: project/AnalyzeDataset.md
+          - Analyze Seasonal Peaks: project/AnalyzeSeasonalPeaks.md
       - Data Preprocessing:
         - Load Data: projct/LoadRaw.md
         - Data Alignment: project/DataAlignment.md

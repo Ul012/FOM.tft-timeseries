@@ -1,5 +1,5 @@
 """
-src/data/analyze_seasonal_peaks.py
+src/data/analyze_seasonal_peaks_detailed.py
 
 Zeigt saisonale Muster in Zeitreihendaten.
 Der Nutzer entscheidet selbst, welche Tage als Flag markiert werden.
@@ -167,5 +167,5 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.analyze_seasonal_peaks_v2
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.analyze_seasonal_peaks_v2
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.analyze_seasonal_peaks
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.analyze_seasonal_peaks

@@ -3,8 +3,11 @@
 Analysiert alle Optuna Trials und erstellt detaillierte Berichte.
 
 Aufruf:
-    python -m src.evaluation.analyze_optuna_tft_trials --study-name tft_hpo
-    python -m src.evaluation.analyze_optuna_tft_trials --study-name tft_hpo --top-n 10
+    Booksales:
+    $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.analyze_optuna_tft_trials --study-name tft_newyear
+
+    Walmart:
+    $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.analyze_optuna_tft_trials --study-name walmart --top-n 10
 """
 
 import argparse
@@ -14,12 +17,17 @@ import optuna
 import pandas as pd
 
 from src.config import BASE_DIR
+from src.utils.load_dataset_config import load_dataset_config
 
 # ============================================================================
 # KONSTANTEN
 # ============================================================================
 
-STORAGE_PATH = BASE_DIR / "results" / "tft" / "optuna" / "tft_studies.db"
+_dataset_config = load_dataset_config()
+_dataset_name = _dataset_config["name"]
+
+OPTUNA_BASE_DIR = BASE_DIR / "results" / "tft" / "optuna" / _dataset_name
+STORAGE_PATH = OPTUNA_BASE_DIR / "tft_studies.db"
 OPTUNA_STORAGE = f"sqlite:///{STORAGE_PATH}"
 
 
@@ -150,7 +158,7 @@ def analyze_all_trials(study_name: str, top_n: int = 10):
 
         print()
 
-    output_dir = Path("results/tft/optuna/analysis")
+    output_dir = OPTUNA_BASE_DIR / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     csv_path = output_dir / f"{study_name}_all_trials.csv"
@@ -187,7 +195,11 @@ def main():
 if __name__ == "__main__":
     main()
 
-
+# Booksales:
+# $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.analyze_optuna_tft_trials --study-name tft_newyear
+#
+# Walmart:
+# $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.analyze_optuna_tft_trials --study-name walmart --top-n 10
 
 
 
