@@ -101,7 +101,7 @@ split:
 # ----------------------------------------------------------------------------
 tft:
   # Sequenz-Längen
-  max_encoder_length: 16  # Historie die das Modell sieht (~6 Monate bei wöchentlich)
+  max_encoder_length: 24  # für Optuna walmart_full: 16. # Historie die das Modell sieht (~6 Monate bei wöchentlich)
   max_prediction_length: 4  # Forecast-Horizont (~1 Monate)
 
   # Feature-Klassifikation (basierend auf Spalten-Prefixes)

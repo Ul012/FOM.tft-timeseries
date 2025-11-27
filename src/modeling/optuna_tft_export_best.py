@@ -140,4 +140,4 @@ if __name__ == "__main__":
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.optuna_tft_export_best --study-name tft_newyear
 #
 #   Walmart:
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_tft_export_best --study-name walmart
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_tft_export_best --study-name walmart_full

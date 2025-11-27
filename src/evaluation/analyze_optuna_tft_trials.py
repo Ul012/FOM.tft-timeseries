@@ -199,7 +199,7 @@ if __name__ == "__main__":
 # $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.analyze_optuna_tft_trials --study-name tft_newyear
 #
 # Walmart:
-# $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.analyze_optuna_tft_trials --study-name walmart --top-n 10
+# $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.analyze_optuna_tft_trials --study-name walmart_full --top-n 10
 
 
 

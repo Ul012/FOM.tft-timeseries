@@ -193,6 +193,7 @@ def _evaluate_split(
         group_ids=dp['group_ids'],
         max_encoder_length=dp['max_encoder_length'],
         max_prediction_length=dp['max_prediction_length'],
+        min_encoder_length=dp.get('min_encoder_length', dp['max_encoder_length'] // 2),
         static_categoricals=dp['static_categoricals'],
         time_varying_known_reals=dp['time_varying_known_reals'],
         time_varying_unknown_reals=dp['time_varying_unknown_reals'],
@@ -317,25 +318,28 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--run-id",
-        required=True,
+        required=False,
         help="Run-ID wie in logs/tft/<run_id>/ und results/tft/runs/<run_id>/",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--checkpoint",
+        required=False,
+        help="Direkter Pfad zum Checkpoint (für Optuna-Trials)",
+    )
+    args = parser.parse_args()
+
+    if not args.run_id and not args.checkpoint:
+        parser.error("Entweder --run-id oder --checkpoint muss angegeben werden.")
+
+    return args
 
 
 def main() -> None:
     args = _parse_args()
-    run_id = args.run_id
 
     data_cfg: Dict[str, Any] = {
         "val_path": str(BASE_DIR / "data" / "processed" / _dataset_name / "val.parquet"),
         "test_path": str(BASE_DIR / "data" / "processed" / _dataset_name / "test.parquet"),
-    }
-
-    model_cfg: Dict[str, Any] = {
-        "checkpoint_root": str(BASE_DIR / "results" / "tft" / "runs"),
-        "run_id": run_id,
-        "checkpoint_pattern": "*.ckpt",
     }
 
     eval_cfg: Dict[str, Any] = {
@@ -344,7 +348,64 @@ def main() -> None:
         "num_workers": 0,
     }
 
-    result = evaluate_tft_run(data_cfg=data_cfg, model_cfg=model_cfg, eval_cfg=eval_cfg)
+    if args.checkpoint:
+        # Direkter Checkpoint-Pfad (z.B. für Optuna-Trials)
+        ckpt_path = Path(args.checkpoint)
+        if not ckpt_path.exists():
+            raise FileNotFoundError(f"Checkpoint nicht gefunden: {ckpt_path}")
+
+        # run_id aus Pfad ableiten (z.B. "trial_0020" oder Dateiname)
+        run_id = ckpt_path.parent.parent.name  # trial_XXXX
+        if not run_id.startswith("trial"):
+            run_id = ckpt_path.stem  # Fallback: Dateiname ohne Endung
+
+        model = TemporalFusionTransformer.load_from_checkpoint(str(ckpt_path))
+        df_val, df_test = _load_splits(data_cfg)
+
+        metrics_val = _evaluate_split(model, df_val, eval_cfg)
+        metrics_test = _evaluate_split(model, df_test, eval_cfg)
+
+        eval_root = Path(eval_cfg["eval_root"])
+        eval_dir = eval_root / _dataset_name / run_id
+        eval_logger = EvalLogger(eval_dir)
+
+        payload: Dict[str, Any] = {
+            "run_id": run_id,
+            "checkpoint_path": str(ckpt_path),
+            "metrics": {
+                "val": asdict(metrics_val),
+                "test": asdict(metrics_test),
+            },
+            "meta": {
+                "time_col": TIME_COL,
+                "id_cols": list(ID_COLS),
+                "target_col": TARGET_COL,
+            },
+        }
+
+        summary_path = eval_logger.log_json(payload, filename="eval_summary.json")
+
+        result: Dict[str, Any] = {
+            "run_id": run_id,
+            "metrics": payload["metrics"],
+            "checkpoint_path": str(ckpt_path),
+            "artifacts": {
+                "eval_summary_path": str(summary_path),
+                "eval_dir": str(eval_dir),
+            },
+        }
+
+    else:
+        # Standard: run-id basiert
+        run_id = args.run_id
+
+        model_cfg: Dict[str, Any] = {
+            "checkpoint_root": str(BASE_DIR / "results" / "tft" / "runs"),
+            "run_id": run_id,
+            "checkpoint_pattern": "*.ckpt",
+        }
+
+        result = evaluate_tft_run(data_cfg=data_cfg, model_cfg=model_cfg, eval_cfg=eval_cfg)
 
     print("[evaluate_tft] Evaluierung abgeschlossen.")
     print(f"- Run-ID           : {result['run_id']}")
@@ -365,4 +426,9 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
+#   Mit run-id (für trainer_tft Runs):
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_tft --run-id run_20251125_215131_booksales_optuna_tft_day_trial_15
+#
+#   Mit checkpoint (für Optuna-Trials):
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_tft --run-id run_20251127_135731_walmart_optuna_walmart_full_best_mel24_es8
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_tft --checkpoint "results\tft\optuna\walmart\trial_0020\checkpoints\tft-epoch=08-val_loss=790.6539.ckpt"

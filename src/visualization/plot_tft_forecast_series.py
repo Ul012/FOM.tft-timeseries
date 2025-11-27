@@ -47,8 +47,13 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--run-id",
-        required=True,
-        help="Run-ID wie in results/tft/run_20251117_232558_lr001_mel120/<run_id>/",
+        required=False, # geändert von True auf False durch Hinzunahme checkpoints
+        help="Run-ID wie in results/tft/runs/<run_id>/",
+    )
+    parser.add_argument( # für Erkennung von Checkpoints hinzugefügt
+        "--checkpoint",
+        required=False,
+        help="Direkter Pfad zum Checkpoint (für Optuna-Trials)",
     )
     parser.add_argument(
         "--split",
@@ -214,9 +219,16 @@ def _plot_series_forecast(
     # Historie (ohne Forecast-Bereich)
     hist_mask = ~is_forecast
     if hist_mask.any():
+
+        # Füge ersten Forecast-Punkt hinzu für nahtlose Verbindung
+        last_hist_idx = hist_mask[hist_mask].index[-1]
+        first_fc_idx = is_forecast[is_forecast].index[0]
+        extended_mask = hist_mask.copy()
+        extended_mask.loc[first_fc_idx] = True
+
         ax.plot(
-            time[hist_mask],
-            y_true[hist_mask],
+            time[extended_mask], # time[hist_mask],
+            y_true[extended_mask], # y_true[hist_mask],
             label="Ist (Historie)",
         )
 
@@ -259,12 +271,24 @@ def _plot_series_forecast(
 # -----------------------------------------------------------------------------
 def main() -> None:
     args = _parse_args()
-    run_id: str = args.run_id
-    split: str = args.split
-    history_length: int | None = args.history_length
+
+    if not args.run_id and not args.checkpoint:
+        raise ValueError("Entweder --run-id oder --checkpoint muss angegeben werden.")
+
+    if args.checkpoint:
+        ckpt_path = Path(args.checkpoint)
+        if not ckpt_path.exists():
+            raise FileNotFoundError(f"Checkpoint nicht gefunden: {ckpt_path}")
+        run_id = ckpt_path.parent.parent.name  # z.B. "trial_0020"
+    else:
+        run_id = args.run_id
+        ckpt_path = _find_checkpoint(run_id)
+
+    split = args.split
+    history_length = args.history_length
 
     # Checkpoint laden
-    ckpt_path = _find_checkpoint(run_id)
+
     print(f"[plot_tft_forecast_series] Verwende Checkpoint: {ckpt_path}")
 
     model = TemporalFusionTransformer.load_from_checkpoint(ckpt_path)
@@ -329,4 +353,4 @@ if __name__ == "__main__":
 # Aufruf:
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id <RUN_ID> --split test --history-length 120
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id run_20251125_215131_booksales_optuna_tft_day_trial_15 --split test --history-length 120
-
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id run_20251127_135731_walmart_optuna_walmart_full_best_mel24_es8 --split test --history-length 120
