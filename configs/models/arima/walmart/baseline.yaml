@@ -1,0 +1,58 @@
+# configs/models/arima/baseline.yaml
+# ARIMA Baseline-Konfiguration
+
+type: "arima"
+name: "baseline"
+
+model:
+  # Auto-ARIMA (empfohlen für Anfang)
+  # Findet automatisch beste (p,d,q) und (P,D,Q,m) Parameter
+  auto_arima: true
+
+  # Auto-ARIMA Such-Parameter (nur wenn auto_arima: true)
+  max_p: 3        # Maximaler AR-Order
+  max_q: 3        # Maximaler MA-Order
+  max_d: 2        # Maximaler Differencing-Order
+  max_P: 2        # Maximaler saisonaler AR-Order
+  max_Q: 2        # Maximaler saisonaler MA-Order
+  max_D: 1        # Maximaler saisonaler Differencing-Order
+
+  # Manuelle Parameter (nur wenn auto_arima: false)
+  # order: [1, 1, 1]              # (p, d, q) - wird aus arima_spec geladen
+  # seasonal_order: [1, 1, 1, 7]  # (P, D, Q, m) - wird aus arima_spec geladen
+
+training:
+  prediction_length: 7  # Forecast-Horizont (Tage/Wochen)
+
+# Hinweise zur Parameterwahl:
+#
+# p (AR - AutoRegressive):
+#   - Anzahl vergangener Werte die zur Vorhersage genutzt werden
+#   - Typisch: 0-3
+#   - Höher bei starker Autokorrelation
+#
+# d (I - Integrated/Differencing):
+#   - Anzahl Differenzierungen für Stationarität
+#   - Typisch: 0-2
+#   - 1 = einmal differenzieren (entfernt linearen Trend)
+#   - 2 = zweimal differenzieren (entfernt quadratischen Trend)
+#
+# q (MA - Moving Average):
+#   - Anzahl vergangener Residuen
+#   - Typisch: 0-3
+#   - Fängt kurzfristige Schocks/Anomalien
+#
+# P, D, Q (Seasonal):
+#   - Wie p, d, q aber für saisonale Komponente
+#   - Typisch: 0-2
+#
+# m (Seasonal Period):
+#   - Wird automatisch aus Frequenz bestimmt:
+#   - Täglich: 7 (Wochen-Seasonalität)
+#   - Wöchentlich: 52 (Jahres-Seasonalität)
+#   - Monatlich: 12 (Jahres-Seasonalität)
+#
+# Auto-ARIMA vs. Manual:
+#   - Auto: Langsamer aber findet beste Parameter
+#   - Manual: Schneller aber benötigt Domänenwissen
+#   - Empfehlung: Start mit auto, dann manuelle Fine-Tuning

@@ -21,7 +21,7 @@ training:
   seed: 42
 
   # Epochen & Batching
-  max_epochs: 30
+  max_epochs: 2
   batch_size: 128
 
   # Optimizer
@@ -32,7 +32,7 @@ training:
   early_stopping_patience: 5
 
   # Hardware
-  accelerator: "gpu"  # bei GPU: "gpu"
+  accelerator: "cpu"  # bei GPU: "gpu"
   devices: 1
 
   # Dataloader

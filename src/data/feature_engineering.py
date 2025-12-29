@@ -3,7 +3,7 @@
 
 from pathlib import Path
 import pandas as pd
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 import holidays
 
 from src.config import INTERIM_DIR, PROCESSED_DIR, BASE_DIR
@@ -32,12 +32,14 @@ class FeatureEngineer:
             include_holiday_name: bool = False,
             date_flags: Dict[str, List[Dict[str, int]]] = None,
             id_cols: List[str] = None,
+            for_models: Optional[List[str]] = None,  # ["tft", "prophet"]
     ):
         self.country = country
         self.date_col = date_col
         self.include_holiday_name = include_holiday_name
         self.date_flags = date_flags or {}
         self.id_cols = id_cols or []
+        self.for_models = for_models or ["tft"]  # Default: nur TFT
 
     def _ensure_datetime(self, df: pd.DataFrame) -> pd.DataFrame:
         out = df.copy()
@@ -58,6 +60,10 @@ class FeatureEngineer:
         return out
 
     def add_time_index(self, df: pd.DataFrame) -> pd.DataFrame:
+        if "tft" not in self.for_models:
+            print("[FeatureEngineer] time_idx übersprungen")
+            return df
+
         out = self._ensure_datetime(df).sort_values(self.date_col)
         # Fortlaufender Index basierend auf unique Dates (funktioniert für täglich UND wöchentlich)
         unique_dates = out[self.date_col].drop_duplicates().sort_values().reset_index(drop=True)
@@ -123,6 +129,18 @@ class FeatureEngineer:
 
         return out
 
+    def _convert_id_cols_to_string(self, df: pd.DataFrame) -> pd.DataFrame:
+        """ID-Spalten zu String  (für TFT)"""
+        if "tft" not in self.for_models:
+            print("[FeatureEngineer] ID-String-Konvertierung übersprungen")
+            return df
+
+        out = df.copy()
+        for col in self.id_cols:
+            if col in out.columns and out[col].dtype in ["int64", "int32", "float64"]:
+                out[col] = out[col].astype(str)
+        return out
+
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         out = self._ensure_datetime(df)
 
@@ -132,6 +150,7 @@ class FeatureEngineer:
                 out[col] = out[col].astype(str)
                 print(f"  - {col}: zu String konvertiert")
 
+        out = self._convert_id_cols_to_string(out)
         out = self.add_calendar_features(out)
         out = self.add_time_index(out)
         out = self.add_holiday_features(out)
@@ -154,6 +173,7 @@ def main() -> None:
     country = _fe_params.get("country", "DE")
     include_holiday_name = _fe_params.get("include_holiday_name", False)
     date_flags = _fe_params.get("date_flags", {})
+    for_models = _fe_params.get("for_models", ["tft"])
 
     if date_flags:
         print(f"[feature_engineering] Date Flags: {list(date_flags.keys())}")
@@ -164,6 +184,7 @@ def main() -> None:
         include_holiday_name=include_holiday_name,
         date_flags=date_flags,
         id_cols=ID_COLS,
+        for_models=for_models
     )
     df_feats = fe.transform(df)
 

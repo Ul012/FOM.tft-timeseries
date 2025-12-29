@@ -125,3 +125,50 @@ tft:
   # lag_365 nur bei täglichen Daten sinnvoll (Booksales)
   # Walmart: wöchentliche Daten → ausschließen
   exclude_cols: [ "lag_365" ]
+
+# ----------------------------------------------------------------------------
+# Prophet-spezifische Parameter
+# ----------------------------------------------------------------------------
+prophet:
+  regressors:
+    # Kalender
+    - "month"
+    - "weekofyear"
+    - "is_weekend"
+
+    # Feiertage
+    - "IsHoliday"
+
+    # Externe Regressoren
+    - "Temperature"
+    - "Fuel_Price"
+    - "CPI"
+    - "Unemployment"
+    - "MarkDown1"
+    - "MarkDown2"
+    - "MarkDown3"
+    - "MarkDown4"
+    - "MarkDown5"
+
+  country_holidays: "US"
+  growth: "linear"
+  seasonality_mode: "multiplicative"
+  prediction_length: 4
+
+arima:
+  exog_vars:
+    - "IsHoliday"      # Sehr wichtig für Peak-Prediction
+    - "Temperature"    # Wetter-Einfluss
+    - "Fuel_Price"     # Ökonomischer Indikator
+
+  # Automatische Parametersuche
+  # true = auto_arima findet beste (p,d,q) und (P,D,Q,m)
+  # false = Manuelle Parameter aus order/seasonal_order
+  auto_arima: true
+
+  # Forecast-Horizont
+  prediction_length: 4  # Wochen
+
+  # Manuelle Parameter (nur wenn auto_arima: false)
+  order: [1, 1, 1]               # (p, d, q)
+  seasonal_order: [1, 1, 1, 52]  # (P, D, Q, m) - m=52 für wöchentliche Daten
