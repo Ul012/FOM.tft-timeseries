@@ -119,3 +119,39 @@ tft:
 
   # Optional: Time-varying kategorische Features
   # time_varying_known_categoricals: []
+
+prophet:
+  # Explizite Regressoren
+  regressors:
+    - "is_holiday"
+    - "is_newyear"
+    - "month"
+    - "dayofweek"
+    - "is_weekend"
+    - "is_lockdown_period"
+
+  # Feiertage
+  country_holidays: "DE"
+
+  # Modell-Parameter
+  growth: "linear"
+  seasonality_mode: "multiplicative"
+  prediction_length: 7
+
+arima:
+  exog_vars:
+    - "is_holiday"
+    - "is_newyear"
+    - "is_lockdown_period"
+
+  # Automatische Parametersuche
+  # true = auto_arima findet beste (p,d,q) und (P,D,Q,m)
+  # false = Manuelle Parameter aus order/seasonal_order
+  auto_arima: true
+
+  # Forecast-Horizont (sollte mit tft.max_prediction_length übereinstimmen)
+  prediction_length: 7  # Tage
+
+  # Manuelle Parameter (nur wenn auto_arima: false)
+  order: [1, 1, 1]              # (p, d, q)
+  seasonal_order: [1, 1, 1, 7]  # (P, D, Q, m) - m=7 für tägliche Daten

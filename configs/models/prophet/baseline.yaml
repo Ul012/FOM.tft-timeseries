@@ -1,0 +1,48 @@
+type: "prophet"
+name: "baseline"
+
+model:
+  # Growth Model
+  growth: "linear"  # "linear" oder "logistic"
+
+  # Seasonality
+  seasonality_mode: "multiplicative"  # "additive" oder "multiplicative"
+  yearly_seasonality: true
+  weekly_seasonality: true
+  daily_seasonality: false  # Nur für stündliche Daten
+
+  # Tuning-Parameter
+  changepoint_prior_scale: 0.05  # Flexibilität bei Trend-Änderungen (höher = flexibler)
+  seasonality_prior_scale: 10.0   # Stärke der Saisonalität (höher = stärker)
+  holidays_prior_scale: 10.0      # Stärke von Feiertags-Effekten (höher = stärker)
+
+  # Uncertainty Intervals
+  interval_width: 0.95  # Breite der Konfidenzintervalle (0.95 = 95%)
+
+  # MCMC Sampling (optional, für Bayesian Uncertainty)
+  mcmc_samples: 0  # 0 = MAP estimation (schneller), >0 = MCMC (genauer aber langsamer)
+
+training:
+  prediction_length: 7  # Anzahl Schritte für Forecast (z.B. 7 Tage)
+
+# Hinweise zur Parameterwahl:
+#
+# growth:
+#   - "linear": Standard, für nicht-saturierende Zeitreihen
+#   - "logistic": Für Zeitreihen mit Sättigungsgrenze (benötigt 'cap' Spalte)
+#
+# seasonality_mode:
+#   - "additive": Saisonale Effekte sind konstant über Zeit
+#   - "multiplicative": Saisonale Effekte skalieren mit Trend (häufiger für Verkaufsdaten)
+#
+# changepoint_prior_scale (default: 0.05):
+#   - Höher (0.1, 0.5): Modell passt sich schneller an Trend-Änderungen an
+#   - Niedriger (0.01, 0.001): Konservativerer Trend
+#
+# seasonality_prior_scale (default: 10.0):
+#   - Höher (15, 20): Stärkere Saisonalität
+#   - Niedriger (5, 1): Schwächere Saisonalität
+#
+# holidays_prior_scale (default: 10.0):
+#   - Höher: Stärkere Feiertags-Effekte
+#   - Niedriger: Schwächere Feiertags-Effekte

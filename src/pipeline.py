@@ -25,14 +25,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
-import yaml
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
-import sys
+
+import yaml
 
 
 def run_subprocess(cmd: List[str], step_name: str) -> None:
