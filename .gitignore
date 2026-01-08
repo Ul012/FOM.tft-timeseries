@@ -43,6 +43,10 @@ data/processed/
 logs/
 lightning_logs/
 
+# ============================================================================
+# RESULTS - TFT
+# ============================================================================
+
 # Results - selektiv ignorieren
 results/*
 !results/tft/
@@ -50,14 +54,48 @@ results/tft/*
 !results/tft/runs/
 !results/tft/eval/
 
+# TFT Optuna - selektiv teilen
+results/tft/optuna/*
+!results/tft/optuna/*/
+results/tft/optuna/*/*
+!results/tft/optuna/*/study_*.json     # ✅ Study-Zusammenfassungen
+!results/tft/optuna/*/study_*.csv      # ✅ Trial-Übersichten
+
+# ============================================================================
+# RESULTS - PROPHET
+# ============================================================================
+!results/prophet/
+results/prophet/*
+!results/prophet/runs/
+!results/prophet/eval/
+!results/prophet/optuna/
+
+# Prophet Optuna - selektiv teilen
+results/prophet/optuna/*
+!results/prophet/optuna/*/
+results/prophet/optuna/*/*
+!results/prophet/optuna/*/study_*.json  # ✅ Study-Zusammenfassungen
+!results/prophet/optuna/*/study_*.csv   # ✅ Trial-Übersichten
+
+# ============================================================================
+# LARGE FILES - IMMER IGNORIEREN
+# ============================================================================
 # Checkpoints ausschließen (zu groß ~50-100MB pro Stück)
 **/checkpoints/
 
-# ============================================================================
-# OPTUNA
-# ============================================================================
-optuna/
-optuna_log.txt
+# Prophet Modelle (zu groß ~1-10MB pro Modell)
+**/models/*.pkl
+
+# Optuna DBs (zu groß, regenerierbar)
+**/*.db
+**/prophet_studies.db
+**/tft_studies.db
+
+# Plots (regenerierbar)
+**/plots/
+
+# Trial-Ordner (Zwischenergebnisse, regenerierbar)
+**/trial_*/
 
 # ============================================================================
 # ARCHIVE & NOTES
