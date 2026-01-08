@@ -1,4 +1,4 @@
-# configs/models/arima/baseline.yaml
+# configs/models/arima/walmart/baseline.yaml
 # ARIMA Baseline-Konfiguration
 
 type: "arima"

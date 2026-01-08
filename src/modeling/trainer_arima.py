@@ -458,6 +458,10 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-# Aufruf einzeln:
+# Aufruf:
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
-#   python -m src.modeling.trainer_arima --config configs/models/arima/baseline.yaml
+#   python -m src.modeling.trainer_arima --config configs/models/arima/booksales/baseline.yaml
+#
+#   # Oder für Walmart:
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
+#   python -m src.modeling.trainer_arima --config configs/models/arima/walmart/baseline.yaml

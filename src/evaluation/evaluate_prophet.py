@@ -147,8 +147,12 @@ class ProphetEvaluator:
         print(f"\n[Evaluation] Gruppe: {group_id}")
         print(f"  {self.split.upper()}-Länge: {len(df)}")
 
-        # Modell laden
-        model = self._load_model(group_id)
+        # Modell laden (skip wenn nicht vorhanden)
+        try:
+            model = self._load_model(group_id)
+        except FileNotFoundError:
+            print(f"  ⚠ Modell nicht gefunden, überspringe Gruppe")
+            return None
 
         # Prophet-Format
         regressors = self.prophet_spec["regressors"]
@@ -219,6 +223,8 @@ class ProphetEvaluator:
                     group_id = str(group_values)
 
                 metrics = self.evaluate_single_group(group_id, group_df)
+                if metrics is None:
+                    continue
                 all_metrics[group_id] = metrics
 
         # Aggregierte Metriken
@@ -306,8 +312,19 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
+#   Walmart:
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
 #   # Val-Evaluation
-#   python -m src.evaluation.evaluate_prophet --run-id run_20251228_150000_prophet_baseline --split val
+#   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000719_prophet_baseline --split val
 #
 #   # Test-Evaluation
-#   python -m src.evaluation.evaluate_prophet --run-id run_20251228_150000_prophet_baseline --split test
+#   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000719_prophet_baseline --split test
+#
+#   Booksales:
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+#
+#   # Val-Evaluation
+#   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000405_prophet_baseline --split val
+#
+#   # Test-Evaluation
+#   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000405_prophet_baseline --split test

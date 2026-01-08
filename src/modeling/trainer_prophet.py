@@ -54,7 +54,7 @@ class ProphetTrainer:
     def __init__(self, model_config: dict, prophet_spec: dict):
         self.model_config = model_config
         self.prophet_spec = prophet_spec
-        self.run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}_prophet_{model_config['name']}"
+        self.run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{_dataset_name}_prophet_{model_config['name']}"
         self.results_dir = BASE_DIR / "results" / "prophet" / "runs" / self.run_id
         self.models_dir = self.results_dir / "models"
         self.forecasts_dir = self.results_dir / "forecasts"
@@ -434,4 +434,7 @@ if __name__ == "__main__":
 
 # Aufruf einzeln:
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
-#   python -m src.modeling.trainer_prophet --config configs/models/prophet/baseline.yaml
+#   python -m src.modeling.trainer_prophet --config configs/models/prophet/booksales/baseline.yaml
+#
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
+#   python -m src.modeling.trainer_prophet --config configs/models/prophet/walmart/baseline.yaml

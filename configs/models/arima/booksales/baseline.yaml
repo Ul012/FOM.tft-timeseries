@@ -1,4 +1,4 @@
-# configs/models/arima/baseline.yaml
+# configs/models/arima/booksales/baseline.yaml
 # ARIMA Baseline-Konfiguration
 
 type: "arima"
