@@ -43,7 +43,7 @@ nav:
         - Evaluation TFT: project/EvaluatorTFT.md
         - Evaluation TFT Plot: project/EvaluatorTFTPlot.md
   - Hyperparameter Optimierung:
-      - Optuna: project/Optuna.md
+      - Optuna: project/OptunaTFT.md
   - Allgemeine Dokumentation:
       - Projektstruktur: shared/Projektstruktur.md
       - Projekt Arbeitsweise: shared/ProjektArbeitsweise.md

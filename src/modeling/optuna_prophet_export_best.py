@@ -77,7 +77,7 @@ def export_best_config(study_name: str, output_path: Path | None = None):
             "mcmc_samples": 0
         },
         "training": {
-            "prediction_length": _dataset_config["prediction_length"]
+            "prediction_length": _dataset_config.get("forecasting", {}).get("prediction_length", 7)
         },
         "optuna_metadata": {
             "study_name": study_name,

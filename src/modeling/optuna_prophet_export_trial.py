@@ -96,7 +96,7 @@ def export_trial_config(study_name: str, trial_number: int, output_path: Path | 
             "mcmc_samples": 0
         },
         "training": {
-            "prediction_length": _dataset_config["prediction_length"]
+            "prediction_length": _dataset_config.get("forecasting", {}).get("prediction_length", 7)
         },
         "optuna_metadata": {
             "study_name": study_name,
@@ -158,7 +158,7 @@ if __name__ == "__main__":
 # Aufruf:
 #   Booksales:
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
-#   python -m src.modeling.optuna_prophet_export_trial --study-name prophet_booksales --trial-number 5
+#   python -m src.modeling.optuna_prophet_export_trial --study-name prophet_booksales --trial-number 2
 #
 #   Walmart:
 #   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
