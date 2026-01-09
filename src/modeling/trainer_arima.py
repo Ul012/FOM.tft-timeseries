@@ -131,24 +131,26 @@ class ARIMATrainer:
                 "auto_arima benötigt pmdarima. Installieren mit: pip install pmdarima"
             )
 
-        # auto_arima Parameter aus Config
         model_params = self.model_config.get("model", {})
+
+        # seasonal aus Config lesen
+        seasonal = model_params.get("seasonal", True)  # default True für Rückwärtskompatibilität
 
         model = auto_arima(
             endog,
             exogenous=exog,
-            seasonal=True,
-            m=seasonal_period,
+            seasonal=seasonal,  # ← AUS CONFIG
+            m=seasonal_period if seasonal else 1,  # ← m=1 wenn non-seasonal
             max_p=model_params.get("max_p", 3),
             max_q=model_params.get("max_q", 3),
             max_d=model_params.get("max_d", 2),
-            max_P=model_params.get("max_P", 2),
-            max_Q=model_params.get("max_Q", 2),
-            max_D=model_params.get("max_D", 1),
+            max_P=model_params.get("max_P", 2) if seasonal else 0,  # ← 0 wenn non-seasonal
+            max_Q=model_params.get("max_Q", 2) if seasonal else 0,
+            max_D=model_params.get("max_D", 1) if seasonal else 0,
             start_p=1,
             start_q=1,
-            start_P=1,
-            start_Q=1,
+            start_P=1 if seasonal else 0,  # ← 0 wenn non-seasonal
+            start_Q=1 if seasonal else 0,
             stepwise=True,
             suppress_warnings=True,
             error_action='ignore',

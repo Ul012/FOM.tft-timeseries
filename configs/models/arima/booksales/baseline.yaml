@@ -1,5 +1,5 @@
 # configs/models/arima/booksales/baseline.yaml
-# ARIMA Baseline-Konfiguration
+# ARIMA Baseline-Konfiguration für Booksales
 
 type: "arima"
 name: "baseline"
@@ -9,50 +9,44 @@ model:
   # Findet automatisch beste (p,d,q) und (P,D,Q,m) Parameter
   auto_arima: true
 
+  # Seasonal ARIMA bei Booksales
+  # Booksales hat nur 48 Gruppen → seasonal=true ist gut machbar (~3-4 Stunden)
+  # Wöchentliche Daten (täglich) mit m=7 zeigen klare Wochenmuster
+  # → Seasonal component (P,D,Q,m=7) erfasst diese Muster explizit
+  seasonal: true
+
   # Auto-ARIMA Such-Parameter (nur wenn auto_arima: true)
-  max_p: 3        # Maximaler AR-Order
-  max_q: 3        # Maximaler MA-Order
+  max_p: 3        # Maximaler non-seasonal AR-Order
+  max_q: 3        # Maximaler non-seasonal MA-Order
   max_d: 2        # Maximaler Differencing-Order
-  max_P: 2        # Maximaler saisonaler AR-Order
-  max_Q: 2        # Maximaler saisonaler MA-Order
-  max_D: 1        # Maximaler saisonaler Differencing-Order
+  max_P: 2        # Maximaler seasonal AR-Order
+  max_Q: 2        # Maximaler seasonal MA-Order
+  max_D: 1        # Maximaler seasonal Differencing-Order
 
   # Manuelle Parameter (nur wenn auto_arima: false)
   # order: [1, 1, 1]              # (p, d, q) - wird aus arima_spec geladen
   # seasonal_order: [1, 1, 1, 7]  # (P, D, Q, m) - wird aus arima_spec geladen
 
 training:
-  prediction_length: 7  # Forecast-Horizont (Tage/Wochen)
+  prediction_length: 7  # Forecast-Horizont (Wochen)
 
-# Hinweise zur Parameterwahl:
+# ============================================================================
+# HINWEISE (für Dokumentation):
+# ============================================================================
 #
-# p (AR - AutoRegressive):
-#   - Anzahl vergangener Werte die zur Vorhersage genutzt werden
-#   - Typisch: 0-3
-#   - Höher bei starker Autokorrelation
+# Parameter-Wahl:
+# - p (AR): Anzahl vergangener Werte
+# - d (I - Differencing): Für Stationarität (typisch 0-2)
+# - q (MA): Anzahl vergangener Residuen
+# - P, D, Q (Seasonal): Wie p,d,q aber für saisonale Komponente
+# - m (Seasonal Period): Automatisch aus Frequenz (hier: 7)
 #
-# d (I - Integrated/Differencing):
-#   - Anzahl Differenzierungen für Stationarität
-#   - Typisch: 0-2
-#   - 1 = einmal differenzieren (entfernt linearen Trend)
-#   - 2 = zweimal differenzieren (entfernt quadratischen Trend)
-#
-# q (MA - Moving Average):
-#   - Anzahl vergangener Residuen
-#   - Typisch: 0-3
-#   - Fängt kurzfristige Schocks/Anomalien
-#
-# P, D, Q (Seasonal):
-#   - Wie p, d, q aber für saisonale Komponente
-#   - Typisch: 0-2
-#
-# m (Seasonal Period):
-#   - Wird automatisch aus Frequenz bestimmt:
-#   - Täglich: 7 (Wochen-Seasonalität)
-#   - Wöchentlich: 52 (Jahres-Seasonalität)
-#   - Monatlich: 12 (Jahres-Seasonalität)
+# Seasonal bei Booksales:
+# - Nur 48 Gruppen → Training in 3-4 Stunden machbar
+# - m=7 ist vertretbar (keine Computational Constraints)
+# - Wochenmuster werden explizit durch (P,D,Q,m=7) erfasst
 #
 # Auto-ARIMA vs. Manual:
-#   - Auto: Langsamer aber findet beste Parameter
-#   - Manual: Schneller aber benötigt Domänenwissen
-#   - Empfehlung: Start mit auto, dann manuelle Fine-Tuning
+# - Auto: Langsamer aber findet beste Parameter
+# - Manual: Schneller aber benötigt Domänenwissen
+# - Empfehlung: Start mit auto, dann optional manuelle Fine-Tuning
