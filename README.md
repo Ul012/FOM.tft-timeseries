@@ -1,295 +1,370 @@
-# TFT-TimeSeries – Multi-Dataset Forecasting
+# TFT-TimeSeries — Multi-Model Forecasting
 
-Dieses Repository enthält eine **modulare, erweiterbare Pipeline** zur Modellierung von Zeitreihen auf Basis des **Temporal Fusion Transformer (TFT)**. Der Fokus liegt auf einer klar strukturierten, konfigurationsgetriebenen und teamfähigen Umsetzung.
+Modulare, erweiterbare Pipeline für Zeitreihen-Forecasting mit **Temporal Fusion Transformer (TFT)**, **ARIMA** und **Prophet**. 
 
-Als **Beispiel-Datensätze** dienen:
-- **Booksales** (Kaggle Tabular Playground Series – Sep 2022)
-- **Walmart** (Kaggle Store Sales Forecasting)
-
-Die Architektur ist so aufgebaut, dass weitere Datensätze einfach hinzugefügt werden können.
+Der Fokus liegt auf einer klar strukturierten, konfigurationsgetriebenen und reproduzierbaren Umsetzung.
 
 ---
 
-## 1. Datenbasis
+## 📊 Modelle
 
-Die Pipeline unterstützt **mehrere Datensätze** gleichzeitig.
+| Modell | Typ | Status |
+|--------|-----|--------|
+| **TFT** | Deep Learning (Attention-based) | ✅ Production |
+| **ARIMA** | Statistisch (SARIMA mit auto_arima) | ✅ Production |
+| **Prophet** | Statistisch (Facebook Prophet) | ✅ Production |
 
-### Booksales
-- **Quelle:** [Kaggle Tabular Playground Series - Sep 2022](https://www.kaggle.com/competitions/tabular-playground-series-sep-2022/data)
-- **Dateien:** `train.csv`, optional `test.csv`
-- **Ablageort:** `data/raw/booksales/`
+**Besonderheit:** Alle Modelle nutzen die gleiche Evaluation-Pipeline für faire Vergleiche.
 
-### Walmart
-- **Quelle:** [Kaggle Store Sales Forecasting](https://www.kaggle.com/competitions/walmart-recruiting-store-sales-forecasting/data)
-- **Dateien:** `train.csv`, `features.csv`, optional `test.csv`
-- **Ablageort:** `data/raw/walmart/`
+---
 
-### Download-Anleitung
+## 📁 Datasets
+
+Als **Beispiel-Datasets** dienen:
+- **Booksales** (Kaggle Tabular Playground Series — Sep 2022) - Täglich
+- **Walmart** (Kaggle Store Sales Forecasting) - Wöchentlich
+
+Die Architektur unterstützt beliebig viele Datasets gleichzeitig.
+
+### Download
 
 1. Kaggle-Account erstellen (falls nicht vorhanden)
-2. Datensatz-Seite besuchen und "Download All" klicken
-3. ZIP entpacken und Dateien in den entsprechenden Ordner kopieren:
-   ```
-   data/raw/booksales/
-   ├── train.csv
-   └── test.csv (optional)
-   
-   data/raw/walmart/
-   ├── train.csv
-   ├── features.csv
-   └── test.csv (optional)
-   ```
+2. Dataset-Seite besuchen und "Download All" klicken
+3. ZIP entpacken und Dateien in Ordner kopieren:
+
+```
+data/raw/booksales/
+├── train.csv
+└── test.csv (optional)
+
+data/raw/walmart/
+├── train.csv
+├── features.csv
+└── test.csv (optional)
+```
 
 **Hinweis:** Rohdaten werden nicht versioniert (siehe `.gitignore`).
 
-**Erweiterbarkeit:** Jeder Datensatz erhält einen eigenen Unterordner (`data/raw/<dataset_name>/`) und eine eigene Config (`configs/datasets/<dataset_name>.yaml`).
 ---
 
-## 2. Installation und Setup
+## 🚀 Quick Start
 
-### 2.1 Virtuelle Umgebung
+### Installation
 
 ```bash
+# Virtual Environment
 python -m venv .venv
-```
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # macOS/Linux
 
-Aktivierung:
-
-- Windows: `.venv\Scripts\activate`
-- macOS/Linux: `source .venv/bin/activate`
-
-### 2.2 Abhängigkeiten installieren
-
-```bash
+# Dependencies
 pip install -r requirements.txt
 ```
 
----
-
-## 3. Projektstruktur
-
-```text
-src/
-├── data/              # Preprocessing (Load, Alignment, Cleaning, Features)
-├── modeling/          # Training (model_dataset, dataset_tft, trainer_tft)
-├── evaluation/        # Metriken-Berechnung und Aggregation
-├── visualization/     # Plots für Daten, Training und Evaluation
-├── utils/             # Hilfsfunktionen
-├── config.py          # Globale Konstanten
-└── pipeline.py        # Orchestrierung aller Schritte
-
-configs/
-├── datasets/          # booksales.yaml, walmart.yaml (Dataset-Configs)
-└── models/tft/        # Nach Dataset organisiert:
-    ├── booksales/     #   - baseline.yaml, experiments/
-    └── walmart/       #   - baseline.yaml, experiments/
-
-data/
-├── raw/<dataset>/     # Rohdaten (nicht versioniert)
-├── interim/<dataset>/ # Zwischenschritte (raw, aligned, cleaned)
-└── processed/<dataset>/ # Features, Splits (train/val/test)
-
-logs/tft/              # Training-Logs: run_YYYYMMDD_HHMMSS_<dataset>_<config>/
-
-results/tft/
-├── runs/              # Checkpoints + Summaries: run_YYYYMMDD_HHMMSS_<dataset>_<config>/
-├── eval/              # Evaluation-Ergebnisse
-└── plots/             # Visualisierungen
-
-docs/                  # Detaillierte Dokumentation
-```
-
----
-
-## 4. Pipeline – Ausführung
-
-### 4.1 Kompletter Durchlauf (empfohlen)
+### Kompletter Durchlauf
 
 ```bash
-# Alle Steps: Preprocessing + Modeling + Training
-python -m src.pipeline \
-    --dataset configs/datasets/walmart.yaml \
-    --model configs/models/tft/walmart/baseline.yaml
-
+# TFT
 python -m src.pipeline \
     --dataset configs/datasets/booksales.yaml \
     --model configs/models/tft/booksales/baseline.yaml
+
+# ARIMA
+$env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+python -m src.modeling.dataset_arima
+python -m src.modeling.trainer_arima --config configs/models/arima/booksales/baseline.yaml
+
+# Prophet
+$env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+python -m src.modeling.dataset_prophet
+python -m src.modeling.trainer_prophet --config configs/models/prophet/booksales/baseline.yaml
 ```
 
-**Was passiert:** Führt automatisch alle Steps aus:
-1. `preprocessing` (load_raw, alignment, cleaning, feature_engineering, cyclical_encoder, lag_features)
-2. `model_dataset` (Train/Val/Test-Split)
-3. `dataset_tft` (TFT-Spezifikation)
-4. `training` (TFT-Training)
-
-**Hinweis:** Wenn `--steps` nicht angegeben wird, werden alle Steps ausgeführt.
+**Was passiert:**
+1. Preprocessing (Load, Cleaning, Feature Engineering)
+2. Model-spezifische Datenaufbereitung
+3. Training
+4. Checkpoint-Speicherung
 
 ---
 
-### 4.2 Nur Preprocessing
+## 📊 Evaluation
 
 ```bash
-python -m src.pipeline \
-    --dataset configs/datasets/walmart.yaml \
-    --steps preprocessing,model_dataset,dataset_tft
+# Val Split
+python -m src.evaluation.evaluate_tft --run-id <run_id> --split val
+python -m src.evaluation.evaluate_arima --run-id <run_id> --split val
+python -m src.evaluation.evaluate_prophet --run-id <run_id> --split val
 
+# Test Split
+python -m src.evaluation.evaluate_tft --run-id <run_id> --split test
+python -m src.evaluation.evaluate_arima --run-id <run_id> --split test
+python -m src.evaluation.evaluate_prophet --run-id <run_id> --split test
+```
+
+**Output:**
+- `results/<model>/runs/<run_id>/eval_val.json`
+- `results/<model>/runs/<run_id>/eval_test.json`
+
+---
+
+## 🎯 Hyperparameter-Tuning (Optuna)
+
+```bash
+# TFT (50 Trials, ~25h)
+python -m src.modeling.optuna_tft --study-name tft_booksales --n-trials 50
+
+# ARIMA (50 Trials, ~2.5h für Booksales)
+python -m src.modeling.optuna_arima --study-name arima_booksales --n-trials 50
+
+# Prophet (50 Trials, ~8h)
+python -m src.modeling.optuna_prophet --study-name prophet_booksales --n-trials 50
+
+# Beste Config exportieren
+python -m src.modeling.optuna_<model>_export_best --study-name <study_name>
+
+# Training mit bester Config
 python -m src.pipeline \
+    --model configs/models/<model>/optuna_best.yaml \
     --dataset configs/datasets/booksales.yaml \
-    --steps preprocessing,model_dataset,dataset_tft
-```
-
-**Nutzen:** Daten einmalig vorbereiten, danach verschiedene Modell-Configs trainieren.
-
----
-
-### 4.3 Nur Training
-
-```bash
-# Training mit verschiedenen Hyperparametern (Preprocessing bereits erledigt)
-python -m src.pipeline \
-    --dataset configs/datasets/walmart.yaml \
-    --model configs/models/tft/walmart/baseline.yaml \
-    --steps training
-
-python -m src.pipeline \
-    --dataset configs/datasets/walmart.yaml \
-    --model configs/models/tft/walmart/lr_high.yaml \
     --steps training
 ```
 
-**Nutzen:** Verschiedene Modell-Konfigurationen testen ohne Preprocessing zu wiederholen.
+**Details:** Siehe [docs/OPTUNA.md](docs/OPTUNA.md)
 
 ---
 
-### 4.4 Einzelne Schritte (manuell, für Debugging)
+## 📂 Projektstruktur
 
-**Preprocessing:**
-```bash
-$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.load_raw
-$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.feature_engineering
-$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.cyclical_encoder
-$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.lag_features
 ```
-
-**Modeling:**
-```bash
-$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.model_dataset
-$env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.dataset_tft
-python -m src.modeling.trainer_tft --config configs/models/tft/walmart/baseline.yaml
-```
-
-**Evaluation:**
-```bash
-python -m src.evaluation.evaluate_tft --run-id run_20251123_140000_walmart_baseline
-python -m src.evaluation.aggregate_tft_eval
+TFT-TimeSeries/
+├── src/
+│   ├── data/              # Preprocessing
+│   ├── modeling/          # Training (TFT, ARIMA, Prophet)
+│   ├── evaluation/        # Metriken-Berechnung
+│   ├── visualization/     # Plots
+│   ├── utils/             # Hilfsfunktionen
+│   └── pipeline.py        # Orchestrierung
+│
+├── configs/
+│   ├── datasets/          # booksales.yaml, walmart.yaml
+│   └── models/
+│       ├── tft/           # TFT-Configs
+│       ├── arima/         # ARIMA-Configs
+│       └── prophet/       # Prophet-Configs
+│
+├── data/
+│   ├── raw/<dataset>/     # Rohdaten (nicht versioniert)
+│   ├── interim/<dataset>/ # Zwischenschritte
+│   └── processed/<dataset>/ # Features, Splits
+│
+├── results/
+│   ├── tft/               # TFT Runs, Optuna, Plots
+│   ├── arima/             # ARIMA Runs, Optuna
+│   └── prophet/           # Prophet Runs, Optuna
+│
+├── logs/                  # Training-Logs
+│
+└── docs/                  # Dokumentation
+    ├── SCRIPTS.md         # ⭐ Alle Scripts auf einen Blick
+    ├── OPTUNA.md          # Hyperparameter-Tuning Guide
+    ├── OptunaTFT.md       # TFT Optuna Details
+    ├── OptunaARIMA.md     # ARIMA Optuna Details
+    └── OptunaProphet.md   # Prophet Optuna Details
 ```
 
 ---
 
-## 5. Konfiguration
+## 📖 Dokumentation
 
-### `configs/datasets/<dataset_name>.yaml`
-- Schema (Spaltennamen, time_col, id_cols, target_col)
-- Raw Data Loading (single_file vs. multiple_files mit Merge)
-- Preprocessing-Pipeline (Steps aktivieren/deaktivieren)
+### Zentrale Guides
+- **[SCRIPTS.md](docs/SCRIPTS.md)** — Alle Scripts mit Beispiel-Aufrufen
+- **[OPTUNA.md](docs/OPTUNA.md)** — Hyperparameter-Tuning Workflow
+
+### Detaillierte Docs
+- **[OptunaTFT.md](docs/OptunaTFT.md)** — TFT Optuna-Integration (technisch)
+- **[OptunaARIMA.md](docs/OptunaARIMA.md)** — ARIMA Optuna-Integration (technisch)
+- **[OptunaProphet.md](docs/OptunaProphet.md)** — Prophet Optuna-Integration (technisch)
+
+### Legacy Docs (in `docs/`)
+- LoadRaw.md, DataAlignment.md, DataCleaning.md
+- FeatureEngineer.md, CyclicalEncoder.md, LagFeatures.md
+- Pipeline.md, ConfigSetup.md, Projektstruktur.md
+
+---
+
+## 🔧 Konfiguration
+
+### Dataset Config (`configs/datasets/<dataset>.yaml`)
+- Schema (Spalten, time_col, target_col, group_cols)
+- Raw Data Loading (single/multiple files)
+- Preprocessing-Pipeline
 - Split-Konfiguration
-- TFT-Parameter
+- Modell-Parameter
 
-### `configs/models/tft/*.yaml`
-- Training-Hyperparameter (Epochen, Batch-Size, Learning Rate)
-- Modell-Architektur (hidden_size, dropout, etc.)
-- Hardware-Parameter (GPU/CPU, num_workers)
-
-### `src/config.py`
-- Verzeichnis-Struktur
-- Projekt-übergreifende Konstanten
+### Model Config (`configs/models/<model>/<config>.yaml`)
+- **TFT:** Hyperparameter (learning_rate, hidden_size, dropout, etc.)
+- **ARIMA:** auto_arima Parameter (max_p, max_q, seasonal, etc.)
+- **Prophet:** Seasonality, Changepoints, Holidays
 
 ---
 
-## 6. Logging & Ergebnisse
+## 📊 Outputs
 
-- **Training-Logs:**  
-  `logs/tft/<run_id>/metrics.csv`
+### Training
+```
+results/<model>/runs/<run_id>/
+├── checkpoints/           # Beste Modelle
+├── summary.json           # Training-Summary
+├── eval_val.json          # Validation Metriken
+└── eval_test.json         # Test Metriken
+```
 
-- **Checkpoints:**  
-  `results/tft/runs/<run_id>/checkpoints/`
+### Optuna
+```
+results/<model>/optuna/<dataset>/
+├── <model>_studies.db     # SQLite mit allen Trials
+├── trial_<n>/             # Pro Trial: Checkpoint + Summary
+├── plots/                 # Visualisierungen
+└── analysis/              # CSV-Exports
+```
 
-- **Training-Summary:**  
-  `results/tft/runs/<run_id>/summary.json`
-
-- **Evaluation:**  
-  `results/tft/eval/<run_id>/eval_summary.json`  
-  `results/tft/eval/eval_overview.csv`
-
-- **Plots:**  
-  `results/tft/plots/{data,training,eval}/`
-
----
-
-## 7. Dokumentation
-
-Detaillierte Dokumentation in `docs/`:
-
-- LoadRaw.md – Laden und Mergen von Rohdaten
-- DataAlignment.md – Normalisierung
-- DataCleaning.md – Bereinigung
-- FeatureEngineer.md – Kalender-Features
-- CyclicalEncoder.md – Sin/Cos-Kodierung
-- LagFeatures.md – Lag- und Rolling-Features
-- Pipeline.md – Orchestrierung
-- PipelineOrder.md – Reihenfolge aller Schritte
-- ConfigSetup.md – Konfigurationssystem
-- Projektstruktur.md – Vollständiger Überblick
+### Logs
+```
+logs/<model>/<run_id>/
+└── metrics.csv            # PyTorch Lightning / Pandas
+```
 
 ---
 
-## 8. Multi-Dataset Support
+## 🎯 Typische Workflows
 
-### Neuen Datensatz hinzufügen:
+### Workflow 1: Baseline-Training
+```bash
+# 1. Dataset vorbereiten
+python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing
 
-1. **Rohdaten ablegen:**
-   ```
-   data/raw/neuer_datensatz/
-   ├── train.csv
-   └── ...
-   ```
+# 2. Alle 3 Modelle trainieren
+python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/baseline.yaml --steps training
 
-2. **Config erstellen (als Kopie einer bestehenden Config):**
-   ```bash
-   # Kopiere z.B. booksales.yaml als Vorlage
-   Copy-Item configs/datasets/booksales.yaml configs/datasets/neuer_datensatz.yaml
-   # Dann anpassen: name, paths, schema, preprocessing
-   ```
+$env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+python -m src.modeling.dataset_arima
+python -m src.modeling.trainer_arima --config configs/models/arima/booksales/baseline.yaml
 
-3. **Pipeline ausführen:**
-   ```bash
-   python -m src.pipeline \
-       --dataset configs/datasets/neuer_datensatz.yaml \
-       --model configs/models/tft/baseline.yaml
-   ```
+python -m src.modeling.dataset_prophet
+python -m src.modeling.trainer_prophet --config configs/models/prophet/booksales/baseline.yaml
 
-**Details zur Config-Struktur:** Siehe bestehende Configs in `configs/datasets/` als Vorlage.
+# 3. Evaluieren
+python -m src.evaluation.evaluate_tft --run-id <run_id> --split test
+python -m src.evaluation.evaluate_arima --run-id <run_id> --split test
+python -m src.evaluation.evaluate_prophet --run-id <run_id> --split test
+```
+
+### Workflow 2: Hyperparameter-Tuning
+```bash
+# 1. Optuna durchführen (mehrere Stunden/Tage)
+python -m src.modeling.optuna_tft --study-name tft_booksales --n-trials 50
+
+# 2. Analysieren
+python -m src.evaluation.analyze_optuna_tft_trials --study-name tft_booksales
+python -m src.visualization.plot_tft_optuna_study --study-name tft_booksales
+
+# 3. Beste Config exportieren
+python -m src.modeling.optuna_tft_export_best --study-name tft_booksales
+
+# 4. Finales Training
+python -m src.pipeline \
+    --model configs/models/tft/optuna_best.yaml \
+    --dataset configs/datasets/booksales.yaml \
+    --steps training
+```
+
+### Workflow 3: Neues Dataset hinzufügen
+```bash
+# 1. Rohdaten ablegen
+# data/raw/neues_dataset/train.csv
+
+# 2. Config erstellen (Kopie von bestehender Config als Vorlage)
+Copy-Item configs/datasets/booksales.yaml configs/datasets/neues_dataset.yaml
+# Dann anpassen: name, paths, schema
+
+# 3. Pipeline ausführen
+python -m src.pipeline \
+    --dataset configs/datasets/neues_dataset.yaml \
+    --model configs/models/tft/baseline.yaml
+```
 
 ---
 
-## 9. Geplante Erweiterungen
+## 🔬 Modell-Vergleich
 
-### Klassische Modelle
-- Integration von **ARIMA** und **Prophet**
-- Vergleich mit TFT
+### Metriken
+- **MAE** (Mean Absolute Error) - Hauptmetrik
+- **RMSE** (Root Mean Squared Error)
+- **MAPE** (Mean Absolute Percentage Error)
+- **SMAPE** (Symmetric MAPE)
 
-### Hyperparameter-Optimierung
-- **Optuna** mit Random Search, TPE, Pruning
-- Studien-Persistierung
-
-### MLflow
-- Tracking von Experimenten
-- Model Registry
+### Evaluation-Outputs
+Jedes Modell erstellt `eval_val.json` und `eval_test.json` mit:
+```json
+{
+  "run_id": "...",
+  "dataset": "booksales",
+  "split": "test",
+  "n_groups": 48,
+  "metrics": {
+    "by_group": {...},
+    "overall": {
+      "mae": 14.29,
+      "rmse": 21.03,
+      "mape": 6.35
+    }
+  }
+}
+```
 
 ---
 
-## 10. Zusammenarbeit
+## 🧪 Besonderheiten
 
-Die modulare Struktur ermöglicht paralleles Arbeiten und reproduzierbare Ergebnisse.
+### ARIMA
+- **Resume-Training:** Bei Unterbrechung fortsetzen mit `resume_arima_training.py`
+- **Seasonal:** m=7 (Booksales), m=52 (Walmart)
+- **Training-Dauer:** Sehr variabel (Booksales: 3min, Walmart: Tage)
 
-Alle Schritte sind konfigurationsgetrieben und klar dokumentiert. Änderungen werden minimalinvasiv umgesetzt, sodass die Gesamtstruktur stabil bleibt.
+### Prophet
+- **Additive/Multiplicative Seasonality**
+- **Holidays:** Automatische Erkennung
+- **Changepoints:** Flexible Trendänderungen
+
+### TFT
+- **Attention-Mechanismus:** Interpretierbare Vorhersagen
+- **Multi-Horizon:** Mehrere Steps gleichzeitig
+- **GPU-Accelerated:** ~10x schneller als CPU
+
+---
+
+## 🎓 Wissenschaftlicher Kontext
+
+Dieses Projekt wurde im Rahmen einer Seminararbeit entwickelt:
+- **Fokus:** Vergleich Deep Learning (TFT) vs. klassische Methoden (ARIMA, Prophet)
+- **Datasets:** Unterschiedliche Frequenzen (täglich vs. wöchentlich)
+- **Evaluation:** Faire Vergleiche durch einheitliche Metriken und Splits
+
+---
+
+## 🤝 Zusammenarbeit
+
+Die modulare Struktur ermöglicht:
+- Paralleles Arbeiten an verschiedenen Modellen
+- Reproduzierbare Ergebnisse durch Configs und Seeds
+- Einfache Erweiterung um neue Modelle/Datasets
+- Klare Verantwortlichkeiten (Preprocessing, Modeling, Evaluation getrennt)
+
+**Änderungen** werden minimalinvasiv umgesetzt, sodass die Gesamtstruktur stabil bleibt.
+
+---
+
+## 📝 Nächste Schritte
+
+Siehe [SCRIPTS.md](docs/SCRIPTS.md) für vollständige Script-Übersicht und [OPTUNA.md](docs/OPTUNA.md) für Hyperparameter-Tuning.

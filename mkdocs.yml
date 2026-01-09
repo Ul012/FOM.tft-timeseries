@@ -1,55 +1,111 @@
-site_name: FOM.tft-timeseries – Notizen
-site_description: Projektdokumentation, Dev Notes und Konfiguration
+site_name: FOM.tft-timeseries — Dokumentation
+site_description: Multi-Modell Time Series Forecasting mit TFT, ARIMA und Prophet
 theme:
   name: material
   language: de
   features:
     - navigation.instant
     - navigation.sections
+    - navigation.expand
+    - navigation.top
     - content.code.copy
     - content.tabs.link
+    - toc.integrate
+  palette:
+    # Light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
 markdown_extensions:
   - admonition
   - toc:
       permalink: true
   - tables
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      anchor_linenums: true
   - pymdownx.superfences
   - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - attr_list
+  - def_list
 
 nav:
-  - Übersicht: index.md
-  - Projekt Pipeline:
+  - 🏠 Übersicht: index.md
+
+  - 🚀 Schnelleinstieg:
+      - Script-Übersicht: shared/SCRIPTS.md
+      - Projekt-Arbeitsweise: shared/ProjektArbeitsweise.md
+
+  - 📊 Modelle:
+      - TFT (Temporal Fusion Transformer):
+          - Dataset TFT: project/DatasetTFT.md
+          - Trainer TFT: project/TrainerTFT.md
+          - Evaluation TFT: project/EvaluatorTFT.md
+          - Evaluation TFT Plot: project/EvaluatorTFTPlot.md
+      - ARIMA:
+          - Überblick: shared/ArimaProphetIntegration.md
+      - Prophet:
+          - Integration: project/ProphetIntegration.md
+
+  - 🎯 Hyperparameter-Optimierung:
+      - Optuna Übersicht: shared/OPTUNA.md
+      - TFT Optuna: project/OptunaTFT.md
+      - ARIMA Optuna: shared/OptunaARIMA.md
+      - Prophet Optuna: project/OptunaProphet.md
+
+  - 🔄 Pipeline:
       - Pipeline Übersicht: shared/PipelineOrder.md
       - Pipeline Script: project/Pipeline.md
-  - Projekt Schritte:
-      - Datenqualitätsprüfung:
-          - Analyze Data: project/AnalyzeDataset.md
+
+  - 📁 Data Processing:
+      - Datenqualität:
+          - Analyze Dataset: project/AnalyzeDataset.md
           - Analyze Seasonal Peaks: project/AnalyzeSeasonalPeaks.md
-      - Data Preprocessing:
-        - Load Data: projct/LoadRaw.md
-        - Data Alignment: project/DataAlignment.md
-        - Data Cleaning: project/DataCleaning.md
-        - Data Cleaning Plot: project/DataCleaningPlot.md
-        - Feature Engineering: project/FeatureEngineer.md
-        - Cyclical Encoder: project/CyclicalEncoder.md
-        - Lag Features: project/LagFeatures.md
-      - Modeling:
-        - Model Dataset: project/ModelDataset.md
-        - Dataset TFT: project/DatasetTFT.md
-        - Trainer TFT: project/TrainerTFT.md
-      - Evaluation:
-        - Evaluation TFT: project/EvaluatorTFT.md
-        - Evaluation TFT Plot: project/EvaluatorTFTPlot.md
-  - Hyperparameter Optimierung:
-      - Optuna: project/OptunaTFT.md
-  - Allgemeine Dokumentation:
+      - Preprocessing:
+          - Load Raw: project/LoadRaw.md
+          - Data Alignment: project/DataAlignment.md
+          - Data Cleaning: project/DataCleaning.md
+          - Data Cleaning Plot: project/DataCleaningPlot.md
+          - Feature Engineering: project/FeatureEngineer.md
+          - Cyclical Encoder: project/CyclicalEncoder.md
+          - Lag Features: project/LagFeatures.md
+      - Model-Spezifisch:
+          - Model Dataset: project/ModelDataset.md
+
+  - 📈 Visualisierung:
+      - TFT Plot Interpretation: project/PlotTFTInterpretation.md
+
+  - 📚 Allgemeine Dokumentation:
       - Projektstruktur: shared/Projektstruktur.md
-      - Projekt Arbeitsweise: shared/ProjektArbeitsweise.md
       - Configs & Setup: shared/ConfigSetup.md
       - Trainer & Evaluator Struktur: shared/TrainerEvaluator_Stuktur.md
       - MkDocs Nutzung: shared/MkDocsUsage.md
-  - Geplant:
-      - ARIMA und Prophet: shared/ArimaProphetIntegration.md
-      - Integration in MLFlow: shared/MLFlowKonzept.md
+
+  - 🔮 Roadmap:
+      - MLflow Integration: shared/MLFlowKonzept.md
+
+plugins:
+  - search:
+      lang: de
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yourusername/tft-timeseries
+
+  generator: false

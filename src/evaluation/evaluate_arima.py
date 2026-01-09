@@ -278,5 +278,11 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
-#   python -m src.evaluation.evaluate_arima --run-id run_20251228_150000_arima_baseline --split val
-#   python -m src.evaluation.evaluate_arima --run-id run_20251228_150000_arima_baseline --split test
+#
+#   booksales:
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+#   python -m src.evaluation.evaluate_arima --run-id run_20260106_174337_arima_baseline --split test
+#
+#   walmart:
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
+#   python -m src.evaluation.evaluate_arima --run-id run_20260106_180327_arima_baseline --split test

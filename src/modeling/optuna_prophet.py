@@ -2,39 +2,33 @@
 """
 Hyperparameter-Optimierung für Prophet mit Optuna.
 
-METRIKEN:
-- Primäre Metrik (Optimierungsziel): val_mae (Mean Absolute Error)
-- Geloggte Metriken: MAE, RMSE, MAPE, SMAPE
-- Ziel: val_mae minimieren
-
-KONFIGURATION:
-- Alle Parameter sind im Script hardcodiert
-- Search Space basiert auf Prophet Best Practices
-- Training-Parameter entsprechen baseline.yaml
-
-Aufrufbeispiele:
-    # Test-Run
-    $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
-    python -m src.modeling.optuna_prophet --study-name prophet_test --n-trials 2
-
-    # Einfacher Run (10 Trials)
-    python -m src.modeling.optuna_prophet --n-trials 10
-
-    # Mit Custom Study Name
-    python -m src.modeling.optuna_prophet --study-name prophet_full --n-trials 30
-
-    # Fortsetzen einer existierenden Study
-    python -m src.modeling.optuna_prophet --study-name prophet_full --n-trials 10
+Optimiert changepoint_prior_scale, seasonality_prior_scale, holidays_prior_scale,
+seasonality_mode und growth für minimale val_mae.
 """
 
 from __future__ import annotations
 
+# ============================================================================
+# LOGGING - MUSS VOR PROPHET-IMPORT STEHEN!
+# ============================================================================
+import logging
+import os
+import sys
+
+# Konfiguriere Logging VOR Prophet-Import
+logging.basicConfig(level=logging.ERROR, format='%(message)s', stream=sys.stdout)
+logging.getLogger('cmdstanpy').setLevel(logging.CRITICAL)
+logging.getLogger('prophet').setLevel(logging.ERROR)
+os.environ['STAN_NUM_THREADS'] = '1'
+
+# ============================================================================
+# IMPORTS
+# ============================================================================
 import argparse
 import json
-import pickle
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict
 
 import numpy as np
 import optuna
@@ -44,41 +38,33 @@ from optuna.samplers import TPESampler
 from prophet import Prophet
 
 from src.config import BASE_DIR
-from src.utils.load_dataset_config import load_dataset_config, get_schema
+from src.utils.load_dataset_config import load_dataset_config
 
 # ============================================================================
-# GLOBALE KONFIGURATION
+# KONFIGURATION
 # ============================================================================
-
-# Dataset-Config laden
 _dataset_config = load_dataset_config()
-_schema = get_schema(_dataset_config)
 _dataset_name = _dataset_config["name"]
 
-# Pfade (dataset-spezifisch)
 OPTUNA_BASE_DIR = BASE_DIR / "results" / "prophet" / "optuna" / _dataset_name
 OPTUNA_STORAGE = f"sqlite:///{OPTUNA_BASE_DIR}/prophet_studies.db"
 
-# ============================================================================
-# HARDCODIERTE PARAMETER
-# ============================================================================
-
-# Search Space (Prophet Hyperparameter)
+# Search Space
 SEARCH_SPACE = {
     "changepoint_prior_scale": {"min": 0.001, "max": 0.5, "log": True},
     "seasonality_prior_scale": {"min": 0.01, "max": 10.0, "log": True},
     "holidays_prior_scale": {"min": 0.01, "max": 10.0, "log": True},
     "seasonality_mode": {"choices": ["multiplicative", "additive"]},
-    "growth": {"choices": ["linear"]},  # logistic braucht cap/floor
+    "growth": {"choices": ["linear"]}
 }
 
-# Feste Parameter
+# Fixe Parameter
 FIXED_CONFIG = {
     "yearly_seasonality": True,
     "weekly_seasonality": True,
     "daily_seasonality": False,
     "interval_width": 0.95,
-    "mcmc_samples": 0,
+    "mcmc_samples": 0
 }
 
 
@@ -86,25 +72,15 @@ FIXED_CONFIG = {
 # HELPER FUNCTIONS
 # ============================================================================
 
-
-def _load_prophet_spec(dataset_name: str) -> Dict[str, Any]:
-    """Lädt prophet_spec.json."""
+def _load_prophet_spec(dataset_name: str) -> Dict:
+    """Lade prophet_spec.json"""
     spec_path = BASE_DIR / "data" / "processed" / dataset_name / "prophet_spec.json"
-
-    if not spec_path.exists():
-        raise FileNotFoundError(f"prophet_spec.json nicht gefunden: {spec_path}")
-
     with open(spec_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def _prepare_prophet_dataframe(
-        df: pd.DataFrame,
-        time_col: str,
-        target_col: str,
-        regressors: List[str]
-) -> pd.DataFrame:
-    """Konvertiert zu Prophet-Format."""
+def _prepare_prophet_dataframe(df: pd.DataFrame, time_col: str, target_col: str, regressors: list) -> pd.DataFrame:
+    """Konvertiert zu Prophet-Format (ds, y, regressors)"""
     prophet_df = pd.DataFrame({
         "ds": pd.to_datetime(df[time_col]),
         "y": df[target_col].astype("float64")
@@ -112,94 +88,62 @@ def _prepare_prophet_dataframe(
 
     for reg in regressors:
         if reg in df.columns:
-            prophet_df[reg] = pd.to_numeric(df[reg], errors='coerce').astype("float64").fillna(0.0)
-        else:
-            prophet_df[reg] = 0.0
+            prophet_df[reg] = pd.to_numeric(df[reg], errors='coerce').fillna(0).astype("float64")
 
     return prophet_df
 
 
 def _calculate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
-    """Berechnet Evaluation-Metriken."""
-    mask = ~(np.isnan(y_true) | np.isnan(y_pred) | np.isinf(y_true) | np.isinf(y_pred))
+    """Berechnet MAE"""
+    mask = ~(np.isnan(y_true) | np.isnan(y_pred))
     y_true = y_true[mask]
     y_pred = y_pred[mask]
 
     if len(y_true) == 0:
-        return {"mae": None, "rmse": None, "mape": None, "smape": None}
+        return {"mae": None}
 
-    mae = float(np.mean(np.abs(y_true - y_pred)))
-    rmse = float(np.sqrt(np.mean((y_true - y_pred) ** 2)))
-
-    mape = None
-    if not (y_true == 0).any():
-        mape = float(np.mean(np.abs((y_true - y_pred) / y_true)) * 100)
-
-    denominator = (np.abs(y_true) + np.abs(y_pred)) / 2
-    smape = None
-    if not (denominator == 0).any():
-        smape = float(np.mean(np.abs(y_true - y_pred) / denominator) * 100)
-
-    return {"mae": mae, "rmse": rmse, "mape": mape, "smape": smape}
+    return {"mae": float(np.mean(np.abs(y_true - y_pred)))}
 
 
 # ============================================================================
-# OPTUNA OBJECTIVE FUNCTION
+# OPTUNA OBJECTIVE
 # ============================================================================
-
 
 def objective(trial: optuna.Trial) -> float:
-    """
-    Optuna Objective Function für Prophet-Hyperparameter-Optimierung.
+    """Optuna Objective für Prophet HPO"""
 
-    Args:
-        trial: Optuna Trial-Objekt
+    # Hyperparameter
+    params = {
+        "changepoint_prior_scale": trial.suggest_float(
+            "changepoint_prior_scale",
+            SEARCH_SPACE["changepoint_prior_scale"]["min"],
+            SEARCH_SPACE["changepoint_prior_scale"]["max"],
+            log=SEARCH_SPACE["changepoint_prior_scale"]["log"]
+        ),
+        "seasonality_prior_scale": trial.suggest_float(
+            "seasonality_prior_scale",
+            SEARCH_SPACE["seasonality_prior_scale"]["min"],
+            SEARCH_SPACE["seasonality_prior_scale"]["max"],
+            log=SEARCH_SPACE["seasonality_prior_scale"]["log"]
+        ),
+        "holidays_prior_scale": trial.suggest_float(
+            "holidays_prior_scale",
+            SEARCH_SPACE["holidays_prior_scale"]["min"],
+            SEARCH_SPACE["holidays_prior_scale"]["max"],
+            log=SEARCH_SPACE["holidays_prior_scale"]["log"]
+        ),
+        "seasonality_mode": trial.suggest_categorical(
+            "seasonality_mode",
+            SEARCH_SPACE["seasonality_mode"]["choices"]
+        ),
+        "growth": trial.suggest_categorical(
+            "growth",
+            SEARCH_SPACE["growth"]["choices"]
+        )
+    }
 
-    Returns:
-        val_mae: Validation MAE (zu minimierende Metrik)
-
-    Raises:
-        optuna.TrialPruned: Wenn Trial abgebrochen wird
-    """
-    # -------------------------------------------------------------------------
-    # 1. Hyperparameter vorschlagen
-    # -------------------------------------------------------------------------
-    changepoint_prior_scale = trial.suggest_float(
-        "changepoint_prior_scale",
-        SEARCH_SPACE["changepoint_prior_scale"]["min"],
-        SEARCH_SPACE["changepoint_prior_scale"]["max"],
-        log=SEARCH_SPACE["changepoint_prior_scale"]["log"]
-    )
-
-    seasonality_prior_scale = trial.suggest_float(
-        "seasonality_prior_scale",
-        SEARCH_SPACE["seasonality_prior_scale"]["min"],
-        SEARCH_SPACE["seasonality_prior_scale"]["max"],
-        log=SEARCH_SPACE["seasonality_prior_scale"]["log"]
-    )
-
-    holidays_prior_scale = trial.suggest_float(
-        "holidays_prior_scale",
-        SEARCH_SPACE["holidays_prior_scale"]["min"],
-        SEARCH_SPACE["holidays_prior_scale"]["max"],
-        log=SEARCH_SPACE["holidays_prior_scale"]["log"]
-    )
-
-    seasonality_mode = trial.suggest_categorical(
-        "seasonality_mode",
-        SEARCH_SPACE["seasonality_mode"]["choices"]
-    )
-
-    growth = trial.suggest_categorical(
-        "growth",
-        SEARCH_SPACE["growth"]["choices"]
-    )
-
-    # -------------------------------------------------------------------------
-    # 2. Datasets laden
-    # -------------------------------------------------------------------------
+    # Lade Daten
     prophet_spec = _load_prophet_spec(_dataset_name)
-
     time_col = prophet_spec["time_col"]
     target_col = prophet_spec["target_col"]
     group_cols = prophet_spec["group_cols"]
@@ -210,25 +154,14 @@ def objective(trial: optuna.Trial) -> float:
     df_train = pd.read_parquet(processed_dir / "train.parquet")
     df_val = pd.read_parquet(processed_dir / "val.parquet")
 
-    # -------------------------------------------------------------------------
-    # 3. Training über alle Gruppen
-    # -------------------------------------------------------------------------
-    all_mae = []
-
-    trial_id = f"trial_{trial.number:04d}"
-    trial_dir = OPTUNA_BASE_DIR / trial_id
-    trial_dir.mkdir(parents=True, exist_ok=True)
-
+    # Gruppenbildung
     if not group_cols:
-        # Keine Gruppen
         groups = [("all", df_train, df_val)]
     else:
-        # Gruppierung
         groups = []
         for group_values, group_train_df in df_train.groupby(group_cols):
             group_id = "_".join(str(v) for v in group_values) if isinstance(group_values, tuple) else str(group_values)
 
-            # Entsprechende Val-Gruppe
             if isinstance(group_values, tuple):
                 mask = True
                 for col, val in zip(group_cols, group_values):
@@ -240,91 +173,78 @@ def objective(trial: optuna.Trial) -> float:
             if len(group_val_df) > 0:
                 groups.append((group_id, group_train_df, group_val_df))
 
+    # Training
     print(f"\n[Trial {trial.number}] Training {len(groups)} Gruppen...")
-    print(f"  Hyperparameter: changepoint={changepoint_prior_scale:.4f}, "
-          f"seasonality={seasonality_prior_scale:.2f}, "
-          f"holidays={holidays_prior_scale:.2f}, "
-          f"mode={seasonality_mode}, growth={growth}")
+    print(f"  changepoint={params['changepoint_prior_scale']:.4f}, "
+          f"seasonality={params['seasonality_prior_scale']:.2f}, "
+          f"mode={params['seasonality_mode']}")
 
-    for group_id, group_train_df, group_val_df in groups:
-        # Prophet-Daten vorbereiten
-        train_prophet = _prepare_prophet_dataframe(group_train_df, time_col, target_col, regressors)
-        val_prophet = _prepare_prophet_dataframe(group_val_df, time_col, target_col, regressors)
+    total_groups = len(groups)
+    all_mae = []
+    success_count = 0
+    error_count = 0
 
-        # Modell erstellen
-        model = Prophet(
-            growth=growth,
-            changepoint_prior_scale=changepoint_prior_scale,
-            seasonality_prior_scale=seasonality_prior_scale,
-            holidays_prior_scale=holidays_prior_scale,
-            seasonality_mode=seasonality_mode,
-            yearly_seasonality=FIXED_CONFIG["yearly_seasonality"],
-            weekly_seasonality=FIXED_CONFIG["weekly_seasonality"],
-            daily_seasonality=FIXED_CONFIG["daily_seasonality"],
-            interval_width=FIXED_CONFIG["interval_width"],
-            mcmc_samples=FIXED_CONFIG["mcmc_samples"]
-        )
-
-        # Regressoren hinzufügen
-        for reg in regressors:
-            model.add_regressor(reg)
-
-        # Country Holidays
-        if country_holidays:
-            model.add_country_holidays(country_name=country_holidays)
-
-        # Training (suppress output)
+    for idx, (group_id, group_train_df, group_val_df) in enumerate(groups, start=1):
         try:
-            import logging
-            logging.getLogger('prophet').setLevel(logging.WARNING)
-            logging.getLogger('cmdstanpy').setLevel(logging.WARNING)
+            # Prophet-Daten
+            train_prophet = _prepare_prophet_dataframe(group_train_df, time_col, target_col, regressors)
+            val_prophet = _prepare_prophet_dataframe(group_val_df, time_col, target_col, regressors)
 
+            # Modell
+            model = Prophet(
+                growth=params["growth"],
+                changepoint_prior_scale=params["changepoint_prior_scale"],
+                seasonality_prior_scale=params["seasonality_prior_scale"],
+                holidays_prior_scale=params["holidays_prior_scale"],
+                seasonality_mode=params["seasonality_mode"],
+                **FIXED_CONFIG
+            )
+
+            for reg in regressors:
+                model.add_regressor(reg)
+
+            if country_holidays:
+                model.add_country_holidays(country_name=country_holidays)
+
+            # Training
             model.fit(train_prophet)
-
-            # Validation Forecast
             forecast = model.predict(val_prophet)
 
             # Metriken
-            y_true = val_prophet["y"].values
-            y_pred = forecast["yhat"].values
-
-            metrics = _calculate_metrics(y_true, y_pred)
+            metrics = _calculate_metrics(val_prophet["y"].values, forecast["yhat"].values)
 
             if metrics["mae"] is not None:
                 all_mae.append(metrics["mae"])
+                success_count += 1
 
-        except Exception as e:
-            print(f"  ⚠ Fehler bei Gruppe {group_id}: {e}")
+        except Exception:
+            error_count += 1
             continue
 
-    # -------------------------------------------------------------------------
-    # 4. Durchschnittliche val_mae berechnen
-    # -------------------------------------------------------------------------
+        # Progress alle 50 Gruppen
+        if idx % 50 == 0 or idx == total_groups:
+            pct = int(100 * idx / total_groups)
+            bar_len = 25
+            filled = int(bar_len * idx / total_groups)
+            bar = "=" * filled + (">" if filled < bar_len else "")
+            bar = bar.ljust(bar_len)
+            print(f"  [{bar}] {idx}/{total_groups} ({pct}%) | OK: {success_count} | Fehler: {error_count}")
+
+    # Ergebnis
     if len(all_mae) == 0:
-        print(f"  ✗ Trial {trial.number} FAILED (keine validen Gruppen)")
         raise optuna.TrialPruned()
 
     val_mae = float(np.mean(all_mae))
+    print(f"\n  ✓ Trial {trial.number}: val_mae={val_mae:.2f} ({success_count}/{total_groups} Gruppen)\n")
 
-    print(f"  ✓ Trial {trial.number} abgeschlossen: val_mae={val_mae:.2f} (über {len(all_mae)} Gruppen)")
+    # Speichere Trial
+    trial_dir = OPTUNA_BASE_DIR / f"trial_{trial.number:04d}"
+    trial_dir.mkdir(parents=True, exist_ok=True)
 
-    # Speichere Trial-Zusammenfassung
-    trial_summary = {
-        "trial_number": trial.number,
-        "val_mae": val_mae,
-        "n_groups": len(all_mae),
-        "hyperparameters": {
-            "changepoint_prior_scale": changepoint_prior_scale,
-            "seasonality_prior_scale": seasonality_prior_scale,
-            "holidays_prior_scale": holidays_prior_scale,
-            "seasonality_mode": seasonality_mode,
-            "growth": growth
-        }
-    }
-
-    summary_path = trial_dir / "trial_summary.json"
-    with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump(trial_summary, f, indent=2)
+    with open(trial_dir / "trial_summary.json", "w") as f:
+        json.dump(
+            {"trial_number": trial.number, "val_mae": val_mae, "n_groups": success_count, "hyperparameters": params}, f,
+            indent=2)
 
     return val_mae
 
@@ -333,27 +253,12 @@ def objective(trial: optuna.Trial) -> float:
 # MAIN
 # ============================================================================
 
-
 def main():
-    parser = argparse.ArgumentParser(
-        description="Prophet Hyperparameter-Optimierung mit Optuna"
-    )
-    parser.add_argument(
-        "--study-name",
-        type=str,
-        default="prophet_hpo",
-        help="Name der Optuna Study (default: prophet_hpo)"
-    )
-    parser.add_argument(
-        "--n-trials",
-        type=int,
-        default=20,
-        help="Anzahl Trials (default: 20)"
-    )
-
+    parser = argparse.ArgumentParser(description="Prophet Hyperparameter-Optimierung")
+    parser.add_argument("--study-name", type=str, default="prophet_hpo")
+    parser.add_argument("--n-trials", type=int, default=20)
     args = parser.parse_args()
 
-    # Optuna-Verzeichnis erstellen
     OPTUNA_BASE_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=" * 80)
@@ -365,24 +270,20 @@ def main():
     print(f"Storage:     {OPTUNA_STORAGE}")
     print("=" * 80)
 
-    # Study erstellen oder laden
-    sampler = TPESampler(seed=42)
-    pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=0)
-
+    # Optuna Study
     study = optuna.create_study(
         study_name=args.study_name,
         storage=OPTUNA_STORAGE,
         load_if_exists=True,
         direction="minimize",
-        sampler=sampler,
-        pruner=pruner
+        sampler=TPESampler(seed=42),
+        pruner=MedianPruner(n_startup_trials=5, n_warmup_steps=0)
     )
 
     print(f"\n[Optuna] Study '{args.study_name}' gestartet/fortgesetzt")
-    print(f"[Optuna] Bereits abgeschlossene Trials: {len(study.trials)}")
-    print()
+    print(f"[Optuna] Bereits abgeschlossene Trials: {len(study.trials)}\n")
 
-    # Optimization starten
+    # Optimization
     import time
     start_time = time.time()
 
@@ -407,12 +308,9 @@ def main():
         print(f"  {key:<30} = {value}")
     print()
 
-    # -------------------------------------------------------------------------
-    # Ergebnisse speichern (JSON + CSV)
-    # -------------------------------------------------------------------------
+    # JSON/CSV Export
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # JSON Export
     results_json = {
         "study_name": args.study_name,
         "timestamp": timestamp,
@@ -430,24 +328,19 @@ def main():
     with open(json_file, "w", encoding="utf-8") as f:
         json.dump(results_json, f, indent=2, ensure_ascii=False)
 
-    print(f"✅ Ergebnisse gespeichert: {json_file}")
-
-    # CSV Export (alle Trials)
     df_trials = study.trials_dataframe()
     csv_file = OPTUNA_BASE_DIR / f"study_{args.study_name}_{timestamp}.csv"
     df_trials.to_csv(csv_file, index=False)
 
+    print(f"✅ Ergebnisse gespeichert: {json_file}")
     print(f"✅ Alle Trials als CSV:  {csv_file}")
     print()
 
-    # -------------------------------------------------------------------------
-    # Top 5 Trials anzeigen
-    # -------------------------------------------------------------------------
+    # Top 5
     print("TOP 5 TRIALS:")
     print("-" * 80)
     df_top = df_trials.nsmallest(5, "value")[
-        ["number", "value", "params_changepoint_prior_scale", "params_seasonality_mode", "state"]
-    ]
+        ["number", "value", "params_changepoint_prior_scale", "params_seasonality_mode", "state"]]
     print(df_top.to_string(index=False))
     print()
 
