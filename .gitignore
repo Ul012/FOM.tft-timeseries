@@ -66,7 +66,12 @@ results/tft/optuna/*/*
 # ============================================================================
 !results/prophet/
 results/prophet/*
+
 !results/prophet/runs/
+# Runs: nur zusammenfassende Ergebnisse teilen
+results/prophet/runs/**/forecasts/
+results/prophet/runs/**/models/
+
 !results/prophet/eval/
 !results/prophet/optuna/
 
@@ -118,6 +123,7 @@ cache/
 *.pkl
 *.npy
 *.npz
+*.parquet
 
 # ============================================================================
 # SECURITY & CREDENTIALS

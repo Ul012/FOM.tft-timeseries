@@ -1,0 +1,26 @@
+type: prophet
+name: optuna_best_trial13
+description: Beste Config aus Optuna Study 'prophet_booksales' (Trial 13, val_mae=15.7966)
+model:
+  growth: linear
+  seasonality_mode: multiplicative
+  yearly_seasonality: true
+  weekly_seasonality: true
+  daily_seasonality: false
+  changepoint_prior_scale: 0.0010851336934041538
+  seasonality_prior_scale: 2.252333007508321
+  holidays_prior_scale: 1.129681750433274
+  interval_width: 0.95
+  mcmc_samples: 0
+training:
+  prediction_length: 7
+optuna_metadata:
+  study_name: prophet_booksales
+  trial_number: 13
+  val_mae: 15.796627765290722
+  all_params:
+    changepoint_prior_scale: 0.0010851336934041538
+    seasonality_prior_scale: 2.252333007508321
+    holidays_prior_scale: 1.129681750433274
+    seasonality_mode: multiplicative
+    growth: linear
