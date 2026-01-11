@@ -1,0 +1,36 @@
+{
+  "study_name": "arima_walmart_nonseasonal",
+  "timestamp": "20260111_190649",
+  "dataset": "walmart",
+  "n_trials": 20,
+  "n_completed": 20,
+  "elapsed_time_sec": 22647.94055747986,
+  "best_value": 2774.390924004198,
+  "best_params": {
+    "max_p": 0,
+    "max_q": 5
+  },
+  "best_trial_number": 3,
+  "search_space": {
+    "max_p": {
+      "min": 0,
+      "max": 5
+    },
+    "max_q": {
+      "min": 0,
+      "max": 5
+    },
+    "max_P": {
+      "min": 0,
+      "max": 2
+    },
+    "max_Q": {
+      "min": 0,
+      "max": 2
+    }
+  },
+  "fixed_params": {
+    "max_d": 1,
+    "max_D": 1
+  }
+}

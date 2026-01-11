@@ -284,4 +284,4 @@ if __name__ == "__main__":
 #
 #   walmart:
 #   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
-#   python -m src.evaluation.evaluate_arima --run-id run_20260109_182701_arima_baseline --split test
+#   python -m src.evaluation.evaluate_arima --run-id run_20260111_195830_arima_optuna_best_trial3 --split test

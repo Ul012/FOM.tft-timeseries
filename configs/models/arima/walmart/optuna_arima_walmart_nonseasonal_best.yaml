@@ -1,0 +1,26 @@
+type: arima
+name: optuna_best_trial3
+description: Beste Config aus Optuna Study 'arima_walmart_nonseasonal' (Trial 3, val_mae=2774.3909)
+model:
+  auto_arima: true
+  max_p: 0
+  max_d: 1
+  max_q: 5
+  max_P: 0
+  max_D: 0
+  max_Q: 0
+  seasonal: false
+  m: 7
+  stepwise: true
+  suppress_warnings: true
+  error_action: ignore
+  trace: false
+training:
+  prediction_length: 7
+optuna_metadata:
+  study_name: arima_walmart_nonseasonal
+  trial_number: 3
+  val_mae: 2774.390924004198
+  all_params:
+    max_p: 0
+    max_q: 5

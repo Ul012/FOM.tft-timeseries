@@ -91,9 +91,9 @@ def export_trial_config(study_name: str, trial_number: int, output_path: Path | 
             "max_p": trial_params["max_p"],
             "max_d": 1,  # Fix (a priori)
             "max_q": trial_params["max_q"],
-            "max_P": trial_params["max_P"],
+            "max_P": best_params.get("max_P", 0),  # 0 wenn nicht vorhanden
             "max_D": 1 if use_seasonal else 0,
-            "max_Q": trial_params["max_Q"],
+            "max_Q": best_params.get("max_Q", 0),  # 0 wenn nicht vorhanden
             "seasonal": use_seasonal,
             "m": _dataset_config.get("arima", {}).get("seasonal_period", 7),
             "stepwise": True,

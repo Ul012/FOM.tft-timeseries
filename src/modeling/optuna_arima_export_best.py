@@ -72,9 +72,9 @@ def export_best_config(study_name: str, output_path: Path | None = None):
             "max_p": best_params["max_p"],
             "max_d": 1,  # Fix (a priori)
             "max_q": best_params["max_q"],
-            "max_P": best_params["max_P"],
+            "max_P": best_params.get("max_P", 0),  # 0 wenn nicht vorhanden
             "max_D": 1 if use_seasonal else 0,
-            "max_Q": best_params["max_Q"],
+            "max_Q": best_params.get("max_Q", 0),  # 0 wenn nicht vorhanden
             "seasonal": use_seasonal,
             "m": _dataset_config.get("arima", {}).get("seasonal_period", 7),
             "stepwise": True,
@@ -143,4 +143,4 @@ if __name__ == "__main__":
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.optuna_arima_export_best --study-name arima_booksales
 #
 #   Walmart:
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_arima_export_best --study-name arima_walmart
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_arima_export_best --study-name arima_walmart_nonseasonal

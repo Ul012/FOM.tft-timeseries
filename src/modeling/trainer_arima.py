@@ -465,4 +465,4 @@ if __name__ == "__main__":
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.trainer_arima --config configs/models/arima/booksales/optuna_arima_booksales_trial_11.yaml
 #
 #   # Oder für Walmart:
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.trainer_arima --config configs/models/arima/walmart/baseline.yaml
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.trainer_arima --config configs/models/arima/walmart/optuna_arima_walmart_nonseasonal_best.yaml

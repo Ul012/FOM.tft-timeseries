@@ -1,0 +1,304 @@
+{
+  "run_id": "run_20260111_172926_booksales_prophet_optuna_best_trial13",
+  "dataset": "booksales",
+  "split": "val",
+  "n_groups": 48,
+  "metrics": {
+    "by_group": {
+      "Belgium_KaggleMart_Kaggle Advanced Techniques": {
+        "mae": 28.858178346149103,
+        "rmse": 36.08708801721951,
+        "mape": 6.9829649067318185,
+        "smape": 6.88889948301295
+      },
+      "Belgium_KaggleMart_Kaggle Getting Started": {
+        "mae": 21.193224115152603,
+        "rmse": 26.41898366780894,
+        "mape": 7.7490158647191105,
+        "smape": 7.638337840860078
+      },
+      "Belgium_KaggleMart_Kaggle Recipe Book": {
+        "mae": 15.100312939157803,
+        "rmse": 19.137830400029326,
+        "mape": 7.028579786291196,
+        "smape": 7.026212879649406
+      },
+      "Belgium_KaggleMart_Kaggle for Kids: One Smart Goose": {
+        "mae": 33.39034564951322,
+        "rmse": 41.73861144049692,
+        "mape": 7.840635338853735,
+        "smape": 8.133856045664768
+      },
+      "Belgium_KaggleRama_Kaggle Advanced Techniques": {
+        "mae": 10.62479176379345,
+        "rmse": 13.10516703105865,
+        "mape": 7.400587477314834,
+        "smape": 7.284080657500298
+      },
+      "Belgium_KaggleRama_Kaggle Getting Started": {
+        "mae": 7.3164732070063465,
+        "rmse": 9.429388485343628,
+        "mape": 7.63362709988637,
+        "smape": 7.5879943598974195
+      },
+      "Belgium_KaggleRama_Kaggle Recipe Book": {
+        "mae": 5.899537098977029,
+        "rmse": 7.178353776196517,
+        "mape": 8.123263003521876,
+        "smape": 8.010265597663734
+      },
+      "Belgium_KaggleRama_Kaggle for Kids: One Smart Goose": {
+        "mae": 11.097979877412259,
+        "rmse": 13.992055430669533,
+        "mape": 7.505911146200808,
+        "smape": 7.800323016040664
+      },
+      "France_KaggleMart_Kaggle Advanced Techniques": {
+        "mae": 26.05608435495374,
+        "rmse": 35.26281766922695,
+        "mape": 6.077867256934593,
+        "smape": 6.083599345371209
+      },
+      "France_KaggleMart_Kaggle Getting Started": {
+        "mae": 20.81447450959565,
+        "rmse": 25.827044904013576,
+        "mape": 7.4927712731833145,
+        "smape": 7.423348423486642
+      },
+      "France_KaggleMart_Kaggle Recipe Book": {
+        "mae": 16.82165793746794,
+        "rmse": 20.77738991133162,
+        "mape": 7.955634364723761,
+        "smape": 7.821184602276079
+      },
+      "France_KaggleMart_Kaggle for Kids: One Smart Goose": {
+        "mae": 31.080265445473923,
+        "rmse": 41.833495683895954,
+        "mape": 7.220997682117505,
+        "smape": 7.525883710796416
+      },
+      "France_KaggleRama_Kaggle Advanced Techniques": {
+        "mae": 9.74522731852411,
+        "rmse": 12.580835701021416,
+        "mape": 6.668239509463213,
+        "smape": 6.638249757737593
+      },
+      "France_KaggleRama_Kaggle Getting Started": {
+        "mae": 7.784254907479299,
+        "rmse": 9.59502710542533,
+        "mape": 8.09613827788855,
+        "smape": 8.015193404024295
+      },
+      "France_KaggleRama_Kaggle Recipe Book": {
+        "mae": 5.23982926676816,
+        "rmse": 6.619690229416458,
+        "mape": 7.237836210165789,
+        "smape": 7.144296427842763
+      },
+      "France_KaggleRama_Kaggle for Kids: One Smart Goose": {
+        "mae": 11.047039016927373,
+        "rmse": 14.231347743793348,
+        "mape": 7.398600887306913,
+        "smape": 7.735466130744808
+      },
+      "Germany_KaggleMart_Kaggle Advanced Techniques": {
+        "mae": 25.18298318060696,
+        "rmse": 34.04269741774652,
+        "mape": 5.903515960425526,
+        "smape": 5.959760781485591
+      },
+      "Germany_KaggleMart_Kaggle Getting Started": {
+        "mae": 19.368239680259858,
+        "rmse": 23.891495778570114,
+        "mape": 7.11275766825996,
+        "smape": 7.010676118751595
+      },
+      "Germany_KaggleMart_Kaggle Recipe Book": {
+        "mae": 15.60176847286946,
+        "rmse": 19.828413240502037,
+        "mape": 7.493194567306283,
+        "smape": 7.345496204037413
+      },
+      "Germany_KaggleMart_Kaggle for Kids: One Smart Goose": {
+        "mae": 30.15104375888625,
+        "rmse": 38.22254456974106,
+        "mape": 7.119653969047655,
+        "smape": 7.406965245201357
+      },
+      "Germany_KaggleRama_Kaggle Advanced Techniques": {
+        "mae": 9.314041045172317,
+        "rmse": 11.917924393853601,
+        "mape": 6.480211617862375,
+        "smape": 6.451498448686721
+      },
+      "Germany_KaggleRama_Kaggle Getting Started": {
+        "mae": 6.786720575249324,
+        "rmse": 8.27271058658377,
+        "mape": 7.170082600889397,
+        "smape": 7.059670527275692
+      },
+      "Germany_KaggleRama_Kaggle Recipe Book": {
+        "mae": 5.24826353153094,
+        "rmse": 6.590873317916995,
+        "mape": 7.254937332568851,
+        "smape": 7.1440556113735205
+      },
+      "Germany_KaggleRama_Kaggle for Kids: One Smart Goose": {
+        "mae": 10.118288145677,
+        "rmse": 12.743008953354996,
+        "mape": 6.995517153550572,
+        "smape": 7.202190530570861
+      },
+      "Italy_KaggleMart_Kaggle Advanced Techniques": {
+        "mae": 30.166751082803685,
+        "rmse": 38.753377740059854,
+        "mape": 7.164455958500543,
+        "smape": 7.069961429131458
+      },
+      "Italy_KaggleMart_Kaggle Getting Started": {
+        "mae": 20.31219800920766,
+        "rmse": 24.913397794436992,
+        "mape": 7.484973388703982,
+        "smape": 7.361647873593741
+      },
+      "Italy_KaggleMart_Kaggle Recipe Book": {
+        "mae": 14.567021821231398,
+        "rmse": 18.942065019675404,
+        "mape": 6.935162811069214,
+        "smape": 6.8604560469008184
+      },
+      "Italy_KaggleMart_Kaggle for Kids: One Smart Goose": {
+        "mae": 29.443658539723618,
+        "rmse": 37.96312118988877,
+        "mape": 6.987140349797272,
+        "smape": 7.14754706032026
+      },
+      "Italy_KaggleRama_Kaggle Advanced Techniques": {
+        "mae": 10.066298065126205,
+        "rmse": 12.96779115448008,
+        "mape": 6.891234189955658,
+        "smape": 6.787730210443725
+      },
+      "Italy_KaggleRama_Kaggle Getting Started": {
+        "mae": 7.013397716275658,
+        "rmse": 8.628165971564789,
+        "mape": 7.4865313007280925,
+        "smape": 7.317773550155065
+      },
+      "Italy_KaggleRama_Kaggle Recipe Book": {
+        "mae": 5.338418827966275,
+        "rmse": 6.667670156551929,
+        "mape": 7.344007529088666,
+        "smape": 7.2837649959345026
+      },
+      "Italy_KaggleRama_Kaggle for Kids: One Smart Goose": {
+        "mae": 10.56976565438115,
+        "rmse": 13.249538755888171,
+        "mape": 7.264477436122818,
+        "smape": 7.517151860999021
+      },
+      "Poland_KaggleMart_Kaggle Advanced Techniques": {
+        "mae": 28.496183456645106,
+        "rmse": 38.43913558572535,
+        "mape": 6.621674613873078,
+        "smape": 6.642166513530201
+      },
+      "Poland_KaggleMart_Kaggle Getting Started": {
+        "mae": 21.842791714491455,
+        "rmse": 27.904613842482778,
+        "mape": 8.002105038146594,
+        "smape": 7.853648622529222
+      },
+      "Poland_KaggleMart_Kaggle Recipe Book": {
+        "mae": 15.219142134189257,
+        "rmse": 19.706867047387565,
+        "mape": 7.194969864141276,
+        "smape": 7.096803278412997
+      },
+      "Poland_KaggleMart_Kaggle for Kids: One Smart Goose": {
+        "mae": 29.62188156044311,
+        "rmse": 36.74562144326639,
+        "mape": 7.001884469405345,
+        "smape": 7.21228651536539
+      },
+      "Poland_KaggleRama_Kaggle Advanced Techniques": {
+        "mae": 9.801473368522863,
+        "rmse": 12.601887778684617,
+        "mape": 6.656842755706939,
+        "smape": 6.622975014703594
+      },
+      "Poland_KaggleRama_Kaggle Getting Started": {
+        "mae": 7.073888374658532,
+        "rmse": 8.836580759152794,
+        "mape": 7.302982366588006,
+        "smape": 7.31409692380528
+      },
+      "Poland_KaggleRama_Kaggle Recipe Book": {
+        "mae": 4.991266722503604,
+        "rmse": 6.511272967207158,
+        "mape": 6.862123777010851,
+        "smape": 6.733809476916838
+      },
+      "Poland_KaggleRama_Kaggle for Kids: One Smart Goose": {
+        "mae": 11.304962746518292,
+        "rmse": 14.460628357783962,
+        "mape": 7.6673805533246595,
+        "smape": 7.943159477745432
+      },
+      "Spain_KaggleMart_Kaggle Advanced Techniques": {
+        "mae": 25.353382165198038,
+        "rmse": 32.765845957781444,
+        "mape": 6.1243809594897325,
+        "smape": 6.099179006967233
+      },
+      "Spain_KaggleMart_Kaggle Getting Started": {
+        "mae": 18.895841883077598,
+        "rmse": 23.66016081248777,
+        "mape": 6.990859569176525,
+        "smape": 6.906882110148012
+      },
+      "Spain_KaggleMart_Kaggle Recipe Book": {
+        "mae": 13.053661571924032,
+        "rmse": 16.430341894855314,
+        "mape": 6.236678884223458,
+        "smape": 6.231631384384624
+      },
+      "Spain_KaggleMart_Kaggle for Kids: One Smart Goose": {
+        "mae": 29.476345201838285,
+        "rmse": 38.0551761031687,
+        "mape": 7.045721543067067,
+        "smape": 7.343572755289368
+      },
+      "Spain_KaggleRama_Kaggle Advanced Techniques": {
+        "mae": 9.970765317464934,
+        "rmse": 12.555645309154212,
+        "mape": 7.033921079500429,
+        "smape": 6.881045316116547
+      },
+      "Spain_KaggleRama_Kaggle Getting Started": {
+        "mae": 6.916131949075249,
+        "rmse": 8.5455901199361,
+        "mape": 7.395616894027154,
+        "smape": 7.314830414730135
+      },
+      "Spain_KaggleRama_Kaggle Recipe Book": {
+        "mae": 5.1641917515023685,
+        "rmse": 6.383773904059777,
+        "mape": 7.23454256714931,
+        "smape": 7.085617654936721
+      },
+      "Spain_KaggleRama_Kaggle for Kids: One Smart Goose": {
+        "mae": 9.737688954582222,
+        "rmse": 12.231210683972648,
+        "mape": 6.690542182729612,
+        "smape": 6.924225478474116
+      }
+    },
+    "overall": {
+      "mae": 15.796627765290722,
+      "rmse": 20.150922412601442,
+      "mape": 7.157557313265424,
+      "smape": 7.164363919197629
+    }
+  }
+}

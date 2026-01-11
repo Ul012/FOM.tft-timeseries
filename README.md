@@ -20,26 +20,20 @@ Der Fokus liegt auf einer klar strukturierten, konfigurationsgetriebenen und rep
 
 ## 📁 Datasets
 
-Als **Beispiel-Datasets** dienen:
+Die Architektur unterstützt beliebig viele Datasets gleichzeitig mit unterschiedlichen Frequenzen und Strukturen.
+
+### Beispiel-Datasets
+
+Als Demonstration dienen zwei öffentliche Kaggle-Datasets:
 - **Booksales** (Kaggle Tabular Playground Series — Sep 2022) - Täglich
 - **Walmart** (Kaggle Store Sales Forecasting) - Wöchentlich
 
-Die Architektur unterstützt beliebig viele Datasets gleichzeitig.
-
-### Download
-
-1. Kaggle-Account erstellen (falls nicht vorhanden)
-2. Dataset-Seite besuchen und "Download All" klicken
-3. ZIP entpacken und Dateien in Ordner kopieren:
+### Datenstruktur
 
 ```
-data/raw/booksales/
+data/raw/<dataset>/
 ├── train.csv
-└── test.csv (optional)
-
-data/raw/walmart/
-├── train.csv
-├── features.csv
+├── features.csv (optional)
 └── test.csv (optional)
 ```
 
@@ -66,59 +60,82 @@ pip install -r requirements.txt
 ```bash
 # TFT
 python -m src.pipeline \
-    --dataset configs/datasets/booksales.yaml \
-    --model configs/models/tft/booksales/baseline.yaml
+    --dataset configs/datasets/<dataset>.yaml \
+    --model configs/models/tft/<dataset>/baseline.yaml
 
 # ARIMA
-$env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+$env:DATASET_CONFIG="configs/datasets/<dataset>.yaml"
 python -m src.modeling.dataset_arima
-python -m src.modeling.trainer_arima --config configs/models/arima/booksales/baseline.yaml
+python -m src.modeling.trainer_arima --config configs/models/arima/<dataset>/baseline.yaml
 
 # Prophet
-$env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+$env:DATASET_CONFIG="configs/datasets/<dataset>.yaml"
 python -m src.modeling.dataset_prophet
-python -m src.modeling.trainer_prophet --config configs/models/prophet/booksales/baseline.yaml
+python -m src.modeling.trainer_prophet --config configs/models/prophet/<dataset>/baseline.yaml
 ```
 
 **Was passiert:**
 1. Preprocessing (Load, Cleaning, Feature Engineering)
-2. Model-spezifische Datenaufbereitung
+2. Modell-spezifische Datenaufbereitung
 3. Training
 4. Checkpoint-Speicherung
 
 ---
 
-## 📊 Evaluation
+## 📊 Evaluation & Visualization
+
+### Evaluation Workflow
 
 ```bash
-# Val Split
-python -m src.evaluation.evaluate_tft --run-id <run_id> --split val
-python -m src.evaluation.evaluate_arima --run-id <run_id> --split val
-python -m src.evaluation.evaluate_prophet --run-id <run_id> --split val
-
-# Test Split
+# 1. Einzelmodelle evaluieren
 python -m src.evaluation.evaluate_tft --run-id <run_id> --split test
 python -m src.evaluation.evaluate_arima --run-id <run_id> --split test
 python -m src.evaluation.evaluate_prophet --run-id <run_id> --split test
+
+# 2. Pro Modell aggregieren
+python -m src.evaluation.aggregate_tft_eval
+python -m src.evaluation.aggregate_prophet_eval
+python -m src.evaluation.aggregate_arima_eval
+
+# 3. Alle Modelle kombinieren
+python -m src.evaluation.aggregate_all_models_eval
 ```
 
 **Output:**
 - `results/<model>/runs/<run_id>/eval_val.json`
 - `results/<model>/runs/<run_id>/eval_test.json`
+- `results/<model>/eval_overview.csv`
+- `results/eval/model_comparison.csv`
+
+### Visualization Workflow
+
+```bash
+# Cross-Model Vergleiche
+python -m src.visualization.plot_cross_model_comparison
+python -m src.visualization.plot_multi_model_forecast
+
+# Modell-spezifische Analysen
+python -m src.visualization.plot_tft_forecast_series --run-id <run_id>
+python -m src.visualization.plot_tft_optuna_study --study-name <study_name>
+```
+
+**Output:**
+- Übergreifend: `results/plots/`
+- Modell-spezifisch: `results/<model>/plots/`
 
 ---
 
 ## 🎯 Hyperparameter-Tuning (Optuna)
 
 ```bash
-# TFT (50 Trials, ~25h)
-python -m src.modeling.optuna_tft --study-name tft_booksales --n-trials 50
+# TFT
+python -m src.modeling.optuna_tft --study-name tft_<dataset> --n-trials 50
 
-# ARIMA (50 Trials, ~2.5h für Booksales)
-python -m src.modeling.optuna_arima --study-name arima_booksales --n-trials 50
+# ARIMA
+python -m src.modeling.optuna_arima --study-name arima_<dataset> --n-trials 50
 
-# Prophet (50 Trials, ~8h)
-python -m src.modeling.optuna_prophet --study-name prophet_booksales --n-trials 50
+# Prophet
+python -m src.modeling.optuna_prophet --study-name prophet_<dataset> --n-trials 50
 
 # Beste Config exportieren
 python -m src.modeling.optuna_<model>_export_best --study-name <study_name>
@@ -126,7 +143,7 @@ python -m src.modeling.optuna_<model>_export_best --study-name <study_name>
 # Training mit bester Config
 python -m src.pipeline \
     --model configs/models/<model>/optuna_best.yaml \
-    --dataset configs/datasets/booksales.yaml \
+    --dataset configs/datasets/<dataset>.yaml \
     --steps training
 ```
 
@@ -141,13 +158,13 @@ TFT-TimeSeries/
 ├── src/
 │   ├── data/              # Preprocessing
 │   ├── modeling/          # Training (TFT, ARIMA, Prophet)
-│   ├── evaluation/        # Metriken-Berechnung
-│   ├── visualization/     # Plots
+│   ├── evaluation/        # Metriken-Berechnung & Aggregation
+│   ├── visualization/     # Plots & Grafiken
 │   ├── utils/             # Hilfsfunktionen
 │   └── pipeline.py        # Orchestrierung
 │
 ├── configs/
-│   ├── datasets/          # booksales.yaml, walmart.yaml
+│   ├── datasets/          # Dataset-Konfigurationen
 │   └── models/
 │       ├── tft/           # TFT-Configs
 │       ├── arima/         # ARIMA-Configs
@@ -159,18 +176,20 @@ TFT-TimeSeries/
 │   └── processed/<dataset>/ # Features, Splits
 │
 ├── results/
-│   ├── tft/               # TFT Runs, Optuna, Plots
-│   ├── arima/             # ARIMA Runs, Optuna
-│   └── prophet/           # Prophet Runs, Optuna
+│   ├── plots/             # Übergreifende Cross-Model Plots
+│   ├── eval/              # Cross-Model Aggregationen
+│   ├── tft/               # TFT Runs, Eval, Plots
+│   ├── arima/             # ARIMA Runs, Eval, Plots
+│   └── prophet/           # Prophet Runs, Eval, Plots
 │
 ├── logs/                  # Training-Logs
 │
 └── docs/                  # Dokumentation
-    ├── SCRIPTS.md         # ⭐ Alle Scripts auf einen Blick
-    ├── OPTUNA.md          # Hyperparameter-Tuning Guide
-    ├── OptunaTFT.md       # TFT Optuna Details
-    ├── OptunaARIMA.md     # ARIMA Optuna Details
-    └── OptunaProphet.md   # Prophet Optuna Details
+    ├── Scripts.md         # ⭐ Alle Scripts auf einen Blick
+    ├── Projektstruktur.md # Detaillierte Struktur-Übersicht
+    ├── PipelineOrder.md   # Pipeline-Workflow
+    ├── ORDNERSTRUKTUR.md  # Visualization-Ordnerlogik
+    └── OPTUNA.md          # Hyperparameter-Tuning Guide
 ```
 
 ---
@@ -178,18 +197,15 @@ TFT-TimeSeries/
 ## 📖 Dokumentation
 
 ### Zentrale Guides
-- **[SCRIPTS.md](docs/SCRIPTS.md)** — Alle Scripts mit Beispiel-Aufrufen
+- **[Scripts.md](docs/Scripts.md)** — Alle Scripts mit Beispiel-Aufrufen
+- **[PipelineOrder.md](docs/PipelineOrder.md)** — Kompletter Workflow-Überblick
+- **[ORDNERSTRUKTUR.md](docs/ORDNERSTRUKTUR.md)** — Visualization-Ordnerlogik
 - **[OPTUNA.md](docs/OPTUNA.md)** — Hyperparameter-Tuning Workflow
 
 ### Detaillierte Docs
-- **[OptunaTFT.md](docs/OptunaTFT.md)** — TFT Optuna-Integration (technisch)
-- **[OptunaARIMA.md](docs/OptunaARIMA.md)** — ARIMA Optuna-Integration (technisch)
-- **[OptunaProphet.md](docs/OptunaProphet.md)** — Prophet Optuna-Integration (technisch)
-
-### Legacy Docs (in `docs/`)
-- LoadRaw.md, DataAlignment.md, DataCleaning.md
-- FeatureEngineer.md, CyclicalEncoder.md, LagFeatures.md
-- Pipeline.md, ConfigSetup.md, Projektstruktur.md
+- **Projektstruktur.md** — Vollständige Struktur-Erklärung
+- **ConfigSetup.md** — Config-System Details
+- **OptunaTFT.md, OptunaARIMA.md, OptunaProphet.md** — Modell-spezifische Optuna-Integration
 
 ---
 
@@ -215,9 +231,34 @@ TFT-TimeSeries/
 ```
 results/<model>/runs/<run_id>/
 ├── checkpoints/           # Beste Modelle
+├── predictions/           # Predictions (falls gespeichert)
 ├── summary.json           # Training-Summary
 ├── eval_val.json          # Validation Metriken
 └── eval_test.json         # Test Metriken
+```
+
+### Evaluation
+```
+results/<model>/
+├── eval_overview.csv      # Alle Runs pro Modell
+└── eval_overview.json
+
+results/eval/
+├── model_comparison.csv   # Alle Modelle kombiniert
+└── model_comparison.json
+```
+
+### Visualization
+```
+results/plots/             # Übergreifende Cross-Model Plots
+├── cross_model_comparison_best.png
+├── multi_model_forecast_<dataset>.png
+└── baseline_vs_optuna.png
+
+results/<model>/plots/     # Modell-spezifische Plots
+├── <model>_forecast_series.png
+├── <model>_optuna_study.png
+└── <model>_eval_comparison.png
 ```
 
 ### Optuna
@@ -240,76 +281,86 @@ logs/<model>/<run_id>/
 ## 🎯 Typische Workflows
 
 ### Workflow 1: Baseline-Training
+
 ```bash
 # 1. Dataset vorbereiten
-python -m src.pipeline --dataset configs/datasets/booksales.yaml --steps preprocessing
+python -m src.pipeline --dataset configs/datasets/<dataset>.yaml --steps preprocessing
 
 # 2. Alle 3 Modelle trainieren
-python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/baseline.yaml --steps training
+python -m src.pipeline --dataset configs/datasets/<dataset>.yaml --model configs/models/tft/<dataset>/baseline.yaml --steps training
 
-$env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+$env:DATASET_CONFIG="configs/datasets/<dataset>.yaml"
 python -m src.modeling.dataset_arima
-python -m src.modeling.trainer_arima --config configs/models/arima/booksales/baseline.yaml
+python -m src.modeling.trainer_arima --config configs/models/arima/<dataset>/baseline.yaml
 
 python -m src.modeling.dataset_prophet
-python -m src.modeling.trainer_prophet --config configs/models/prophet/booksales/baseline.yaml
+python -m src.modeling.trainer_prophet --config configs/models/prophet/<dataset>/baseline.yaml
 
 # 3. Evaluieren
 python -m src.evaluation.evaluate_tft --run-id <run_id> --split test
 python -m src.evaluation.evaluate_arima --run-id <run_id> --split test
 python -m src.evaluation.evaluate_prophet --run-id <run_id> --split test
+
+# 4. Aggregieren
+python -m src.evaluation.aggregate_all_models_eval
+
+# 5. Visualisieren
+python -m src.visualization.plot_cross_model_comparison
 ```
 
 ### Workflow 2: Hyperparameter-Tuning
+
 ```bash
-# 1. Optuna durchführen (mehrere Stunden/Tage)
-python -m src.modeling.optuna_tft --study-name tft_booksales --n-trials 50
+# 1. Optuna durchführen
+python -m src.modeling.optuna_<model> --study-name <model>_<dataset> --n-trials 50
 
 # 2. Analysieren
-python -m src.evaluation.analyze_optuna_tft_trials --study-name tft_booksales
-python -m src.visualization.plot_tft_optuna_study --study-name tft_booksales
+python -m src.evaluation.analyze_optuna_<model>_trials --study-name <model>_<dataset>
+python -m src.visualization.plot_<model>_optuna_study --study-name <model>_<dataset>
 
 # 3. Beste Config exportieren
-python -m src.modeling.optuna_tft_export_best --study-name tft_booksales
+python -m src.modeling.optuna_<model>_export_best --study-name <model>_<dataset>
 
 # 4. Finales Training
 python -m src.pipeline \
-    --model configs/models/tft/optuna_best.yaml \
-    --dataset configs/datasets/booksales.yaml \
+    --model configs/models/<model>/optuna_best.yaml \
+    --dataset configs/datasets/<dataset>.yaml \
     --steps training
 ```
 
 ### Workflow 3: Neues Dataset hinzufügen
+
 ```bash
 # 1. Rohdaten ablegen
-# data/raw/neues_dataset/train.csv
+# data/raw/<new_dataset>/train.csv
 
 # 2. Config erstellen (Kopie von bestehender Config als Vorlage)
-Copy-Item configs/datasets/booksales.yaml configs/datasets/neues_dataset.yaml
+cp configs/datasets/<existing>.yaml configs/datasets/<new_dataset>.yaml
 # Dann anpassen: name, paths, schema
 
 # 3. Pipeline ausführen
 python -m src.pipeline \
-    --dataset configs/datasets/neues_dataset.yaml \
+    --dataset configs/datasets/<new_dataset>.yaml \
     --model configs/models/tft/baseline.yaml
 ```
 
 ---
 
-## 🔬 Modell-Vergleich
+## 📬 Modell-Vergleich
 
 ### Metriken
-- **MAE** (Mean Absolute Error) - Hauptmetrik
+- **MAE** (Mean Absolute Error)
 - **RMSE** (Root Mean Squared Error)
 - **MAPE** (Mean Absolute Percentage Error)
 - **SMAPE** (Symmetric MAPE)
+- **R²** (nur TFT)
 
 ### Evaluation-Outputs
 Jedes Modell erstellt `eval_val.json` und `eval_test.json` mit:
 ```json
 {
   "run_id": "...",
-  "dataset": "booksales",
+  "dataset": "<dataset>",
   "split": "test",
   "n_groups": 48,
   "metrics": {
@@ -317,10 +368,20 @@ Jedes Modell erstellt `eval_val.json` und `eval_test.json` mit:
     "overall": {
       "mae": 14.29,
       "rmse": 21.03,
-      "mape": 6.35
+      "mape": 6.35,
+      "smape": 6.50
     }
   }
 }
+```
+
+### Cross-Model Comparison
+Die `model_comparison.csv` kombiniert alle Modelle für direkte Vergleiche:
+```csv
+model,dataset,type,run_id,val_smape,test_smape,val_mae,test_mae,...
+TFT,booksales,Optuna,run_...,5.89,6.40,12.63,18.15,...
+Prophet,booksales,Baseline,run_...,8.33,6.50,19.08,15.87,...
+ARIMA,booksales,Optuna,run_...,11.06,20.61,23.64,45.30,...
 ```
 
 ---
@@ -329,8 +390,8 @@ Jedes Modell erstellt `eval_val.json` und `eval_test.json` mit:
 
 ### ARIMA
 - **Resume-Training:** Bei Unterbrechung fortsetzen mit `resume_arima_training.py`
-- **Seasonal:** m=7 (Booksales), m=52 (Walmart)
-- **Training-Dauer:** Sehr variabel (Booksales: 3min, Walmart: Tage)
+- **Seasonal:** Automatische Erkennung der Saisonalität
+- **Training-Dauer:** Variabel je nach Datensatz-Größe
 
 ### Prophet
 - **Additive/Multiplicative Seasonality**
@@ -340,16 +401,27 @@ Jedes Modell erstellt `eval_val.json` und `eval_test.json` mit:
 ### TFT
 - **Attention-Mechanismus:** Interpretierbare Vorhersagen
 - **Multi-Horizon:** Mehrere Steps gleichzeitig
-- **GPU-Accelerated:** ~10x schneller als CPU
+- **GPU-Accelerated:** Deutlich schneller als CPU
 
 ---
 
-## 🎓 Wissenschaftlicher Kontext
+## 📊 Visualization-Hierarchie
 
-Dieses Projekt wurde im Rahmen einer Seminararbeit entwickelt:
-- **Fokus:** Vergleich Deep Learning (TFT) vs. klassische Methoden (ARIMA, Prophet)
-- **Datasets:** Unterschiedliche Frequenzen (täglich vs. wöchentlich)
-- **Evaluation:** Faire Vergleiche durch einheitliche Metriken und Splits
+### Übergreifende Plots (`results/plots/`)
+Vergleichen **mehrere Modelle**:
+- Cross-Model Performance Comparison
+- Multi-Model Forecast Comparison
+- Baseline vs. Optuna (alle Modelle)
+
+### Modell-spezifische Plots (`results/<model>/plots/`)
+Analysieren **ein einzelnes Modell**:
+- Forecast Series Visualisierung
+- Optuna Study Plots
+- Evaluation Comparisons
+
+**Regel:**  
+- Cross-Model → `results/plots/`
+- Single-Model → `results/<model>/plots/`
 
 ---
 
@@ -359,12 +431,21 @@ Die modulare Struktur ermöglicht:
 - Paralleles Arbeiten an verschiedenen Modellen
 - Reproduzierbare Ergebnisse durch Configs und Seeds
 - Einfache Erweiterung um neue Modelle/Datasets
-- Klare Verantwortlichkeiten (Preprocessing, Modeling, Evaluation getrennt)
+- Klare Verantwortlichkeiten (Preprocessing, Modeling, Evaluation, Visualization getrennt)
 
-**Änderungen** werden minimalinvasiv umgesetzt, sodass die Gesamtstruktur stabil bleibt.
+Änderungen werden minimalinvasiv umgesetzt, sodass die Gesamtstruktur stabil bleibt.
 
 ---
 
 ## 📝 Nächste Schritte
 
-Siehe [SCRIPTS.md](docs/SCRIPTS.md) für vollständige Script-Übersicht und [OPTUNA.md](docs/OPTUNA.md) für Hyperparameter-Tuning.
+- Siehe [Scripts.md](docs/Scripts.md) für vollständige Script-Übersicht
+- Siehe [PipelineOrder.md](docs/PipelineOrder.md) für Workflow-Details
+- Siehe [OPTUNA.md](docs/OPTUNA.md) für Hyperparameter-Tuning
+- Siehe [ORDNERSTRUKTUR.md](docs/ORDNERSTRUKTUR.md) für Visualization-Logik
+
+---
+
+## 📄 Lizenz
+
+Dieses Projekt ist für Forschungs- und Bildungszwecke konzipiert.

@@ -315,7 +315,7 @@ if __name__ == "__main__":
 #   Walmart:
 #   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
 #   # Val-Evaluation
-#   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000719_prophet_baseline --split val
+#   python -m src.evaluation.evaluate_prophet --run-id run_20260111_140345_walmart_prophet_optuna_best_trial11 --split val
 #
 #   # Test-Evaluation
 #   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000719_prophet_baseline --split test
@@ -324,7 +324,7 @@ if __name__ == "__main__":
 #   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
 #
 #   # Val-Evaluation
-#   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000405_prophet_baseline --split val
+#   python -m src.evaluation.evaluate_prophet --run-id run_20260111_172926_booksales_prophet_optuna_best_trial13 --split val
 #
 #   # Test-Evaluation
 #   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000405_prophet_baseline --split test

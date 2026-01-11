@@ -1,27 +1,25 @@
-# Projektstruktur – TFT-TimeSeries
+# Projektstruktur — TFT-TimeSeries
 
-**Datum:** 2025-11-23 (aktualisiert)  
-**Script:** –  
 **Ziel & Inhalt:** Vollständige Übersicht über die Projektstruktur. Erklärt Ordner-Rollen, Datenfluss, Zuständigkeiten und Erweiterbarkeit.
 
 ---
 
-## 🗂️ 1. `src/` – Hauptverzeichnis
+## 🗂️ 1. `src/` — Hauptverzeichnis
 
 ```text
 src/
 ├── data/           # Preprocessing
 ├── modeling/       # Training
-├── evaluation/     # Bewertung
+├── evaluation/     # Metriken-Berechnung & Aggregation
+├── visualization/  # Plots & Grafiken
 ├── utils/          # Hilfsfunktionen
-├── visualization/  # Plots
-├── config.py       # Globale Konstanten (DEPRECATED – wird durch YAMLs ersetzt)
+├── config.py       # Globale Konstanten
 └── pipeline.py     # Orchestrierung
 ```
 
 ---
 
-## 📊 2. `data/` – Datenaufbereitung
+## 📊 2. `data/` — Datenaufbereitung
 
 | Datei | Aufgabe |
 |-------|---------|
@@ -31,21 +29,24 @@ src/
 | `feature_engineering.py` | Kalender- und Feiertags-Features, time_idx |
 | `cyclical_encoder.py` | Zyklische Kodierung (sin/cos) |
 | `lag_features.py` | Lag- und Rolling-Features |
-| `analyze_dataset.py` **(NEU)** | Automatische Datensatz-Analyse + YAML-Generierung |
+| `analyze_dataset.py` | Automatische Datensatz-Analyse + YAML-Generierung |
 
 **Output:** `data/processed/<dataset_name>/train_features_cyc_lag.parquet`
 
 ---
 
-## 🤖 3. `modeling/` – Training
+## 🤖 3. `modeling/` — Training
 
 | Datei | Aufgabe |
 |-------|---------|
 | `model_dataset.py` | Split in Train/Val/Test |
 | `dataset_tft.py` | TFT-Datensatz-Spezifikation + Dataset-spezifische Anpassungen |
 | `trainer_tft.py` | TFT-Training mit PyTorch Lightning |
-| *(geplant)* `trainer_arima.py` | ARIMA-Training |
-| *(geplant)* `trainer_prophet.py` | Prophet-Training |
+| `dataset_arima.py` | ARIMA-Datensatz-Vorbereitung |
+| `trainer_arima.py` | ARIMA-Training |
+| `dataset_prophet.py` | Prophet-Datensatz-Vorbereitung |
+| `trainer_prophet.py` | Prophet-Training |
+| `optuna_*.py` | Hyperparameter-Optimierung |
 
 ### Datenfluss:
 
@@ -54,7 +55,7 @@ model_dataset.py
   Eingabe: data/processed/<dataset_name>/train_features_cyc_lag.parquet
   Ausgabe: data/processed/<dataset_name>/{train,val,test}.parquet + meta.json
 
-dataset_tft.py
+dataset_<model>.py
   Eingabe: data/processed/<dataset_name>/{train,val,test}.parquet
   Funktionen:
     - Imputing (NaN-Werte mit festen Werten füllen)
@@ -62,89 +63,85 @@ dataset_tft.py
     - Feature-Listen ableiten (static/known/unknown)
   Ausgabe: data/processed/<dataset_name>/dataset_spec.json
 
-trainer_tft.py
+trainer_<model>.py
   Eingabe: 
     - dataset_spec.json
-    - configs/models/tft/*.yaml
+    - configs/models/<model>/*.yaml
   Funktionen:
-    - Target-Normalisierung (config-gesteuert: softplus/standard/relu/log)
+    - Target-Normalisierung (config-gesteuert)
     - Training mit Early Stopping
     - Checkpoint-Speicherung
   Ausgabe:
-    - Logs: logs/tft/run_YYYYMMDD_HHMMSS_<dataset>_<config>/
-    - Checkpoints: results/tft/runs/run_YYYYMMDD_HHMMSS_<dataset>_<config>/checkpoints/
-    - JSONs: results/tft/runs/run_YYYYMMDD_HHMMSS_<dataset>_<config>/{results,summary}.json
+    - Logs: logs/<model>/run_YYYYMMDD_HHMMSS_<dataset>_<config>/
+    - Checkpoints: results/<model>/runs/run_YYYYMMDD_HHMMSS_<dataset>_<config>/checkpoints/
+    - JSONs: results/<model>/runs/run_YYYYMMDD_HHMMSS_<dataset>_<config>/{results,summary}.json
 ```
-
-### Neue Features in `dataset_tft.py`:
-
-**1. Imputing (`impute_cols`):**
-```yaml
-# In configs/datasets/walmart.yaml
-tft:
-  impute_cols:
-    MarkDown1: 0.0
-    MarkDown2: 0.0
-```
-→ Füllt NaN-Werte mit festen Werten (z.B. 0 = keine Promotion)
-
-**2. Spalten-Exclusion (`exclude_cols`):**
-```yaml
-# In configs/datasets/walmart.yaml
-tft:
-  exclude_cols: ["lag_365"]
-```
-→ Entfernt Spalten vor Feature-Ableitung (z.B. lag_365 nur bei täglichen Daten)
-
-### Neue Features in `trainer_tft.py`:
-
-**Target-Normalisierung (dataset-spezifisch):**
-```yaml
-# In configs/models/tft/walmart/baseline.yaml
-model:
-  target_normalizer_transformation: null  # Standard statt softplus
-```
-Optionen:
-- `"softplus"` (Default) - Für positive Werte (Booksales)
-- `null` - Standard z-score (Walmart)
-- `"relu"` - Clippt negative auf 0
-- `"log"` - Für log-normalverteilte Daten
 
 ---
 
-## 4. `evaluation/` – Bewertung
+## 4. `evaluation/` — Metriken-Berechnung & Aggregation
 
 | Datei | Aufgabe |
 |-------|---------|
-| `evaluate_tft.py` | Berechnet Fehlermaße für einen Run (MAE, RMSE, MAPE, SMAPE) |
-| `aggregate_tft_eval.py` | Aggregiert alle Evaluierungen |
+| `evaluate_tft.py` | Berechnet Fehlermaße für TFT-Runs (MAE, RMSE, MAPE, SMAPE, R²) |
+| `evaluate_prophet.py` | Berechnet Fehlermaße für Prophet-Runs |
+| `evaluate_arima.py` | Berechnet Fehlermaße für ARIMA-Runs |
+| `aggregate_tft_eval.py` | Aggregiert alle TFT-Evaluierungen |
+| `aggregate_prophet_eval.py` | Aggregiert alle Prophet-Evaluierungen |
+| `aggregate_arima_eval.py` | Aggregiert alle ARIMA-Evaluierungen |
+| `aggregate_all_models_eval.py` | Kombiniert alle Modelle zu Master-Tabelle |
+| `analyze_optuna_*_trials.py` | Statistische Analyse der Optuna-Trials |
 
 **Ausgabe:**
 ```
-results/tft/eval/
-├── <run_id>/
-│   └── eval_summary.json
-├── eval_overview.csv
+results/<model>/
+├── runs/<run_id>/
+│   ├── eval_val.json
+│   └── eval_test.json
+├── eval_overview.csv       # Pro Modell
 └── eval_overview.json
+
+results/eval/
+├── model_comparison.csv    # Alle Modelle kombiniert
+└── model_comparison.json
 ```
 
 ---
 
-## 📈 5. `visualization/` – Plots
+## 📈 5. `visualization/` — Plots & Grafiken
 
-| Datei | Aufgabe |
-|-------|---------|
-| `data_alignment_plot.py` | Visualisierung der Harmonisierung |
-| `data_cleaning_plot.py` | Vorher/Nachher-Vergleich |
-| `plot_learning_rate.py` | Lernkurven |
-| `plot_tft_eval_comparison.py` | Run-Vergleiche |
-| `plot_tft_forecast_series.py` | Forecast-Beispiele |
+### Übergreifende Plots (Cross-Model)
 
-**Ausgabe:** `results/tft/plots/`
+| Datei | Aufgabe | Output |
+|-------|---------|--------|
+| `plot_cross_model_comparison.py` | Best Run Vergleich (TFT vs Prophet vs ARIMA) | `results/plots/` |
+| `plot_multi_model_forecast.py` | Multi-Model Forecast Visualisierung | `results/plots/` |
+| `plot_baseline_vs_optuna.py` | Optuna-Verbesserung über alle Modelle | `results/plots/` |
+
+### Modell-spezifische Plots
+
+| Datei | Aufgabe | Output |
+|-------|---------|--------|
+| `plot_tft_forecast_series.py` | TFT Forecast-Beispiele | `results/tft/plots/` |
+| `plot_tft_eval_comparison.py` | TFT Run-Vergleiche | `results/tft/plots/` |
+| `plot_tft_optuna_study.py` | TFT Optuna-Visualisierung | `results/tft/plots/` |
+| `plot_prophet_optuna_study.py` | Prophet Optuna-Visualisierung | `results/prophet/plots/` |
+| `plot_arima_optuna_study.py` | ARIMA Optuna-Visualisierung | `results/arima/plots/` |
+
+### Data Exploration Plots
+
+| Datei | Aufgabe | Output |
+|-------|---------|--------|
+| `plot_data_alignment.py` | Visualisierung der Harmonisierung | `results/plots/` |
+| `plot_data_cleaning.py` | Vorher/Nachher-Vergleich | `results/plots/` |
+
+**Ordnerstruktur-Logik:**
+- **Cross-Model Plots** (vergleichen mehrere Modelle) → `results/plots/`
+- **Modell-spezifisch** (nur ein Modell) → `results/<model>/plots/`
 
 ---
 
-## 🧰 6. `utils/` – Hilfsfunktionen
+## 🧰 6. `utils/` — Hilfsfunktionen
 
 | Datei | Aufgabe |
 |-------|---------|
@@ -157,7 +154,7 @@ results/tft/eval/
 
 ---
 
-## 🔄 7. `pipeline.py` – Orchestrierung
+## 📄 7. `pipeline.py` — Orchestrierung
 
 **Hauptfunktion:** Orchestriert alle Schritte von Preprocessing bis Training.
 
@@ -190,12 +187,11 @@ python -m src.pipeline \
 
 ---
 
-## ⚙️ 8. `config.py` – Zentrale Steuerung (DEPRECATED)
+## ⚙️ 8. `config.py` — Zentrale Steuerung
 
-**Status:** Wird schrittweise durch YAML-Configs ersetzt.
-
-**Aktuell noch enthält:**
+**Aktuell enthält:**
 - Pfade: `RAW_DIR`, `INTERIM_DIR`, `PROCESSED_DIR`, `BASE_DIR`
+- Evaluation-Konstanten: `EVALUATION_METRICS`, `EVALUATION_SPLITS`
 - Wird von allen Scripts importiert für Pfad-Konstanten
 
 **Nicht mehr verwendet für:**
@@ -206,7 +202,7 @@ python -m src.pipeline \
 
 ---
 
-## 📁 9. `configs/` – Konfigurationen
+## 📁 9. `configs/` — Konfigurationen
 
 ```
 configs/
@@ -215,40 +211,44 @@ configs/
 │   └── walmart.yaml       # Wöchentlich, 2 ID-Spalten, US-Feiertage
 │       
 └── models/
-    └── tft/
-        ├── booksales/
-        │   ├── baseline.yaml
-        │   └── optuna_tft_day_best.yaml
-        └── walmart/
+    ├── tft/
+    │   ├── booksales/
+    │   │   ├── baseline.yaml
+    │   │   └── optuna_best.yaml
+    │   └── walmart/
+    │       └── baseline.yaml
+    ├── prophet/
+    │   └── booksales/
+    │       └── baseline.yaml
+    └── arima/
+        └── booksales/
             └── baseline.yaml
 ```
 
-### Dataset-Config Struktur (Beispiel: walmart.yaml)
+### Dataset-Config Struktur
 
 ```yaml
-name: "walmart"
-description: "Walmart Store Sales - Weekly forecasting"
+name: "dataset_name"
+description: "Dataset description"
 
 paths:
-  raw: "data/raw/walmart"
-  interim: "data/interim/walmart"
-  processed: "data/processed/walmart"
+  raw: "data/raw/dataset_name"
+  interim: "data/interim/dataset_name"
+  processed: "data/processed/dataset_name"
 
 raw_data:
   type: "multiple_files"  # oder "single_file"
   files:
-    - path: "data/raw/walmart/train.csv"
+    - path: "data/raw/dataset_name/train.csv"
       role: "main"
-    - path: "data/raw/walmart/features.csv"
-      role: "features"
   merge:
-    merge_on: ["Store", "Date"]
+    merge_on: ["id_col1", "id_col2"]
     how: "left"
 
 schema:
-  time_col: "Date"
-  id_cols: ["Store", "Dept"]
-  target_col: "Weekly_Sales"
+  time_col: "date"
+  id_cols: ["group1", "group2"]
+  target_col: "target"
 
 preprocessing:
   - step: "load_raw"
@@ -257,7 +257,6 @@ preprocessing:
     enabled: true
     params:
       country: "US"
-  # ... weitere Steps
 
 split:
   method: "ratio"
@@ -269,24 +268,18 @@ tft:
   known_real_prefixes: ["cyc_"]
   lag_prefixes: ["lag_"]
   treat_calendar_as_known: true
-  flag_cols: []
-  
-  # Walmart-spezifische Anpassungen
   impute_cols:
-    MarkDown1: 0.0
-    MarkDown2: 0.0
-    MarkDown3: 0.0
-    MarkDown4: 0.0
-    MarkDown5: 0.0
+    col1: 0.0
+    col2: 0.0
   exclude_cols: ["lag_365"]
 ```
 
-### Model-Config Struktur (Beispiel: baseline.yaml)
+### Model-Config Struktur
 
 ```yaml
-type: "tft"
+type: "tft"  # oder "prophet", "arima"
 name: "baseline"
-description: "Stabile Referenz für TFT"
+description: "Baseline configuration"
 
 training:
   seed: 42
@@ -300,90 +293,91 @@ training:
   num_workers: 4
 
 model:
-  # Walmart-spezifisch: robustere Normalisierung
+  # Modell-spezifische Parameter
   target_normalizer_transformation: null
-  
   loss: "quantile"
   output_size: 7
   hidden_size: 32
   attention_head_size: 4
   hidden_continuous_size: 16
   dropout: 0.1
-  reduce_on_plateau_patience: 2
 ```
 
 ---
 
-## 📂 10. `results/` – Outputs
+## 📂 10. `results/` — Outputs
 
 ```
 results/
-├── pipeline_runs/           # Pipeline-Manifests (modellübergreifend)
+├── plots/                    # Übergreifende Cross-Model Plots
+│   ├── cross_model_comparison_best.png
+│   ├── multi_model_forecast_*.png
+│   └── baseline_vs_optuna.png
+│
+├── eval/                     # Cross-Model Aggregation
+│   ├── model_comparison.csv
+│   └── model_comparison.json
+│
+├── pipeline_runs/            # Pipeline-Manifests
 │   └── pipeline_YYYYMMDD_HHMMSS_manifest.json
 │
-└── tft/
+├── tft/
+│   ├── runs/
+│   │   └── run_YYYYMMDD_HHMMSS_<dataset>_<config>/
+│   │       ├── checkpoints/
+│   │       ├── predictions/
+│   │       ├── results.json
+│   │       ├── summary.json
+│   │       ├── eval_val.json
+│   │       └── eval_test.json
+│   ├── eval_overview.csv
+│   └── plots/                # TFT-spezifische Plots
+│       ├── tft_forecast_series.png
+│       └── tft_optuna_study.png
+│
+├── prophet/
+│   ├── runs/
+│   ├── eval_overview.csv
+│   └── plots/                # Prophet-spezifische Plots
+│
+└── arima/
     ├── runs/
-    │   └── run_YYYYMMDD_HHMMSS_<dataset>_<config>/
-    │       ├── checkpoints/
-    │       │   └── tft-epoch=XX-val_loss=Y.YYYY.ckpt
-    │       ├── results.json      # Epochen-weise Metriken
-    │       └── summary.json      # Aggregierte Summary
-    │
-    ├── eval/
-    │   ├── <run_id>/
-    │   │   └── eval_summary.json
-    │   ├── eval_overview.csv     # Vergleich aller Runs
-    │   └── eval_overview.json
-    │
-    └── plots/
-        └── eval/
-            └── compare_test_smape.png
+    ├── eval_overview.csv
+    └── plots/                # ARIMA-spezifische Plots
 ```
 
 ---
 
-## 📚 11. `docs/` – Dokumentation
+## 📚 11. `docs/` — Dokumentation
 
 ```
 docs/
-├── Pipeline.md                      # Pipeline-Orchestrierung
-├── PipelineOrder.md                 # Workflow-Übersicht
-├── DatasetTFT.md                    # TFT-Datensatz-Spezifikation
-├── TrainerTFT.md                    # TFT-Training
-├── ConfigSetup.md                   # Config-System
-├── Projektstruktur.md               # Diese Datei
-├── MLFlowKonzept.md                 # Geplante MLflow-Integration
-└── ArimaProphetIntegration.md       # Geplante Modell-Erweiterung
+├── Scripts.md                      # Script-Übersicht (ZENTRAL)
+├── Projektstruktur.md              # Diese Datei
+├── PipelineOrder.md                # Workflow-Übersicht
+├── ORDNERSTRUKTUR.md               # Visualization-Ordnerlogik
+├── OPTUNA.md                       # Hyperparameter-Tuning Guide
+├── Pipeline.md                     # Pipeline-Orchestrierung
+├── ConfigSetup.md                  # Config-System
+├── DatasetTFT.md                   # TFT-Datensatz-Spezifikation
+└── TrainerTFT.md                   # TFT-Training
 ```
 
-**Zugriff via MkDocs:**
-```bash
-mkdocs serve
-# → http://localhost:8000
-```
+**Wichtigste Dokumente:**
+- **Scripts.md** — Alle verfügbaren Scripts mit Beispielen
+- **ORDNERSTRUKTUR.md** — Erklärt visualization/ vs results/ Struktur
 
 ---
 
 ## ✅ 12. Erweiterbarkeit
 
-### Neues Modell hinzufügen (z.B. ARIMA):
+### Neues Modell hinzufügen:
 
-1. **Config erstellen:** `configs/models/arima/baseline.yaml`
-   ```yaml
-   type: "arima"
-   name: "baseline"
-   training:
-     order: [1, 1, 1]
-     seasonal_order: [1, 1, 1, 7]
-   ```
-
-2. **Trainer erstellen:** `src/modeling/trainer_arima.py`
-   - Nutzt dieselben Splits (`train.parquet`, `val.parquet`, `test.parquet`)
-   - Speichert in `results/arima/runs/`
-
-3. **Pipeline erweitern:** Modelltyp-Erkennung in `src/pipeline.py`
-
-4. **Evaluation:** `src/evaluation/evaluate_arima.py` analog zu TFT
+1. **Config erstellen:** `configs/models/<model>/baseline.yaml`
+2. **Trainer erstellen:** `src/modeling/trainer_<model>.py`
+3. **Evaluation erstellen:** `src/evaluation/evaluate_<model>.py`
+4. **Aggregation erstellen:** `src/evaluation/aggregate_<model>_eval.py`
+5. **Plots erstellen:** `src/visualization/plot_<model>_*.py` → `results/<model>/plots/`
 
 ### Neuer Datensatz hinzufügen:
 
@@ -405,11 +399,18 @@ mkdocs serve
 ## 🎯 13. Workflow-Übersicht
 
 ```
-Preprocessing → model_dataset → dataset_tft → trainer_tft → evaluate_tft
-     ↓              ↓               ↓              ↓             ↓
-   interim/      processed/      spec.json    checkpoints/  eval_summary.json
+Preprocessing → model_dataset → dataset_<model> → trainer_<model> → evaluate_<model>
+     ↓              ↓               ↓                  ↓                 ↓
+   interim/      processed/      spec.json        checkpoints/      eval_*.json
      
-Parallel: analyze_dataset.py → proposed.yaml (neuer Datensatz)
+Aggregation-Flow:
+  evaluate_<model> → aggregate_<model>_eval → aggregate_all_models_eval
+                          ↓                           ↓
+                  eval_overview.csv           model_comparison.csv
+                          
+Visualization-Flow:
+  model_comparison.csv → plot_cross_model_comparison → results/plots/
+  eval_overview.csv    → plot_<model>_*               → results/<model>/plots/
 ```
 
 **Ausführungsmodi:**
@@ -421,14 +422,20 @@ Parallel: analyze_dataset.py → proposed.yaml (neuer Datensatz)
 
 ## 🔑 14. Wichtige Konzepte
 
-### Multi-Dataset-Support
-- **Aktuell:** Booksales (täglich), Walmart (wöchentlich)
-- **Erweiterbar:** Beliebige neue Datensätze via `analyze_dataset.py`
+### Multi-Model-Support
+- **TFT:** Deep Learning, Attention-basiert
+- **Prophet:** Statistisch, Facebook
+- **ARIMA:** Statistisch, Klassisch
+- **Evaluation:** Einheitliche Metriken für faire Vergleiche
+
+### Visualization-Hierarchie
+- **Übergreifend:** Cross-Model Vergleiche → `results/plots/`
+- **Modell-spezifisch:** Einzelmodell-Analysen → `results/<model>/plots/`
 
 ### Dataset-spezifische Anpassungen
-- **Imputing:** NaN-Werte mit festen Werten füllen (`impute_cols`)
-- **Exclusion:** Spalten entfernen (`exclude_cols`)
-- **Normalisierung:** Target-Transformation wählen (`target_normalizer_transformation`)
+- **Imputing:** NaN-Werte mit festen Werten füllen
+- **Exclusion:** Spalten entfernen
+- **Normalisierung:** Target-Transformation wählen
 
 ### Reproduzierbarkeit
 - ✅ Alle Parameter in YAML

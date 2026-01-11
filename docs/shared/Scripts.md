@@ -40,28 +40,59 @@ Zentrale Referenz aller verfügbaren Scripts im Projekt.
 
 ## 📊 Evaluation
 
+### Einzelmodell-Evaluation
+
 | Script | Funktion | Beispiel-Aufruf |
 |--------|----------|-----------------|
-| `evaluate_tft.py` | TFT Evaluation | `python -m src.evaluation.evaluate_tft --run-id run_20260106_174337_tft_baseline --split test` |
-| `evaluate_arima.py` | ARIMA Evaluation | `python -m src.evaluation.evaluate_arima --run-id run_20260106_180327_arima_baseline --split val` |
-| `evaluate_prophet.py` | Prophet Evaluation | `python -m src.evaluation.evaluate_prophet --run-id run_20260106_182500_prophet_baseline --split test` |
+| `evaluate_tft.py` | TFT Evaluation | `python -m src.evaluation.evaluate_tft --run-id <run_id> --split test` |
+| `evaluate_arima.py` | ARIMA Evaluation | `python -m src.evaluation.evaluate_arima --run-id <run_id> --split val` |
+| `evaluate_prophet.py` | Prophet Evaluation | `python -m src.evaluation.evaluate_prophet --run-id <run_id> --split test` |
+
+### Optuna-Analyse
+
+| Script | Funktion | Beispiel-Aufruf |
+|--------|----------|-----------------|
 | `analyze_optuna_tft_trials.py` | TFT Optuna Analyse | `python -m src.evaluation.analyze_optuna_tft_trials --study-name tft_booksales --top-n 10` |
 | `analyze_optuna_arima_trials.py` | ARIMA Optuna Analyse | `python -m src.evaluation.analyze_optuna_arima_trials --study-name arima_booksales --top-n 10` |
 | `analyze_optuna_prophet_trials.py` | Prophet Optuna Analyse | `python -m src.evaluation.analyze_optuna_prophet_trials --study-name prophet_booksales --top-n 10` |
-| `compare_models.py` | Modellvergleich | `python -m src.evaluation.compare_models --runs run1,run2,run3` |
+
+### Aggregation
+
+| Script | Funktion | Beispiel-Aufruf |
+|--------|----------|-----------------|
 | `aggregate_tft_eval.py` | TFT Aggregation | `python -m src.evaluation.aggregate_tft_eval` |
+| `aggregate_prophet_eval.py` | Prophet Aggregation | `python -m src.evaluation.aggregate_prophet_eval` |
+| `aggregate_arima_eval.py` | ARIMA Aggregation | `python -m src.evaluation.aggregate_arima_eval` |
+| `aggregate_all_models_eval.py` | Cross-Model Aggregation | `python -m src.evaluation.aggregate_all_models_eval` |
 
 ---
 
 ## 📈 Visualization
 
-| Script | Funktion | Beispiel-Aufruf |
-|--------|----------|-----------------|
-| `plot_tft_optuna_study.py` | TFT Optuna Plots | `python -m src.visualization.plot_tft_optuna_study --study-name tft_booksales` |
-| `plot_arima_optuna_study.py` | ARIMA Optuna Plots | `python -m src.visualization.plot_arima_optuna_study --study-name arima_booksales` |
-| `plot_prophet_optuna_study.py` | Prophet Optuna Plots | `python -m src.visualization.plot_prophet_optuna_study --study-name prophet_booksales` |
-| `plot_forecasts.py` | Forecast Visualisierung | `python -m src.visualization.plot_forecasts --run-id <run_id>` |
-| `plot_training.py` | Training Metrics | `python -m src.visualization.plot_training --run-id <run_id>` |
+### Cross-Model Plots (Übergreifend)
+
+| Script | Funktion | Output | Beispiel-Aufruf |
+|--------|----------|--------|-----------------|
+| `plot_cross_model_comparison.py` | Best Run Vergleich | `results/plots/` | `python -m src.visualization.plot_cross_model_comparison` |
+| `plot_multi_model_forecast.py` | Multi-Model Forecasts | `results/plots/` | `python -m src.visualization.plot_multi_model_forecast` |
+| `plot_baseline_vs_optuna.py` | Optuna-Verbesserung | `results/plots/` | `python -m src.visualization.plot_baseline_vs_optuna` |
+
+### Modell-spezifische Plots
+
+| Script | Funktion | Output | Beispiel-Aufruf |
+|--------|----------|--------|-----------------|
+| `plot_tft_optuna_study.py` | TFT Optuna Plots | `results/tft/plots/` | `python -m src.visualization.plot_tft_optuna_study --study-name tft_booksales` |
+| `plot_tft_forecast_series.py` | TFT Forecast Visualisierung | `results/tft/plots/` | `python -m src.visualization.plot_tft_forecast_series --run-id <run_id>` |
+| `plot_tft_eval_comparison.py` | TFT Run-Vergleich | `results/tft/plots/` | `python -m src.visualization.plot_tft_eval_comparison` |
+| `plot_arima_optuna_study.py` | ARIMA Optuna Plots | `results/arima/plots/` | `python -m src.visualization.plot_arima_optuna_study --study-name arima_booksales` |
+| `plot_prophet_optuna_study.py` | Prophet Optuna Plots | `results/prophet/plots/` | `python -m src.visualization.plot_prophet_optuna_study --study-name prophet_booksales` |
+
+### Data Exploration Plots
+
+| Script | Funktion | Output | Beispiel-Aufruf |
+|--------|----------|--------|-----------------|
+| `plot_data_alignment.py` | Daten-Harmonisierung | `results/plots/` | `python -m src.visualization.plot_data_alignment` |
+| `plot_data_cleaning.py` | Daten-Bereinigung | `results/plots/` | `python -m src.visualization.plot_data_cleaning` |
 
 ---
 
@@ -94,6 +125,16 @@ Viele Scripts benötigen die Umgebungsvariable `DATASET_CONFIG`:
 $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
 ```
 
+### Visualization-Ordnerstruktur
+**Übergreifende Plots** (Cross-Model Vergleiche):
+- Output: `results/plots/`
+- Zeigen TFT vs Prophet vs ARIMA
+
+**Modell-spezifische Plots**:
+- TFT: `results/tft/plots/`
+- Prophet: `results/prophet/plots/`
+- ARIMA: `results/arima/plots/`
+
 ### Optuna Workflow
 Der typische Optuna-Workflow besteht aus 4 Schritten:
 1. `optuna_<model>.py` - Hyperparameter-Suche durchführen
@@ -101,7 +142,31 @@ Der typische Optuna-Workflow besteht aus 4 Schritten:
 3. `plot_<model>_optuna_study.py` - Visualisierung
 4. `optuna_<model>_export_best.py` - Beste Config exportieren
 
-Siehe [OPTUNA.md](OPTUNA.md) für Details.
+### Evaluation & Aggregation Workflow
+1. **Einzelmodell evaluieren:**
+   ```bash
+   python -m src.evaluation.evaluate_tft --run-id <run_id> --split test
+   python -m src.evaluation.evaluate_prophet --run-id <run_id> --split test
+   python -m src.evaluation.evaluate_arima --run-id <run_id> --split test
+   ```
+
+2. **Pro Modell aggregieren:**
+   ```bash
+   python -m src.evaluation.aggregate_tft_eval
+   python -m src.evaluation.aggregate_prophet_eval
+   python -m src.evaluation.aggregate_arima_eval
+   ```
+
+3. **Alle Modelle kombinieren:**
+   ```bash
+   python -m src.evaluation.aggregate_all_models_eval
+   ```
+
+4. **Visualisieren:**
+   ```bash
+   python -m src.visualization.plot_cross_model_comparison
+   python -m src.visualization.plot_multi_model_forecast
+   ```
 
 ### Run-IDs
 Run-IDs haben das Format: `run_YYYYMMDD_HHMMSS_<model>_<config>`
