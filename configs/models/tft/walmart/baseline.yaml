@@ -1,16 +1,12 @@
 # configs/models/tft/walmart/baseline.yaml
-# ============================================================================
-# TFT Baseline-Konfiguration für Walmart
-# ============================================================================
-# Stabile Referenzkonfiguration für Temporal Fusion Transformer
-# Datum: 2025-11-23
 #
-# Walmart-spezifisch: Wöchentliche Daten, 52 Wochen Encoder, 8 Wochen Forecast
+# ============================================================================
+# TFT Baseline-Konfiguration
 # ============================================================================
 
 type: "tft"
 name: "baseline"
-description: "Stabile Referenz für TFT Walmart - mittlere Modellgröße, 30 Epochen"
+description: "TFT Baseline mit pytorch-forecasting Standard-Hyperparametern"
 
 # ----------------------------------------------------------------------------
 # Training-Hyperparameter
@@ -21,7 +17,7 @@ training:
 
   # Epochen & Batching
   max_epochs: 30
-  batch_size: 256  # Größer als Booksales (mehr Daten)
+  batch_size: 128
 
   # Optimizer
   learning_rate: 0.001
@@ -31,7 +27,7 @@ training:
   early_stopping_patience: 5
 
   # Hardware
-  accelerator: "gpu"
+  accelerator: "cpu"  # bei GPU: "gpu"
   devices: 1
 
   # Dataloader
@@ -46,10 +42,10 @@ model:
   loss: "quantile"
   output_size: 7  # 7 Quantile für probabilistische Vorhersagen
 
-  # Netzwerk-Größe
-  hidden_size: 32
+  # Netzwerk-Größe (pytorch-forecasting Defaults)
+  hidden_size: 16
   attention_head_size: 4
-  hidden_continuous_size: 16
+  hidden_continuous_size: 8
 
   # Regularisierung
   dropout: 0.1
@@ -61,5 +57,8 @@ model:
 # Evaluation-Parameter (optional, für evaluate_tft.py)
 # ----------------------------------------------------------------------------
 evaluation:
-  batch_size: 512  # Größer als Training (kein Gradient)
+  batch_size: 256  # größer als Training (kein Gradient)
   num_workers: 0
+
+# Quelle: https://pytorch-forecasting.readthedocs.io/en/stable/api/pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer.html
+# Parameter entsprechen den Defaults der offiziellen Implementierung

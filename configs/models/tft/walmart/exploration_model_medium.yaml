@@ -1,17 +1,12 @@
-# configs/models/tft/baseline.yaml
-# ============================================================================
-# TFT Baseline-Konfiguration
-# ============================================================================
-# Stabile Referenzkonfiguration für Temporal Fusion Transformer
-# Datum: 2025-11-21
-# Basiert auf: trainer_tft_baseline02.yaml
+# configs/models/tft/walmart/exploration_medium_model.yaml
 #
-# Diese Config ist für Pipeline-Orchestrierung optimiert.
+# ============================================================================
+# TFT Exploration: Medium Model Size
 # ============================================================================
 
 type: "tft"
-name: "baseline_v02"
-description: "Stabile Referenz für TFT - mittlere Modellgröße, 30 Epochen"
+name: "exploration_medium_model"
+description: "TFT Exploration: Medium Model Size (hidden_size=32, 2× baseline)"
 
 # ----------------------------------------------------------------------------
 # Training-Hyperparameter
@@ -22,7 +17,7 @@ training:
 
   # Epochen & Batching
   max_epochs: 30
-  batch_size: 32  # ← 4x kleiner
+  batch_size: 128
 
   # Optimizer
   learning_rate: 0.001
@@ -32,7 +27,7 @@ training:
   early_stopping_patience: 5
 
   # Hardware
-  accelerator: "gpu"  # bei GPU: "gpu"
+  accelerator: "cpu"  # bei GPU: "gpu"
   devices: 1
 
   # Dataloader
@@ -47,10 +42,10 @@ model:
   loss: "quantile"
   output_size: 7  # 7 Quantile für probabilistische Vorhersagen
 
-  # Netzwerk-Größe
+  # Netzwerk-Größe (2× baseline: 16 → 32)
   hidden_size: 32
   attention_head_size: 4
-  hidden_continuous_size: 16
+  hidden_continuous_size: 16  # 2:1 Ratio beibehalten
 
   # Regularisierung
   dropout: 0.1
@@ -64,3 +59,5 @@ model:
 evaluation:
   batch_size: 256  # größer als Training (kein Gradient)
   num_workers: 0
+
+# Exploration: Testen ob größeres Modell bessere Performance liefert

@@ -1,12 +1,12 @@
-# configs/models/tft/booksales/baseline.yaml
+# configs/models/tft/walmart/exploration_lr_low.yaml
 #
 # ============================================================================
-# TFT Baseline-Konfiguration
+# TFT Exploration: Lower Learning Rate
 # ============================================================================
 
 type: "tft"
-name: "baseline"
-description: "TFT Baseline mit pytorch-forecasting Standard-Hyperparametern"
+name: "exploration_lr_low"
+description: "TFT Exploration: Lower Learning Rate (lr=0.0003, 0.3× baseline)"
 
 # ----------------------------------------------------------------------------
 # Training-Hyperparameter
@@ -19,8 +19,8 @@ training:
   max_epochs: 30
   batch_size: 128
 
-  # Optimizer
-  learning_rate: 0.001
+  # Optimizer (0.3× baseline: 0.001 → 0.0003)
+  learning_rate: 0.0003
   gradient_clip_val: 0.1
 
   # Early Stopping
@@ -42,7 +42,7 @@ model:
   loss: "quantile"
   output_size: 7  # 7 Quantile für probabilistische Vorhersagen
 
-  # Netzwerk-Größe (pytorch-forecasting Defaults)
+  # Netzwerk-Größe (baseline)
   hidden_size: 16
   attention_head_size: 4
   hidden_continuous_size: 8
@@ -60,5 +60,4 @@ evaluation:
   batch_size: 256  # größer als Training (kein Gradient)
   num_workers: 0
 
-# Quelle: https://pytorch-forecasting.readthedocs.io/en/stable/api/pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer.html
-# Parameter entsprechen den Defaults der offiziellen Implementierung
+# Exploration: Niedrigere LR → stabileres Training → potentiell besseres Optimum

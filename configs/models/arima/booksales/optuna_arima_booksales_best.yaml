@@ -7,13 +7,9 @@ model:
   max_d: 1
   max_q: 1
   max_P: 0
-  max_D: 1
+  max_D: 0
   max_Q: 0
-  start_p: 0
-  start_q: 0
-  start_P: 0
-  start_Q: 0
-  seasonal: true
+  seasonal: false
   m: 7
   stepwise: true
   suppress_warnings: true

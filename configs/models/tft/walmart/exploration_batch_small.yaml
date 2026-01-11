@@ -1,12 +1,12 @@
-# configs/models/tft/booksales/baseline.yaml
+# configs/models/tft/walmart/exploration_batch_small.yaml
 #
 # ============================================================================
-# TFT Baseline-Konfiguration
+# TFT Exploration: Smaller Batch Size
 # ============================================================================
 
 type: "tft"
-name: "baseline"
-description: "TFT Baseline mit pytorch-forecasting Standard-Hyperparametern"
+name: "exploration_batch_small"
+description: "TFT Exploration: Smaller Batch Size (batch_size=64, ½× baseline)"
 
 # ----------------------------------------------------------------------------
 # Training-Hyperparameter
@@ -15,9 +15,9 @@ training:
   # Reproduzierbarkeit
   seed: 42
 
-  # Epochen & Batching
+  # Epochen & Batching (½× baseline: 128 → 64)
   max_epochs: 30
-  batch_size: 128
+  batch_size: 64
 
   # Optimizer
   learning_rate: 0.001
@@ -42,7 +42,7 @@ model:
   loss: "quantile"
   output_size: 7  # 7 Quantile für probabilistische Vorhersagen
 
-  # Netzwerk-Größe (pytorch-forecasting Defaults)
+  # Netzwerk-Größe (baseline)
   hidden_size: 16
   attention_head_size: 4
   hidden_continuous_size: 8
@@ -60,5 +60,4 @@ evaluation:
   batch_size: 256  # größer als Training (kein Gradient)
   num_workers: 0
 
-# Quelle: https://pytorch-forecasting.readthedocs.io/en/stable/api/pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer.html
-# Parameter entsprechen den Defaults der offiziellen Implementierung
+# Exploration: Kleinere Batches → mehr Updates → potentiell bessere Konvergenz

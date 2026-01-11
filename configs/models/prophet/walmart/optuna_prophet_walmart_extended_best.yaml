@@ -1,0 +1,26 @@
+type: prophet
+name: optuna_best_trial11
+description: Beste Config aus Optuna Study 'prophet_walmart_extended' (Trial 11, val_mae=3068.9660)
+model:
+  growth: linear
+  seasonality_mode: additive
+  yearly_seasonality: true
+  weekly_seasonality: true
+  daily_seasonality: false
+  changepoint_prior_scale: 0.016539292040876077
+  seasonality_prior_scale: 0.8357763293452645
+  holidays_prior_scale: 0.011290346202175163
+  interval_width: 0.95
+  mcmc_samples: 0
+training:
+  prediction_length: 7
+optuna_metadata:
+  study_name: prophet_walmart_extended
+  trial_number: 11
+  val_mae: 3068.9659600447094
+  all_params:
+    changepoint_prior_scale: 0.016539292040876077
+    seasonality_prior_scale: 0.8357763293452645
+    holidays_prior_scale: 0.011290346202175163
+    seasonality_mode: additive
+    growth: linear
