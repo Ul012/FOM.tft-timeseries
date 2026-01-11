@@ -87,27 +87,24 @@ def load_tft_predictions(run_id: str) -> Tuple[np.ndarray, np.ndarray, np.ndarra
     return None
 
 
-def load_prophet_predictions(run_id: str) -> Tuple[pd.DataFrame, pd.DataFrame] | None:
+def load_prophet_predictions(run_id: str) -> Tuple[np.ndarray, np.ndarray] | None:
     """
-    Lädt Prophet Predictions aus forecast_test.csv
+    Lädt Prophet Predictions aus predictions/predictions_test.npy
 
     Returns:
-        (actuals_df, predictions_df) oder None
+        (actuals, predictions) oder None
     """
-    run_dir = BASE_DIR / "results" / "prophet" / "runs" / run_id
+    pred_dir = BASE_DIR / "results" / "prophet" / "runs" / run_id / "predictions"
 
-    # Prophet speichert forecasts in forecast_test.csv
-    forecast_path = run_dir / "forecast_test.csv"
-
-    if not forecast_path.exists():
+    if not pred_dir.exists():
         return None
 
-    df = pd.read_csv(forecast_path)
+    pred_path = pred_dir / "predictions_test.npy"
+    actual_path = pred_dir / "actuals_test.npy"
 
-    # Prophet forecast hat: ds (date), yhat (prediction), y (actual)
-    if 'y' in df.columns and 'yhat' in df.columns:
-        actuals = df['y'].values
-        predictions = df['yhat'].values
+    if pred_path.exists() and actual_path.exists():
+        predictions = np.load(pred_path)
+        actuals = np.load(actual_path)
         return actuals, predictions
 
     return None
@@ -115,15 +112,18 @@ def load_prophet_predictions(run_id: str) -> Tuple[pd.DataFrame, pd.DataFrame] |
 
 def load_arima_predictions(run_id: str) -> Tuple[np.ndarray, np.ndarray] | None:
     """
-    Lädt ARIMA Predictions aus predictions_test.npy
+    Lädt ARIMA Predictions aus predictions/predictions_test.npy
 
     Returns:
         (actuals, predictions) oder None
     """
-    run_dir = BASE_DIR / "results" / "arima" / "runs" / run_id
+    pred_dir = BASE_DIR / "results" / "arima" / "runs" / run_id / "predictions"
 
-    pred_path = run_dir / "predictions_test.npy"
-    actual_path = run_dir / "actuals_test.npy"
+    if not pred_dir.exists():
+        return None
+
+    pred_path = pred_dir / "predictions_test.npy"
+    actual_path = pred_dir / "actuals_test.npy"
 
     if pred_path.exists() and actual_path.exists():
         predictions = np.load(pred_path)

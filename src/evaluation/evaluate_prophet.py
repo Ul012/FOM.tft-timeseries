@@ -20,6 +20,7 @@ Output:
 Aufruf:
     python -m src.evaluation.evaluate_prophet --run-id <run_id> --split val
     python -m src.evaluation.evaluate_prophet --run-id <run_id> --split test
+    python -m src.evaluation.evaluate_prophet --run-id <run_id> --split test --save-predictions
 """
 
 import argparse
@@ -41,9 +42,10 @@ _schema = get_schema(_dataset_config)
 class ProphetEvaluator:
     """Evaluiert Prophet-Modelle auf Val/Test-Daten."""
 
-    def __init__(self, run_id: str, split: str):
+    def __init__(self, run_id: str, split: str, save_predictions: bool = False):
         self.run_id = run_id
-        self.split = split  # "val" oder "test"
+        self.split = split
+        self.save_predictions = save_predictions
         self.results_dir = BASE_DIR / "results" / "prophet" / "runs" / run_id
         self.models_dir = self.results_dir / "models"
 
@@ -184,6 +186,10 @@ class ProphetEvaluator:
         if metrics['smape']:
             print(f"  SMAPE: {metrics['smape']:.2f}%")
 
+        # Gebe predictions zurück wenn gewünscht
+        if self.save_predictions:
+            return metrics, y_true, y_pred
+
         return metrics
 
     def evaluate_all_groups(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -208,10 +214,18 @@ class ProphetEvaluator:
         print(f"{'=' * 60}")
 
         all_metrics = {}
+        all_predictions = []  # Sammle alle predictions
+        all_actuals = []  # Sammle alle actuals
 
         if not group_cols:
             # Keine Gruppen
-            metrics = self.evaluate_single_group("all", df)
+            result = self.evaluate_single_group("all", df)
+            if self.save_predictions:
+                metrics, y_true, y_pred = result
+                all_predictions.append(y_pred)
+                all_actuals.append(y_true)
+            else:
+                metrics = result
             all_metrics["all"] = metrics
 
         else:
@@ -222,9 +236,16 @@ class ProphetEvaluator:
                 else:
                     group_id = str(group_values)
 
-                metrics = self.evaluate_single_group(group_id, group_df)
-                if metrics is None:
+                result = self.evaluate_single_group(group_id, group_df)
+                if result is None:
                     continue
+
+                if self.save_predictions:
+                    metrics, y_true, y_pred = result
+                    all_predictions.append(y_pred)
+                    all_actuals.append(y_true)
+                else:
+                    metrics = result
                 all_metrics[group_id] = metrics
 
         # Aggregierte Metriken
@@ -256,6 +277,19 @@ class ProphetEvaluator:
         eval_path = self.results_dir / f"eval_{self.split}.json"
         with open(eval_path, "w", encoding="utf-8") as f:
             json.dump(eval_summary, f, indent=2, ensure_ascii=False)
+
+        # Predictions kombiniert speichern
+        if self.save_predictions and all_predictions:
+            predictions_dir = self.results_dir / "predictions"
+            predictions_dir.mkdir(exist_ok=True)
+
+            combined_predictions = np.concatenate(all_predictions)
+            combined_actuals = np.concatenate(all_actuals)
+
+            np.save(predictions_dir / f"predictions_{self.split}.npy", combined_predictions)
+            np.save(predictions_dir / f"actuals_{self.split}.npy", combined_actuals)
+
+            print(f"\n✓ Predictions gespeichert: {predictions_dir}/")
 
         print(f"\n{'=' * 60}")
         print("EVALUATION ABGESCHLOSSEN")
@@ -292,6 +326,11 @@ def main() -> None:
         default="val",
         help="Split für Evaluation (val oder test)"
     )
+    parser.add_argument(
+        "--save-predictions",
+        action="store_true",
+        help="Speichere Predictions für Visualisierung"
+    )
     args = parser.parse_args()
 
     # Lade Split-Daten
@@ -304,27 +343,25 @@ def main() -> None:
     df_split = pd.read_parquet(split_path)
 
     # Evaluation starten
-    evaluator = ProphetEvaluator(args.run_id, args.split)
+    evaluator = ProphetEvaluator(args.run_id, args.split, args.save_predictions)
     eval_summary = evaluator.evaluate_all_groups(df_split)
 
 
 if __name__ == "__main__":
     main()
 
-# Aufruf:
-#   Walmart:
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
-#   # Val-Evaluation
-#   python -m src.evaluation.evaluate_prophet --run-id run_20260111_140345_walmart_prophet_optuna_best_trial11 --split val
+#   Aufruf:
 #
-#   # Test-Evaluation
-#   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000719_prophet_baseline --split test
+#   Walmart:
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_prophet --run-id run_20260108_000719_prophet_baseline --split val
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_prophet --run-id run_20260108_000719_prophet_baseline --split test --save-predictions
+#
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_prophet --run-id run_20260111_140345_walmart_prophet_optuna_best_trial11 --split val
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_prophet --run-id run_20260111_140345_walmart_prophet_optuna_best_trial11 --split test --save-predictions
 #
 #   Booksales:
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_prophet --run-id run_20260108_000405_prophet_baseline --split val
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_prophet --run-id run_20260108_000405_prophet_baseline --split test --save-predictions
 #
-#   # Val-Evaluation
-#   python -m src.evaluation.evaluate_prophet --run-id run_20260111_172926_booksales_prophet_optuna_best_trial13 --split val
-#
-#   # Test-Evaluation
-#   python -m src.evaluation.evaluate_prophet --run-id run_20260108_000405_prophet_baseline --split test
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_prophet --run-id run_20260111_172926_booksales_prophet_optuna_best_trial13 --split val
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_prophet --run-id run_20260111_172926_booksales_prophet_optuna_best_trial13 --split test --save-predictions

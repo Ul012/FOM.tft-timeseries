@@ -7,6 +7,7 @@ Evaluiert trainierte ARIMA-Modelle auf Val/Test-Daten.
 Aufruf:
     python -m src.evaluation.evaluate_arima --run-id <run_id> --split val
     python -m src.evaluation.evaluate_arima --run-id <run_id> --split test
+    python -m src.evaluation.evaluate_arima --run-id <run_id> --split test --save-predictions
 """
 
 import argparse
@@ -28,9 +29,10 @@ _schema = get_schema(_dataset_config)
 class ARIMAEvaluator:
     """Evaluiert ARIMA-Modelle auf Val/Test-Daten."""
 
-    def __init__(self, run_id: str, split: str):
+    def __init__(self, run_id: str, split: str, save_predictions: bool = False):
         self.run_id = run_id
         self.split = split
+        self.save_predictions = save_predictions
         self.results_dir = BASE_DIR / "results" / "arima" / "runs" / run_id
         self.models_dir = self.results_dir / "models"
 
@@ -144,6 +146,10 @@ class ARIMAEvaluator:
         if metrics['smape']:
             print(f"  SMAPE: {metrics['smape']:.2f}%")
 
+        # Gebe predictions zurück wenn gewünscht
+        if self.save_predictions:
+            return metrics, y_true, y_pred
+
         return metrics
 
     def evaluate_all_groups(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -168,9 +174,17 @@ class ARIMAEvaluator:
         print(f"{'=' * 60}")
 
         all_metrics = {}
+        all_predictions = []  # Sammle alle predictions
+        all_actuals = []  # Sammle alle actuals
 
         if not group_cols:
-            metrics = self.evaluate_single_group("all", df)
+            result = self.evaluate_single_group("all", df)
+            if self.save_predictions:
+                metrics, y_true, y_pred = result
+                all_predictions.append(y_pred)
+                all_actuals.append(y_true)
+            else:
+                metrics = result
             all_metrics["all"] = metrics
         else:
             for group_values, group_df in df.groupby(group_cols):
@@ -180,7 +194,13 @@ class ARIMAEvaluator:
                     group_id = str(group_values)
 
                 try:
-                    metrics = self.evaluate_single_group(group_id, group_df)
+                    result = self.evaluate_single_group(group_id, group_df)
+                    if self.save_predictions:
+                        metrics, y_true, y_pred = result
+                        all_predictions.append(y_pred)
+                        all_actuals.append(y_true)
+                    else:
+                        metrics = result
                     all_metrics[group_id] = metrics
                 except Exception as e:
                     print(f"  ✗ Gruppe {group_id} übersprungen: {e}")
@@ -224,6 +244,19 @@ class ARIMAEvaluator:
         with open(eval_path, "w", encoding="utf-8") as f:
             json.dump(eval_summary, f, indent=2, ensure_ascii=False)
 
+        # Predictions kombiniert speichern
+        if self.save_predictions and all_predictions:
+            predictions_dir = self.results_dir / "predictions"
+            predictions_dir.mkdir(exist_ok=True)
+
+            combined_predictions = np.concatenate(all_predictions)
+            combined_actuals = np.concatenate(all_actuals)
+
+            np.save(predictions_dir / f"predictions_{self.split}.npy", combined_predictions)
+            np.save(predictions_dir / f"actuals_{self.split}.npy", combined_actuals)
+
+            print(f"\n✓ Predictions gespeichert: {predictions_dir}/")
+
         print(f"\n{'=' * 60}")
         print("EVALUATION ABGESCHLOSSEN")
         print(f"{'=' * 60}")
@@ -258,6 +291,11 @@ def main() -> None:
         default="val",
         help="Split für Evaluation (val oder test)"
     )
+    parser.add_argument(
+        "--save-predictions",
+        action="store_true",
+        help="Speichere Predictions für Visualisierung"
+    )
     args = parser.parse_args()
 
     # Lade Split-Daten
@@ -270,7 +308,7 @@ def main() -> None:
     df_split = pd.read_parquet(split_path)
 
     # Evaluation starten
-    evaluator = ARIMAEvaluator(args.run_id, args.split)
+    evaluator = ARIMAEvaluator(args.run_id, args.split, args.save_predictions)
     eval_summary = evaluator.evaluate_all_groups(df_split)
 
 
@@ -279,9 +317,18 @@ if __name__ == "__main__":
 
 # Aufruf:
 #
-#   booksales:
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_arima --run-id run_20260111_133156_arima_optuna_best_trial3 --split test
+# Walmart:
+# $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
+# python -m src.evaluation.evaluate_arima --run-id run_20260109_182701_arima_baseline --split val
+# python -m src.evaluation.evaluate_arima --run-id run_20260109_182701_arima_baseline --split test --save-predictions
 #
-#   walmart:
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
-#   python -m src.evaluation.evaluate_arima --run-id run_20260111_195830_arima_optuna_best_trial3 --split test
+# python -m src.evaluation.evaluate_arima --run-id run_20260111_195830_arima_optuna_best_trial3 --split val
+# python -m src.evaluation.evaluate_arima --run-id run_20260111_195830_arima_optuna_best_trial3 --split test --save-predictions
+#
+# Booksales:
+# $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+# python -m src.evaluation.evaluate_arima --run-id run_20260106_174337_arima_baseline --split val
+# python -m src.evaluation.evaluate_arima --run-id run_20260106_174337_arima_baseline --split test --save-predictions
+#
+# python -m src.evaluation.evaluate_arima --run-id run_20260111_133156_arima_optuna_best_trial3 --split val
+# python -m src.evaluation.evaluate_arima --run-id run_20260111_133156_arima_optuna_best_trial3 --split test --save-predictions

@@ -105,6 +105,9 @@ results/arima/optuna/*/*
 # Checkpoints ausschließen (zu groß ~50-100MB pro Stück)
 **/checkpoints/
 
+# Predictions ausschließen (regenerierbar mit --save-predictions)
+**/predictions/
+
 # Prophet Modelle (zu groß ~1-10MB pro Modell)
 **/models/*.pkl
 

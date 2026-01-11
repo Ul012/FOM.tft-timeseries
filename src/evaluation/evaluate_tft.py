@@ -158,6 +158,9 @@ def _evaluate_split(
         model: TemporalFusionTransformer,
         df: pd.DataFrame,
         eval_cfg: Dict[str, Any],
+        save_predictions: bool = False,
+        predictions_dir: Path | None = None,
+        split_name: str = "test",
 ) -> SplitMetrics:
     """
     Evaluiert einen Split mit den Feature-Listen aus dem Modell-Checkpoint.
@@ -237,6 +240,12 @@ def _evaluate_split(
     if y_true.shape != y_pred.shape:
         raise ValueError(f"Shape-Mismatch: y_true={y_true.shape}, y_pred={y_pred.shape}")
 
+    # Predictions speichern (OPTIONAL)
+    if save_predictions and predictions_dir:
+        predictions_dir.mkdir(parents=True, exist_ok=True)
+        np.save(predictions_dir / f"predictions_{split_name}.npy", y_pred)
+        np.save(predictions_dir / f"actuals_{split_name}.npy", y_true)
+
     metrics_raw = _compute_metrics(y_true, y_pred)
 
     return SplitMetrics(
@@ -252,6 +261,7 @@ def evaluate_tft_run(
         data_cfg: Dict[str, Any],
         model_cfg: Dict[str, Any],
         eval_cfg: Dict[str, Any],
+        save_predictions: bool = False,
 ) -> Dict[str, Any]:
     run_id = model_cfg["run_id"]
 
@@ -261,8 +271,11 @@ def evaluate_tft_run(
     df_val, df_test = _load_splits(data_cfg)
 
     # Feature-Listen kommen jetzt aus dem Modell-Checkpoint
-    metrics_val = _evaluate_split(model, df_val, eval_cfg)
-    metrics_test = _evaluate_split(model, df_test, eval_cfg)
+    # Predictions directory
+    predictions_dir = Path(model_cfg["checkpoint_root"]) / run_id / "predictions" if save_predictions else None
+
+    metrics_val = _evaluate_split(model, df_val, eval_cfg, save_predictions, predictions_dir, "val")
+    metrics_test = _evaluate_split(model, df_test, eval_cfg, save_predictions, predictions_dir, "test")
 
     eval_root = Path(eval_cfg["eval_root"])
     eval_dir = eval_root / run_id
@@ -326,6 +339,11 @@ def _parse_args() -> argparse.Namespace:
         required=False,
         help="Direkter Pfad zum Checkpoint (für Optuna-Trials)",
     )
+    parser.add_argument(
+        "--save-predictions",
+        action="store_true",
+        help="Speichere Predictions für Visualisierung"
+    )
     args = parser.parse_args()
 
     if not args.run_id and not args.checkpoint:
@@ -362,11 +380,13 @@ def main() -> None:
         model = TemporalFusionTransformer.load_from_checkpoint(str(ckpt_path))
         df_val, df_test = _load_splits(data_cfg)
 
-        metrics_val = _evaluate_split(model, df_val, eval_cfg)
-        metrics_test = _evaluate_split(model, df_test, eval_cfg)
-
         eval_root = Path(eval_cfg["eval_root"])
         eval_dir = eval_root / _dataset_name / run_id
+        predictions_dir = eval_dir / "predictions" if args.save_predictions else None
+
+        metrics_val = _evaluate_split(model, df_val, eval_cfg, args.save_predictions, predictions_dir, "val")
+        metrics_test = _evaluate_split(model, df_test, eval_cfg, args.save_predictions, predictions_dir, "test")
+
         eval_logger = EvalLogger(eval_dir)
 
         payload: Dict[str, Any] = {
@@ -405,7 +425,12 @@ def main() -> None:
             "checkpoint_pattern": "*.ckpt",
         }
 
-        result = evaluate_tft_run(data_cfg=data_cfg, model_cfg=model_cfg, eval_cfg=eval_cfg)
+        result = evaluate_tft_run(data_cfg=data_cfg, model_cfg=model_cfg, eval_cfg=eval_cfg, save_predictions=args.save_predictions)
+
+
+    if args.save_predictions:
+        pred_dir = Path(result['checkpoint_path']).parent.parent / "predictions"
+        print(f"✓ Predictions gespeichert: {pred_dir}/")
 
     print("[evaluate_tft] Evaluierung abgeschlossen.")
     print(f"- Run-ID           : {result['run_id']}")
@@ -433,3 +458,18 @@ if __name__ == "__main__":
 #   Mit checkpoint (für Optuna-Trials):
 #   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_tft --run-id run_20251127_135731_walmart_optuna_walmart_full_best_mel24_es8
 #   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_tft --checkpoint "results\tft\optuna\walmart\trial_0020\checkpoints\tft-epoch=08-val_loss=790.6539.ckpt"
+#
+#
+#   Aufruf für Erstellung predictions (wird benötigt von plot_multi_model_forecast):
+#
+#   HINWEIS: TFT evaluiert Val UND Test gleichzeitig (kein --split nötig)
+#
+#   Walmart:
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
+#   python -m src.evaluation.evaluate_tft --run-id run_20260111_001847_walmart_baseline --save-predictions
+#   python -m src.evaluation.evaluate_tft --run-id run_20260111_113926_walmart_optuna_walmart_full_best --save-predictions
+#
+#   Booksales:
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
+#   python -m src.evaluation.evaluate_tft --run-id run_20260110_195133_booksales_baseline --save-predictions
+#   python -m src.evaluation.evaluate_tft --run-id run_20260111_113916_booksales_optuna_tft_newyear_best --save-predictions
