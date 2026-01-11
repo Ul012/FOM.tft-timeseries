@@ -128,19 +128,16 @@ results/prophet/optuna/*/*
 # RESULTS - ARIMA
 # ============================================================================
 !results/arima/
-results/arima/*
-
-# Runs: nur zusammenfassende Ergebnisse teilen
 !results/arima/runs/
-+!results/arima/runs/*/
-+!results/arima/runs/*/*/
-results/arima/runs/**/*
-!results/arima/runs/**/summary.json
-!results/arima/runs/**/eval_*.json
+!results/arima/runs/*/
+
+# Nur diese Unterordner ignorieren
+results/arima/runs/**/forecasts/
+results/arima/runs/**/models/
+results/arima/runs/**/plots/
 
 # Optuna: nur Study-Zusammenfassungen teilen
 !results/arima/optuna/
-results/arima/optuna/*
 !results/arima/optuna/*/
 results/arima/optuna/*/*
 !results/arima/optuna/*/study_*.json
