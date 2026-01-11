@@ -132,6 +132,8 @@ results/arima/*
 
 # Runs: nur zusammenfassende Ergebnisse teilen
 !results/arima/runs/
++!results/arima/runs/*/
++!results/arima/runs/*/*/
 results/arima/runs/**/*
 !results/arima/runs/**/summary.json
 !results/arima/runs/**/eval_*.json
