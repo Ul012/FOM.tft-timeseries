@@ -1,0 +1,38 @@
+{
+  "study_name": "arima_booksales",
+  "timestamp": "20260109_193714",
+  "dataset": "booksales",
+  "n_trials": 20,
+  "n_completed": 20,
+  "elapsed_time_sec": 6495.695771455765,
+  "best_value": 23.62225361364357,
+  "best_params": {
+    "max_p": 4,
+    "max_q": 1,
+    "max_P": 0,
+    "max_Q": 0
+  },
+  "best_trial_number": 3,
+  "search_space": {
+    "max_p": {
+      "min": 0,
+      "max": 5
+    },
+    "max_q": {
+      "min": 0,
+      "max": 5
+    },
+    "max_P": {
+      "min": 0,
+      "max": 2
+    },
+    "max_Q": {
+      "min": 0,
+      "max": 2
+    }
+  },
+  "fixed_params": {
+    "max_d": 1,
+    "max_D": 1
+  }
+}

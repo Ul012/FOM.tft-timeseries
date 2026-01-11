@@ -280,9 +280,8 @@ if __name__ == "__main__":
 # Aufruf:
 #
 #   booksales:
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
-#   python -m src.evaluation.evaluate_arima --run-id run_20260106_174337_arima_baseline --split test
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_arima --run-id run_20260111_133156_arima_optuna_best_trial3 --split test
 #
 #   walmart:
 #   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
-#   python -m src.evaluation.evaluate_arima --run-id run_20260106_180327_arima_baseline --split test
+#   python -m src.evaluation.evaluate_arima --run-id run_20260109_182701_arima_baseline --split test

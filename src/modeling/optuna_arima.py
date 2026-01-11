@@ -84,6 +84,13 @@ def _load_arima_spec(dataset_name: str) -> Dict:
         return json.load(f)
 
 
+def _load_model_config(config_path: str) -> Dict:
+    """Lade Model-Config aus YAML."""
+    import yaml
+    with open(config_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
 def _prepare_arima_data(df: pd.DataFrame, time_col: str, target_col: str, exog_vars: list):
     """Konvertiert DataFrame zu ARIMA-Format"""
     df = df.sort_values(time_col).reset_index(drop=True)
@@ -126,17 +133,28 @@ def objective(trial: optuna.Trial) -> float:
     exog_vars = arima_spec["exog_vars"]
     seasonal_period = arima_spec["seasonal_period"]
 
+    # Seasonal aus Config (falls nicht gesetzt: default wie vorher)
+    use_seasonal = _model_config.get("model", {}).get("seasonal", seasonal_period > 1)
+
     # Hyperparameter
     params = {
         # Variable Parameter (von Optuna optimiert)
         "max_p": trial.suggest_int("max_p", SEARCH_SPACE["max_p"]["min"], SEARCH_SPACE["max_p"]["max"]),
         "max_q": trial.suggest_int("max_q", SEARCH_SPACE["max_q"]["min"], SEARCH_SPACE["max_q"]["max"]),
-        "max_P": trial.suggest_int("max_P", SEARCH_SPACE["max_P"]["min"], SEARCH_SPACE["max_P"]["max"]),
-        "max_Q": trial.suggest_int("max_Q", SEARCH_SPACE["max_Q"]["min"], SEARCH_SPACE["max_Q"]["max"]),
-        # Fixe Parameter (theoretisch begründet)
+        # Fixe Parameter
         "max_d": FIXED_ARIMA_PARAMS["max_d"],
-        "max_D": FIXED_ARIMA_PARAMS["max_D"],
     }
+
+    # Seasonal parameters nur wenn seasonal=True in Config
+    if use_seasonal:
+        params["max_P"] = trial.suggest_int("max_P", SEARCH_SPACE["max_P"]["min"], SEARCH_SPACE["max_P"]["max"])
+        params["max_Q"] = trial.suggest_int("max_Q", SEARCH_SPACE["max_Q"]["min"], SEARCH_SPACE["max_Q"]["max"])
+        params["max_D"] = FIXED_ARIMA_PARAMS["max_D"]
+    else:
+        # Non-seasonal: Alle seasonal parameters = 0
+        params["max_P"] = 0
+        params["max_Q"] = 0
+        params["max_D"] = 0
 
     # Lade Daten
     processed_dir = BASE_DIR / "data" / "processed" / _dataset_name
@@ -191,8 +209,8 @@ def objective(trial: optuna.Trial) -> float:
             model = auto_arima(
                 train_endog,
                 exogenous=train_exog,
-                seasonal=seasonal_period > 1,
-                m=seasonal_period,
+                seasonal=use_seasonal,  # ← Aus Config
+                m=seasonal_period if use_seasonal else 1,
                 max_p=params["max_p"],
                 max_d=params["max_d"],
                 max_q=params["max_q"],
@@ -262,12 +280,20 @@ def objective(trial: optuna.Trial) -> float:
 # MAIN
 # ============================================================================
 
+_model_config = None  # Global
+
 def main():
+    global _model_config
+
     parser = argparse.ArgumentParser(description="ARIMA Hyperparameter-Optimierung")
+    parser.add_argument("--config", type=str, required=True)
     parser.add_argument("--study-name", type=str, default="arima_hpo")
     parser.add_argument("--n-trials", type=int, default=20)
     parser.add_argument("--timeout", type=int, default=None, help="Timeout in Sekunden")
     args = parser.parse_args()
+
+    # Config laden
+    _model_config = _load_model_config(args.config)
 
     OPTUNA_BASE_DIR.mkdir(parents=True, exist_ok=True)
 

@@ -60,6 +60,9 @@ def export_best_config(study_name: str, output_path: Path | None = None):
     print()
 
     # YAML-Config erstellen (analog zu Prophet)
+    # Seasonal basierend auf Trial-Parametern
+    use_seasonal = best_params.get("max_P", 0) > 0 or best_params.get("max_Q", 0) > 0
+
     config = {
         "type": "arima",
         "name": f"optuna_best_trial{best_trial_number}",
@@ -70,13 +73,9 @@ def export_best_config(study_name: str, output_path: Path | None = None):
             "max_d": 1,  # Fix (a priori)
             "max_q": best_params["max_q"],
             "max_P": best_params["max_P"],
-            "max_D": 1,  # Fix (a priori)
+            "max_D": 1 if use_seasonal else 0,
             "max_Q": best_params["max_Q"],
-            "start_p": 0,
-            "start_q": 0,
-            "start_P": 0,
-            "start_Q": 0,
-            "seasonal": _dataset_config.get("arima", {}).get("seasonal", True),
+            "seasonal": use_seasonal,
             "m": _dataset_config.get("arima", {}).get("seasonal_period", 7),
             "stepwise": True,
             "suppress_warnings": True,
@@ -141,9 +140,7 @@ if __name__ == "__main__":
 
 # Aufruf:
 #   Booksales:
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
-#   python -m src.modeling.optuna_arima_export_best --study-name arima_booksales
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.optuna_arima_export_best --study-name arima_booksales
 #
 #   Walmart:
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
-#   python -m src.modeling.optuna_arima_export_best --study-name arima_walmart
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.optuna_arima_export_best --study-name arima_walmart

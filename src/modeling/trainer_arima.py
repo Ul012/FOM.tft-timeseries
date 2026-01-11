@@ -147,10 +147,10 @@ class ARIMATrainer:
             max_P=model_params.get("max_P", 2) if seasonal else 0,  # ← 0 wenn non-seasonal
             max_Q=model_params.get("max_Q", 2) if seasonal else 0,
             max_D=model_params.get("max_D", 1) if seasonal else 0,
-            start_p=1,
-            start_q=1,
-            start_P=1 if seasonal else 0,  # ← 0 wenn non-seasonal
-            start_Q=1 if seasonal else 0,
+            start_p=0,  # Statt 1
+            start_q=0,  # Statt 1
+            start_P=0,  # Statt "1 if seasonal else 0"
+            start_Q=0,  # Statt "1 if seasonal else 0"
             stepwise=True,
             suppress_warnings=True,
             error_action='ignore',
@@ -461,9 +461,8 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"
-#   python -m src.modeling.trainer_arima --config configs/models/arima/booksales/baseline.yaml
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.trainer_arima --config configs/models/arima/booksales/optuna_arima_booksales_best.yaml
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.modeling.trainer_arima --config configs/models/arima/booksales/optuna_arima_booksales_trial_11.yaml
 #
 #   # Oder für Walmart:
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"
-#   python -m src.modeling.trainer_arima --config configs/models/arima/walmart/baseline.yaml
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.modeling.trainer_arima --config configs/models/arima/walmart/baseline.yaml

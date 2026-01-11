@@ -83,6 +83,27 @@ results/prophet/optuna/*/*
 !results/prophet/optuna/*/study_*.csv   # ✅ Trial-Übersichten
 
 # ============================================================================
+# RESULTS - ARIMA
+# ============================================================================
+!results/arima/
+results/arima/*
+
+# Runs: nur zusammenfassende Ergebnisse teilen
+!results/arima/runs/
+results/arima/runs/**/*
+!results/arima/runs/**/summary.json
+!results/arima/runs/**/eval_*.json
+
+# Optuna: nur Study-Zusammenfassungen teilen
+!results/arima/optuna/
+results/arima/optuna/*
+!results/arima/optuna/*/
+results/arima/optuna/*/*
+!results/arima/optuna/*/study_*.json
+!results/arima/optuna/*/study_*.csv
+
+
+# ============================================================================
 # LARGE FILES - IMMER IGNORIEREN
 # ============================================================================
 # Checkpoints ausschließen (zu groß ~50-100MB pro Stück)
