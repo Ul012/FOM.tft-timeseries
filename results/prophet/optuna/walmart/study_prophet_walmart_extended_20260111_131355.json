@@ -1,0 +1,51 @@
+{
+  "study_name": "prophet_walmart_extended",
+  "timestamp": "20260111_131355",
+  "dataset": "walmart",
+  "n_trials": 20,
+  "elapsed_time_sec": 65813.3880610466,
+  "best_value": 3068.9659600447094,
+  "best_params": {
+    "changepoint_prior_scale": 0.016539292040876077,
+    "seasonality_prior_scale": 0.8357763293452645,
+    "holidays_prior_scale": 0.011290346202175163,
+    "seasonality_mode": "additive",
+    "growth": "linear"
+  },
+  "best_trial_number": 11,
+  "fixed_config": {
+    "yearly_seasonality": true,
+    "weekly_seasonality": true,
+    "daily_seasonality": false,
+    "interval_width": 0.95,
+    "mcmc_samples": 0
+  },
+  "search_space": {
+    "changepoint_prior_scale": {
+      "min": 0.001,
+      "max": 1.0,
+      "log": true
+    },
+    "seasonality_prior_scale": {
+      "min": 0.01,
+      "max": 30.0,
+      "log": true
+    },
+    "holidays_prior_scale": {
+      "min": 0.01,
+      "max": 30.0,
+      "log": true
+    },
+    "seasonality_mode": {
+      "choices": [
+        "multiplicative",
+        "additive"
+      ]
+    },
+    "growth": {
+      "choices": [
+        "linear"
+      ]
+    }
+  }
+}

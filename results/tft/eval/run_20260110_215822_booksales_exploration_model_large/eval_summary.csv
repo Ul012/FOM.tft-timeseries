@@ -1,0 +1,2 @@
+run_id,checkpoint_path,val_mae,test_mae,val_rmse,test_rmse,val_mape,test_mape,val_smape,test_smape,val_r2,test_r2
+run_20260110_215822_booksales_exploration_model_large,results\tft\runs\run_20260110_215822_booksales_exploration_model_large\checkpoints\tft-00-6.0108.ckpt,12.116076469421387,23.588045120239258,17.641096115112305,37.037864685058594,5.624297142028809,7.696536064147949,5.617542743682861,7.938370227813721,0.9790729284286499,0.949428141117096

@@ -1,0 +1,48 @@
+study_name: walmart_full
+dataset: walmart
+timestamp: '2025-11-26T22:34:25.134206'
+search_space:
+  learning_rate:
+    min: 0.0003
+    max: 0.003
+    log: true
+  batch_size:
+    choices:
+    - 64
+    - 128
+    - 256
+  hidden_size:
+    choices:
+    - 32
+    - 64
+    - 96
+  attention_head_size:
+    min: 2
+    max: 4
+  dropout:
+    min: 0.05
+    max: 0.2
+  hidden_continuous_size:
+    choices:
+    - 16
+    - 24
+    - 32
+    - 48
+  gradient_clip_val:
+    min: 0.08
+    max: 0.15
+training_config:
+  seed: 42
+  max_epochs: 30
+  num_workers: 4
+  accelerator: gpu
+  devices: 1
+  log_every_n_steps: 50
+  early_stopping_patience: 4
+optuna_config:
+  study_name_default: tft_hpo
+  n_trials_default: 10
+  pruner:
+    n_startup_trials: 3
+    n_warmup_steps: 5
+    interval_steps: 1

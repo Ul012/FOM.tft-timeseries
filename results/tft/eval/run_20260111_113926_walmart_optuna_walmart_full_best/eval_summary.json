@@ -1,0 +1,28 @@
+{
+  "run_id": "run_20260111_113926_walmart_optuna_walmart_full_best",
+  "checkpoint_path": "results\\tft\\runs\\run_20260111_113926_walmart_optuna_walmart_full_best\\checkpoints\\tft-00-948.6194.ckpt",
+  "metrics": {
+    "val": {
+      "mae": 1608.45166015625,
+      "rmse": 3508.134765625,
+      "mape": 18591135744.0,
+      "smape": 19.074596405029297,
+      "r2": 0.9748010635375977
+    },
+    "test": {
+      "mae": 1484.401611328125,
+      "rmse": 3301.77294921875,
+      "mape": 416242592.0,
+      "smape": 18.44508171081543,
+      "r2": 0.9773527383804321
+    }
+  },
+  "meta": {
+    "time_col": "Date",
+    "id_cols": [
+      "Store",
+      "Dept"
+    ],
+    "target_col": "Weekly_Sales"
+  }
+}

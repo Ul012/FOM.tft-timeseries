@@ -46,83 +46,38 @@ lightning_logs/
 # ============================================================================
 # RESULTS - TFT
 # ============================================================================
-
-# Grundregel: Results global ignorieren
 results/*
 !results/tft/
-
-# ---------------------------------------------------------------------------
-# RUNS
-# ---------------------------------------------------------------------------
-# Runs grundsätzlich erlauben
 !results/tft/runs/
+!results/tft/runs/*/
+!results/tft/eval/
+!results/tft/eval/*/
+!results/tft/optuna/
+!results/tft/optuna/*/
 
-# Alles in Runs ignorieren …
-results/tft/runs/**/*
-# … außer zusammenfassende Ergebnisse
-!results/tft/runs/**/summary.json
-!results/tft/runs/**/results.json
-!results/tft/runs/**/eval_*.json
-!results/tft/runs/**/eval_*.csv
-
-# Explizit nie versionieren (groß / reproduzierbar)
+# Nur diese Unterordner ignorieren
 results/tft/runs/**/forecasts/
 results/tft/runs/**/models/
 results/tft/runs/**/plots/
-
-# ---------------------------------------------------------------------------
-# EVAL
-# ---------------------------------------------------------------------------
-# Eval-Ordner erlauben
-!results/tft/eval/
-
-# Alles ignorieren …
-results/tft/eval/**/*
-# … außer CSV / JSON Summaries
-!results/tft/eval/**/*.csv
-!results/tft/eval/**/*.json
-
-# ---------------------------------------------------------------------------
-# OPTUNA
-# ---------------------------------------------------------------------------
-# Optuna-Basis erlauben
-!results/tft/optuna/
-
-# Alles ignorieren …
-results/tft/optuna/**/*
-# … außer Dataset-Unterordner
-!results/tft/optuna/*/
-
-# … und nur Study-Zusammenfassungen
-!results/tft/optuna/*/study_*.csv
-!results/tft/optuna/*/study_*.json
-
-# Nie versionieren (reproduzierbar durch Scripts)
+results/tft/eval/**/plots/
 results/tft/optuna/**/analysis/
 results/tft/optuna/**/plots/
 results/tft/optuna/**/trial_*/
-results/tft/optuna/**/*.db
 
 # ============================================================================
 # RESULTS - PROPHET
 # ============================================================================
 !results/prophet/
-results/prophet/*
-
 !results/prophet/runs/
-# Runs: nur zusammenfassende Ergebnisse teilen
+!results/prophet/runs/*/
+!results/prophet/optuna/
+!results/prophet/optuna/*/
+
+# Nur diese Unterordner ignorieren
 results/prophet/runs/**/forecasts/
 results/prophet/runs/**/models/
-
-!results/prophet/eval/
-!results/prophet/optuna/
-
-# Prophet Optuna - selektiv teilen
-results/prophet/optuna/*
-!results/prophet/optuna/*/
-results/prophet/optuna/*/*
-!results/prophet/optuna/*/study_*.json  # ✅ Study-Zusammenfassungen
-!results/prophet/optuna/*/study_*.csv   # ✅ Trial-Übersichten
+results/prophet/runs/**/plots/
+results/prophet/optuna/**/trial_*/
 
 # ============================================================================
 # RESULTS - ARIMA

@@ -1,0 +1,29 @@
+{
+  "run_id": "run_20260110_213642_booksales_exploration_lr_low",
+  "checkpoint_path": "results\\tft\\runs\\run_20260110_213642_booksales_exploration_lr_low\\checkpoints\\tft-00-6.6135.ckpt",
+  "metrics": {
+    "val": {
+      "mae": 12.93396282196045,
+      "rmse": 18.587881088256836,
+      "mape": 5.957552433013916,
+      "smape": 5.943199634552002,
+      "r2": 0.9767663478851318
+    },
+    "test": {
+      "mae": 52.685237884521484,
+      "rmse": 86.00008392333984,
+      "mape": 15.946560859680176,
+      "smape": 18.484691619873047,
+      "r2": 0.7273440361022949
+    }
+  },
+  "meta": {
+    "time_col": "date",
+    "id_cols": [
+      "country",
+      "store",
+      "product"
+    ],
+    "target_col": "num_sold"
+  }
+}

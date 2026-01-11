@@ -1,0 +1,28 @@
+{
+  "run_id": "run_20260111_002012_walmart_exploration_lr_low",
+  "checkpoint_path": "results\\tft\\runs\\run_20260111_002012_walmart_exploration_lr_low\\checkpoints\\tft-05-990.1677.ckpt",
+  "metrics": {
+    "val": {
+      "mae": 1743.0953369140625,
+      "rmse": 3614.30419921875,
+      "mape": 63142453248.0,
+      "smape": 20.176416397094727,
+      "r2": 0.9732527136802673
+    },
+    "test": {
+      "mae": 1689.2789306640625,
+      "rmse": 3675.47265625,
+      "mape": 541923776.0,
+      "smape": 20.247163772583008,
+      "r2": 0.9719361066818237
+    }
+  },
+  "meta": {
+    "time_col": "Date",
+    "id_cols": [
+      "Store",
+      "Dept"
+    ],
+    "target_col": "Weekly_Sales"
+  }
+}

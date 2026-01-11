@@ -1,0 +1,29 @@
+{
+  "run_id": "run_20260111_113916_booksales_optuna_tft_newyear_best",
+  "checkpoint_path": "results\\tft\\runs\\run_20260111_113916_booksales_optuna_tft_newyear_best\\checkpoints\\tft-00-6.1153.ckpt",
+  "metrics": {
+    "val": {
+      "mae": 12.63313102722168,
+      "rmse": 18.065391540527344,
+      "mape": 5.899627208709717,
+      "smape": 5.88939094543457,
+      "r2": 0.9780541658401489
+    },
+    "test": {
+      "mae": 18.14703941345215,
+      "rmse": 26.39257049560547,
+      "mape": 6.406573295593262,
+      "smape": 6.404345512390137,
+      "r2": 0.9743208289146423
+    }
+  },
+  "meta": {
+    "time_col": "date",
+    "id_cols": [
+      "country",
+      "store",
+      "product"
+    ],
+    "target_col": "num_sold"
+  }
+}

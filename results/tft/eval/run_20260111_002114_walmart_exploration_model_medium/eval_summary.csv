@@ -1,0 +1,2 @@
+run_id,checkpoint_path,val_mae,test_mae,val_rmse,test_rmse,val_mape,test_mape,val_smape,test_smape,val_r2,test_r2
+run_20260111_002114_walmart_exploration_model_medium,results\tft\runs\run_20260111_002114_walmart_exploration_model_medium\checkpoints\tft-04-906.3054.ckpt,1687.5084228515625,1722.135009765625,3665.72265625,3639.149169921875,371503136.0,488487936.0,20.506855010986328,20.211305618286133,0.9724862575531006,0.9724880456924438

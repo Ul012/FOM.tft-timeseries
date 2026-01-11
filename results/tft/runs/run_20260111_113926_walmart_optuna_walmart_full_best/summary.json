@@ -1,0 +1,82 @@
+{
+  "run_id": "run_20260111_113926_walmart_optuna_walmart_full_best",
+  "logs_dir": "logs\\tft\\run_20260111_113926_walmart_optuna_walmart_full_best",
+  "n_epochs": 6,
+  "metrics": {
+    "final_train_loss": 600.4188232421875,
+    "final_val_loss": 1019.1687622070312,
+    "best_val_loss": 948.6194458007812,
+    "best_val_epoch": 0,
+    "initial_lr": NaN,
+    "final_lr": NaN
+  },
+  "meta": {
+    "seed": 42,
+    "config_file": "configs\\models\\tft\\walmart\\optuna_walmart_full_best.yaml",
+    "config_values": {
+      "type": "tft",
+      "name": "optuna_best_trial20",
+      "description": "Beste Config aus Optuna Study 'walmart_full' (Trial 20, val_mae=1411.6599)",
+      "training": {
+        "seed": 42,
+        "max_epochs": 30,
+        "batch_size": 128,
+        "learning_rate": 0.0013220793316764184,
+        "gradient_clip_val": 0.1369795593904482,
+        "early_stopping_patience": 5,
+        "accelerator": "gpu",
+        "devices": 1,
+        "num_workers": 4,
+        "limit_train_batches": 1.0,
+        "limit_val_batches": 1.0
+      },
+      "model": {
+        "loss": "quantile",
+        "output_size": 7,
+        "hidden_size": 64,
+        "attention_head_size": 4,
+        "hidden_continuous_size": 16,
+        "dropout": 0.11409079481557678,
+        "reduce_on_plateau_patience": 2
+      },
+      "evaluation": {
+        "batch_size": 256,
+        "num_workers": 0
+      },
+      "optuna_metadata": {
+        "study_name": "walmart_full",
+        "trial_number": 20,
+        "val_mae": 1411.659912109375,
+        "all_params": {
+          "learning_rate": 0.0013220793316764184,
+          "batch_size": 128,
+          "hidden_size": 64,
+          "attention_head_size": 4,
+          "dropout": 0.11409079481557678,
+          "hidden_continuous_size": 16,
+          "gradient_clip_val": 0.1369795593904482
+        }
+      }
+    },
+    "fit_time_sec": 6389.08,
+    "epochs_trained": 7,
+    "avg_epoch_time_sec": 912.73,
+    "learning_rate": null,
+    "batch_size": null,
+    "max_epochs": null,
+    "early_stopping_patience": null,
+    "gradient_clip_val": null,
+    "accelerator": null,
+    "devices": null,
+    "model": {
+      "loss": "quantile",
+      "output_size": 7,
+      "hidden_size": 64,
+      "attention_head_size": 4,
+      "hidden_continuous_size": 16,
+      "dropout": 0.11409079481557678,
+      "reduce_on_plateau_patience": 2
+    },
+    "best_checkpoint_path": "C:\\Users\\ulrik\\Projekte\\TFT-TimeSeries\\results\\tft\\runs\\run_20260111_113926_walmart_optuna_walmart_full_best\\checkpoints\\tft-00-948.6194.ckpt"
+  }
+}

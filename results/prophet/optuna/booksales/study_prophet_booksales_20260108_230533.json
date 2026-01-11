@@ -1,0 +1,51 @@
+{
+  "study_name": "prophet_booksales",
+  "timestamp": "20260108_230533",
+  "dataset": "booksales",
+  "n_trials": 20,
+  "elapsed_time_sec": 435.49990916252136,
+  "best_value": 15.796627765290722,
+  "best_params": {
+    "changepoint_prior_scale": 0.0010851336934041538,
+    "seasonality_prior_scale": 2.252333007508321,
+    "holidays_prior_scale": 1.129681750433274,
+    "seasonality_mode": "multiplicative",
+    "growth": "linear"
+  },
+  "best_trial_number": 13,
+  "fixed_config": {
+    "yearly_seasonality": true,
+    "weekly_seasonality": true,
+    "daily_seasonality": false,
+    "interval_width": 0.95,
+    "mcmc_samples": 0
+  },
+  "search_space": {
+    "changepoint_prior_scale": {
+      "min": 0.001,
+      "max": 0.5,
+      "log": true
+    },
+    "seasonality_prior_scale": {
+      "min": 0.01,
+      "max": 10.0,
+      "log": true
+    },
+    "holidays_prior_scale": {
+      "min": 0.01,
+      "max": 10.0,
+      "log": true
+    },
+    "seasonality_mode": {
+      "choices": [
+        "multiplicative",
+        "additive"
+      ]
+    },
+    "growth": {
+      "choices": [
+        "linear"
+      ]
+    }
+  }
+}
