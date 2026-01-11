@@ -1,69 +1,24 @@
 # src/visualization/plot_multi_model_forecast.py
-# Multi-Model Forecast Comparison: Actual vs. TFT vs. Prophet vs. ARIMA
-#
-# Zeigt tatsächliche Werte + Forecasts von allen 3 Modellen (Best Runs)
-# in einem Plot für visuellen Vergleich
-#
-# Nutzung:
-#   python -m src.visualization.plot_multi_model_forecast
+"""
+Multi-Model Forecast Visualization
 
-from __future__ import annotations
+Erstellt Forecast-Plots die alle Modelle (TFT, Prophet, ARIMA) vergleichen.
+"""
 
-import json
+import argparse
 from pathlib import Path
-from typing import Dict, List, Tuple
-
-import matplotlib.pyplot as plt
+from typing import Dict, Tuple, Optional
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from src.config import BASE_DIR
 
-# Plot-Konfiguration
-plt.rcParams['figure.dpi'] = 300
-plt.rcParams['savefig.dpi'] = 300
-plt.rcParams['font.size'] = 10
-plt.rcParams['font.family'] = 'sans-serif'
 
-
-def load_model_comparison() -> pd.DataFrame:
-    """Lädt model_comparison.csv"""
-    path = BASE_DIR / "results" / "eval" / "model_comparison.csv"
-
-    if not path.exists():
-        raise FileNotFoundError(
-            f"model_comparison.csv nicht gefunden: {path}\n"
-            f"Bitte zuerst ausführen: python -m src.evaluation.aggregate_all_models_eval"
-        )
-
-    return pd.read_csv(path)
-
-
-def get_best_run_per_model(df: pd.DataFrame, dataset: str) -> Dict[str, pd.Series]:
+def load_tft_predictions(run_id: str) -> Optional[Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]]:
     """
-    Gibt Best Run pro Modell für ein Dataset zurück.
+    Lädt TFT Predictions aus predictions.npz oder predictions_test.npy
     """
-    dataset_df = df[df['dataset'] == dataset]
-    best_runs = dataset_df[dataset_df['type'].isin(['Baseline', 'Optuna'])].copy()
-
-    result = {}
-    for model in ['TFT', 'Prophet', 'ARIMA']:
-        model_df = best_runs[best_runs['model'] == model]
-        if len(model_df) > 0:
-            best_idx = model_df['test_smape'].idxmin()
-            result[model] = model_df.loc[best_idx]
-
-    return result
-
-
-def load_tft_predictions(run_id: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray] | None:
-    """
-    Lädt TFT Predictions aus predictions.npz oder predictions_{split}.npy
-
-    Returns:
-        (actuals, predictions, timestamps) oder None
-    """
-    # TFT predictions sind in results/tft/runs/{run_id}/predictions/
     pred_dir = BASE_DIR / "results" / "tft" / "runs" / run_id / "predictions"
 
     if not pred_dir.exists():
@@ -87,12 +42,9 @@ def load_tft_predictions(run_id: str) -> Tuple[np.ndarray, np.ndarray, np.ndarra
     return None
 
 
-def load_prophet_predictions(run_id: str) -> Tuple[np.ndarray, np.ndarray] | None:
+def load_prophet_predictions(run_id: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     """
     Lädt Prophet Predictions aus predictions/predictions_test.npy
-
-    Returns:
-        (actuals, predictions) oder None
     """
     pred_dir = BASE_DIR / "results" / "prophet" / "runs" / run_id / "predictions"
 
@@ -110,12 +62,9 @@ def load_prophet_predictions(run_id: str) -> Tuple[np.ndarray, np.ndarray] | Non
     return None
 
 
-def load_arima_predictions(run_id: str) -> Tuple[np.ndarray, np.ndarray] | None:
+def load_arima_predictions(run_id: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     """
     Lädt ARIMA Predictions aus predictions/predictions_test.npy
-
-    Returns:
-        (actuals, predictions) oder None
     """
     pred_dir = BASE_DIR / "results" / "arima" / "runs" / run_id / "predictions"
 
@@ -133,6 +82,77 @@ def load_arima_predictions(run_id: str) -> Tuple[np.ndarray, np.ndarray] | None:
     return None
 
 
+def load_and_normalize_predictions(
+        best_runs: Dict[str, pd.Series],
+        max_points: Optional[int] = None
+) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
+    """
+    Zentrale Funktion: Lädt alle Predictions und normalisiert sie.
+
+    Args:
+        best_runs: Dict mit Modell -> Run-Info
+        max_points: Optional - Downsampling auf max Punkte
+
+    Returns:
+        Dict mit Modell -> (actuals, predictions) - alle gleiche Länge!
+    """
+    predictions_data = {}
+
+    # 1. Lade Predictions
+    for model, row in best_runs.items():
+        run_id = row['run_id']
+
+        try:
+            if model == 'TFT':
+                result = load_tft_predictions(run_id)
+                if result:
+                    actuals, predictions, _ = result
+                    predictions_data[model] = (actuals, predictions)
+            elif model == 'Prophet':
+                result = load_prophet_predictions(run_id)
+                if result:
+                    actuals, predictions = result
+                    predictions_data[model] = (actuals, predictions)
+            elif model == 'ARIMA':
+                result = load_arima_predictions(run_id)
+                if result:
+                    actuals, predictions = result
+                    predictions_data[model] = (actuals, predictions)
+        except Exception as e:
+            print(f"[WARNING] {model} predictions nicht geladen: {e}")
+
+    if not predictions_data:
+        return {}
+
+    # 2. Flatten alle Arrays
+    for model in predictions_data:
+        actuals, predictions = predictions_data[model]
+
+        if actuals.ndim > 1:
+            actuals = actuals.flatten()
+        if predictions.ndim > 1:
+            predictions = predictions.flatten()
+
+        predictions_data[model] = (actuals, predictions)
+
+    # 3. Finde minimale Länge über alle Modelle
+    min_length = min(len(preds[1]) for preds in predictions_data.values())
+
+    # 4. Kürze alle auf minimale Länge
+    for model in predictions_data:
+        actuals, predictions = predictions_data[model]
+        predictions_data[model] = (actuals[:min_length], predictions[:min_length])
+
+    # 5. Optional: Downsampling für bessere Performance
+    if max_points and min_length > max_points:
+        step = min_length // max_points
+        for model in predictions_data:
+            actuals, predictions = predictions_data[model]
+            predictions_data[model] = (actuals[::step], predictions[::step])
+
+    return predictions_data
+
+
 def plot_metric_comparison_fallback(
         dataset: str,
         best_runs: Dict[str, pd.Series],
@@ -143,133 +163,63 @@ def plot_metric_comparison_fallback(
     """
     fig, ax = plt.subplots(figsize=(12, 7))
 
-    colors = {
-        'TFT': '#2E86AB',
-        'Prophet': '#A23B72',
-        'ARIMA': '#F18F01'
-    }
-
     models = list(best_runs.keys())
     x = np.arange(len(models))
     width = 0.25
 
-    # Metriken zum Plotten
     metrics = ['test_mae', 'test_rmse', 'test_smape']
-    metric_labels = ['MAE', 'RMSE', 'SMAPE (%)']
+    colors = ['#3498db', '#e74c3c', '#2ecc71']
+    labels = ['MAE', 'RMSE', 'SMAPE (%)']
 
-    for i, (metric, label) in enumerate(zip(metrics, metric_labels)):
+    for i, (metric, color, label) in enumerate(zip(metrics, colors, labels)):
         values = [best_runs[model][metric] for model in models]
-        offset = (i - 1) * width
+        ax.bar(x + i * width, values, width, label=label, color=color, alpha=0.8)
 
-        bars = ax.bar(x + offset, values, width,
-                      label=label, alpha=0.8, edgecolor='black', linewidth=1)
-
-        # Annotate bars
-        for bar, value in zip(bars, values):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2., height + height * 0.02,
-                    f'{value:.1f}',
-                    ha='center', va='bottom', fontsize=9)
-
-    # Styling
     ax.set_xlabel('Model', fontsize=12, fontweight='bold')
     ax.set_ylabel('Metric Value', fontsize=12, fontweight='bold')
-    ax.set_title(
-        f'Model Performance Comparison: {dataset} Dataset (Test Set)\n[Predictions not available - showing metrics only]',
-        fontsize=13, fontweight='bold', pad=15)
-    ax.set_xticks(x)
-    ax.set_xticklabels(models, fontsize=11)
-    ax.legend(title='Metrics', fontsize=10, loc='upper left')
+    ax.set_title(f'Model Performance Comparison: {dataset}',
+                 fontsize=14, fontweight='bold', pad=15)
+    ax.set_xticks(x + width)
+    ax.set_xticklabels(models)
+    ax.legend(loc='best', fontsize=11)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
-    ax.set_axisbelow(True)
 
     plt.tight_layout()
-
-    # Save
     output_path = output_dir / f"multi_model_comparison_{dataset.lower()}_metrics.png"
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"[plot_multi_model_forecast] Saved fallback plot: {output_path}")
-
     plt.close()
+
+    print(f"[plot_multi_model_forecast] Saved fallback plot: {output_path}")
 
 
 def plot_multi_model_forecast(
         dataset: str,
         best_runs: Dict[str, pd.Series],
         output_dir: Path,
-        max_points: int = 200
+        max_points: int = 500
 ) -> None:
     """
-    Erstellt Multi-Model Forecast Plot.
-
-    Args:
-        dataset: Dataset name (Booksales oder Walmart)
-        best_runs: Dict mit best run per model
-        output_dir: Output directory
-        max_points: Max Anzahl Punkte für bessere Lesbarkeit
+    Erstellt Line Plot mit Forecast-Vergleich.
     """
+    # Lade und normalisiere Predictions (DRY!)
+    predictions_data = load_and_normalize_predictions(best_runs, max_points)
+
+    if not predictions_data:
+        print(f"  ℹ Keine Predictions gefunden - erstelle Metrik-Vergleich (Fallback)")
+        plot_metric_comparison_fallback(dataset, best_runs, output_dir)
+        return
+
+    # Setup Plot
     fig, ax = plt.subplots(figsize=(16, 8))
 
     colors = {
-        'Actual': '#2C3E50',  # Dunkelgrau/Schwarz
-        'TFT': '#2E86AB',  # Blau
-        'Prophet': '#A23B72',  # Lila
-        'ARIMA': '#F18F01'  # Orange
+        'Actual': '#2c3e50',
+        'TFT': '#3498db',
+        'Prophet': '#9b59b6',
+        'ARIMA': '#e67e22'
     }
 
-    actuals_plotted = False
-    predictions_data = {}
-
-    # Lade Predictions für jedes Modell
-    for model, row in best_runs.items():
-        run_id = row['run_id']
-
-        try:
-            if model == 'TFT':
-                result = load_tft_predictions(run_id)
-                if result:
-                    actuals, predictions, _ = result
-                    predictions_data[model] = (actuals, predictions)
-
-            elif model == 'Prophet':
-                result = load_prophet_predictions(run_id)
-                if result:
-                    actuals, predictions = result
-                    predictions_data[model] = (actuals, predictions)
-
-            elif model == 'ARIMA':
-                result = load_arima_predictions(run_id)
-                if result:
-                    actuals, predictions = result
-                    predictions_data[model] = (actuals, predictions)
-
-        except Exception as e:
-            print(f"[plot_multi_model_forecast] Warnung: Konnte {model} predictions nicht laden: {e}")
-
-    if not predictions_data:
-        # Wird bereits in main() gehandelt, hier nur silent fail
-        plt.close()
-        return
-
-    # Flatten predictions (falls multidimensional)
-    for model in list(predictions_data.keys()):
-        actuals, predictions = predictions_data[model]
-
-        # Flatten falls nötig
-        if actuals.ndim > 1:
-            actuals = actuals.flatten()
-        if predictions.ndim > 1:
-            predictions = predictions.flatten()
-
-        # Limit points für bessere Darstellung
-        if len(actuals) > max_points:
-            step = len(actuals) // max_points
-            actuals = actuals[::step]
-            predictions = predictions[::step]
-
-        predictions_data[model] = (actuals, predictions)
-
-    # Plot Actual values (nur einmal, von erstem verfügbaren Modell)
+    # Plot Actual (von erstem Modell)
     first_model = list(predictions_data.keys())[0]
     actuals, _ = predictions_data[first_model]
     x = np.arange(len(actuals))
@@ -282,7 +232,7 @@ def plot_multi_model_forecast(
             zorder=10)
 
     # Plot Predictions für jedes Modell
-    for model, (actuals, predictions) in predictions_data.items():
+    for model, (_, predictions) in predictions_data.items():
         smape = best_runs[model]['test_smape']
         mae = best_runs[model]['test_mae']
 
@@ -293,23 +243,19 @@ def plot_multi_model_forecast(
                 alpha=0.7,
                 linestyle='--' if model != 'TFT' else '-')
 
-    # Styling
-    ax.set_xlabel('Time Steps', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Time Index', fontsize=12, fontweight='bold')
     ax.set_ylabel('Value', fontsize=12, fontweight='bold')
-    ax.set_title(f'Multi-Model Forecast Comparison: {dataset} Dataset (Test Set)',
+    ax.set_title(f'Multi-Model Forecast Comparison: {dataset}',
                  fontsize=14, fontweight='bold', pad=15)
-    ax.legend(loc='best', fontsize=11, framealpha=0.95)
+    ax.legend(loc='best', fontsize=11)
     ax.grid(alpha=0.3, linestyle='--')
-    ax.set_axisbelow(True)
 
     plt.tight_layout()
-
-    # Save
     output_path = output_dir / f"multi_model_forecast_{dataset.lower()}.png"
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"[plot_multi_model_forecast] Saved: {output_path}")
-
     plt.close()
+
+    print(f"[plot_multi_model_forecast] Saved: {output_path}")
 
 
 def plot_multi_model_forecast_aggregated(
@@ -319,55 +265,27 @@ def plot_multi_model_forecast_aggregated(
         n_samples: int = 100
 ) -> None:
     """
-    Alternative: Zeigt aggregierte Statistik (mean ± std) statt einzelne Werte.
-    Nützlich bei vielen Zeitserien (z.B. Walmart mit 3050 groups).
+    Erstellt Scatter Plot mit gesampelten Punkten.
     """
-    fig, ax = plt.subplots(figsize=(16, 8))
-
-    colors = {
-        'Actual': '#2C3E50',
-        'TFT': '#2E86AB',
-        'Prophet': '#A23B72',
-        'ARIMA': '#F18F01'
-    }
-
-    predictions_data = {}
-
-    # Lade Predictions
-    for model, row in best_runs.items():
-        run_id = row['run_id']
-
-        try:
-            if model == 'TFT':
-                result = load_tft_predictions(run_id)
-                if result:
-                    actuals, predictions, _ = result
-                    predictions_data[model] = (actuals, predictions)
-            elif model == 'Prophet':
-                result = load_prophet_predictions(run_id)
-                if result:
-                    actuals, predictions = result
-                    predictions_data[model] = (actuals, predictions)
-            elif model == 'ARIMA':
-                result = load_arima_predictions(run_id)
-                if result:
-                    actuals, predictions = result
-                    predictions_data[model] = (actuals, predictions)
-        except Exception as e:
-            print(f"[plot_multi_model_forecast] Warnung: {model} predictions nicht geladen: {e}")
+    # Lade und normalisiere Predictions (DRY!)
+    predictions_data = load_and_normalize_predictions(best_runs)
 
     if not predictions_data:
-        # Wird bereits in main() gehandelt
-        plt.close()
         return
 
-    # Sample random points falls zu viele
+    # Setup Plot
+    fig, ax = plt.subplots(figsize=(14, 8))
+
+    colors = {
+        'Actual': '#2c3e50',
+        'TFT': '#3498db',
+        'Prophet': '#9b59b6',
+        'ARIMA': '#e67e22'
+    }
+
+    # Sample Points
     first_model = list(predictions_data.keys())[0]
     actuals, _ = predictions_data[first_model]
-
-    if actuals.ndim > 1:
-        actuals = actuals.flatten()
-
     total_points = len(actuals)
 
     if total_points > n_samples:
@@ -385,11 +303,8 @@ def plot_multi_model_forecast_aggregated(
                color=colors['Actual'],
                alpha=0.6, s=30, zorder=10)
 
-    # Plot predictions
-    for model, (actuals_full, predictions) in predictions_data.items():
-        if predictions.ndim > 1:
-            predictions = predictions.flatten()
-
+    # Plot sampled predictions
+    for model, (_, predictions) in predictions_data.items():
         sampled_preds = predictions[idx]
         smape = best_runs[model]['test_smape']
 
@@ -407,76 +322,84 @@ def plot_multi_model_forecast_aggregated(
     ax.grid(alpha=0.3, linestyle='--')
 
     plt.tight_layout()
-
     output_path = output_dir / f"multi_model_forecast_{dataset.lower()}_sampled.png"
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"[plot_multi_model_forecast] Saved: {output_path}")
-
     plt.close()
 
 
-def main() -> None:
-    # Load model comparison
-    df = load_model_comparison()
+def get_best_run_per_model(df: pd.DataFrame, dataset: str) -> Dict[str, pd.Series]:
+    """
+    Findet besten Run pro Modell für Dataset.
+    """
+    df_filtered = df[
+        (df['dataset'] == dataset) &
+        (df['type'].isin(['Baseline', 'Optuna']))
+        ]
 
-    # Output directory für übergreifende Cross-Model Plots
+    if df_filtered.empty:
+        return {}
+
+    best_runs = {}
+    for model in ['TFT', 'Prophet', 'ARIMA']:
+        model_runs = df_filtered[df_filtered['model'] == model]
+        if not model_runs.empty:
+            best_idx = model_runs['test_smape'].idxmin()
+            best_runs[model] = model_runs.loc[best_idx]
+
+    return best_runs
+
+
+def main() -> None:
+    """Hauptfunktion."""
+    print("[plot_multi_model_forecast] Erstelle Multi-Model Forecast Plots...")
+
+    # Lade model_comparison.csv
+    comparison_file = BASE_DIR / "results" / "eval" / "model_comparison.csv"
+
+    if not comparison_file.exists():
+        print(f"[ERROR] {comparison_file} nicht gefunden!")
+        print("Führe zuerst aggregate_all_models_eval.py aus.")
+        return
+
+    df = pd.read_csv(comparison_file)
     output_dir = BASE_DIR / "results" / "plots"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print("[plot_multi_model_forecast] Erstelle Multi-Model Forecast Plots...")
-    print()
-
-    # Für jedes Dataset
+    # Für jeden Dataset
     for dataset in ['Booksales', 'Walmart']:
         print(f"Processing {dataset}...")
 
-        # Get best runs
         best_runs = get_best_run_per_model(df, dataset)
 
         if not best_runs:
-            print(f"  Warnung: Keine Best Runs für {dataset} gefunden.")
+            print(f"  ⚠ Keine Runs für {dataset}")
             continue
 
-        # Check if ANY predictions are available
-        has_any_predictions = False
+        # DEBUG: Zeige welche Modelle gefunden wurden
+        print(f"  [DEBUG] Best Runs gefunden: {list(best_runs.keys())}")
         for model, row in best_runs.items():
-            run_id = row['run_id']
+            print(f"    {model}: {row['run_id']}")
 
-            try:
-                if model == 'TFT':
-                    result = load_tft_predictions(run_id)
-                    if result:
-                        has_any_predictions = True
-                        break
-                elif model == 'Prophet':
-                    result = load_prophet_predictions(run_id)
-                    if result:
-                        has_any_predictions = True
-                        break
-                elif model == 'ARIMA':
-                    result = load_arima_predictions(run_id)
-                    if result:
-                        has_any_predictions = True
-                        break
-            except Exception:
-                pass
+        # Check ob Predictions verfügbar
+        predictions_data = load_and_normalize_predictions(best_runs)
+        print(f"  [DEBUG] Predictions geladen: {list(predictions_data.keys())}")
 
-        if has_any_predictions:
-            # Create plots with predictions
-            print(f"  ✓ Predictions gefunden - erstelle Forecast-Plots")
-            plot_multi_model_forecast(dataset, best_runs, output_dir, max_points=200)
+        # DEBUG: Zeige min/max Werte
+        for model, (actuals, predictions) in predictions_data.items():
+            print(f"    {model}: actuals=[{actuals.min():.1f}, {actuals.max():.1f}], "
+                  f"predictions=[{predictions.min():.1f}, {predictions.max():.1f}]")
+
+        if predictions_data:
+            print("  ✓ Predictions gefunden - erstelle Forecast-Plots")
+            plot_multi_model_forecast(dataset, best_runs, output_dir, max_points=500)
             plot_multi_model_forecast_aggregated(dataset, best_runs, output_dir, n_samples=100)
         else:
-            # Fallback: Metric comparison
-            print(f"  ℹ Keine Predictions gefunden - erstelle Metrik-Vergleich (Fallback)")
+            print("  ℹ Keine Predictions gefunden - erstelle Metrik-Vergleich (Fallback)")
             plot_metric_comparison_fallback(dataset, best_runs, output_dir)
-
-        print()
 
     print("=" * 80)
     print(f"✅ Multi-Model Plots erstellt in: {output_dir}")
     print("=" * 80)
-    print()
     print("HINWEIS:")
     print("Für bessere Forecast-Visualisierungen können Predictions gespeichert werden:")
     print("  python -m src.evaluation.evaluate_tft --run-id <run_id> --split test --save-predictions")
