@@ -1,0 +1,67 @@
+{
+  "study_name": "walmart_full",
+  "timestamp": "20251127_112411",
+  "n_trials": 21,
+  "elapsed_time_sec": 46186.30345509999,
+  "best_value": 1411.659912109375,
+  "best_params": {
+    "learning_rate": 0.0013220793316764184,
+    "batch_size": 128,
+    "hidden_size": 64,
+    "attention_head_size": 4,
+    "dropout": 0.11409079481557678,
+    "hidden_continuous_size": 16,
+    "gradient_clip_val": 0.1369795593904482
+  },
+  "best_trial_number": 20,
+  "training_config": {
+    "seed": 42,
+    "max_epochs": 30,
+    "num_workers": 4,
+    "accelerator": "gpu",
+    "devices": 1,
+    "log_every_n_steps": 50,
+    "early_stopping_patience": 4
+  },
+  "search_space": {
+    "learning_rate": {
+      "min": 0.0003,
+      "max": 0.003,
+      "log": true
+    },
+    "batch_size": {
+      "choices": [
+        64,
+        128,
+        256
+      ]
+    },
+    "hidden_size": {
+      "choices": [
+        32,
+        64,
+        96
+      ]
+    },
+    "attention_head_size": {
+      "min": 2,
+      "max": 4
+    },
+    "dropout": {
+      "min": 0.05,
+      "max": 0.2
+    },
+    "hidden_continuous_size": {
+      "choices": [
+        16,
+        24,
+        32,
+        48
+      ]
+    },
+    "gradient_clip_val": {
+      "min": 0.08,
+      "max": 0.15
+    }
+  }
+}

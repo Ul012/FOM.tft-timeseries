@@ -427,7 +427,8 @@ if __name__ == "__main__":
 
 # Aufruf:
 #   Mit run-id (für trainer_tft Runs):
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_tft --run-id run_20251125_215131_booksales_optuna_tft_day_trial_15
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.evaluation.evaluate_tft --run-id run_20260110_231451_booksales_exploration_lr_high
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_tft --run-id run_20260111_002114_walmart_exploration_model_medium
 #
 #   Mit checkpoint (für Optuna-Trials):
 #   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.evaluation.evaluate_tft --run-id run_20251127_135731_walmart_optuna_walmart_full_best_mel24_es8

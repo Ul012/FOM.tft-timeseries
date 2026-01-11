@@ -78,11 +78,11 @@ OPTUNA_STORAGE = f"sqlite:///{OPTUNA_BASE_DIR}/tft_studies.db"
 
 # Search Space (basierend auf baseline-Experimenten)
 SEARCH_SPACE = {
-    "learning_rate": {"min": 0.0003, "max": 0.003, "log": True},
+    "learning_rate": {"min": 0.0005, "max": 0.003, "log": True},
     "batch_size": {"choices": [64, 128, 256]},
-    "hidden_size": {"choices": [32, 64, 96]},
+    "hidden_size": {"choices": [64, 96, 128]},
     "attention_head_size": {"min": 2, "max": 4},
-    "dropout": {"min": 0.05, "max": 0.20},
+    "dropout": {"min": 0.10, "max": 0.20},
     "hidden_continuous_size": {"choices": [16, 24, 32, 48]},
     "gradient_clip_val": {"min": 0.08, "max": 0.15},
 }
@@ -95,7 +95,7 @@ TRAINING_CONFIG = {
     "accelerator": "gpu",  # Auf "cpu" ändern falls keine GPU
     "devices": 1,
     "log_every_n_steps": 50,
-    "early_stopping_patience": 4,
+    "early_stopping_patience": 3,
 }
 
 # Optuna-Einstellungen

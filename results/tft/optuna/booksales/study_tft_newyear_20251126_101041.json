@@ -1,0 +1,67 @@
+{
+  "study_name": "tft_newyear",
+  "timestamp": "20251126_101041",
+  "n_trials": 20,
+  "elapsed_time_sec": 39023.492537099984,
+  "best_value": 9.640697479248047,
+  "best_params": {
+    "learning_rate": 0.0011736424885649085,
+    "batch_size": 64,
+    "hidden_size": 96,
+    "attention_head_size": 4,
+    "dropout": 0.09569206537600561,
+    "hidden_continuous_size": 24,
+    "gradient_clip_val": 0.11466238370778892
+  },
+  "best_trial_number": 2,
+  "training_config": {
+    "seed": 42,
+    "max_epochs": 30,
+    "num_workers": 4,
+    "accelerator": "gpu",
+    "devices": 1,
+    "log_every_n_steps": 50,
+    "early_stopping_patience": 4
+  },
+  "search_space": {
+    "learning_rate": {
+      "min": 0.0003,
+      "max": 0.003,
+      "log": true
+    },
+    "batch_size": {
+      "choices": [
+        32,
+        64,
+        128
+      ]
+    },
+    "hidden_size": {
+      "choices": [
+        32,
+        64,
+        96
+      ]
+    },
+    "attention_head_size": {
+      "min": 2,
+      "max": 4
+    },
+    "dropout": {
+      "min": 0.05,
+      "max": 0.2
+    },
+    "hidden_continuous_size": {
+      "choices": [
+        16,
+        24,
+        32,
+        48
+      ]
+    },
+    "gradient_clip_val": {
+      "min": 0.08,
+      "max": 0.15
+    }
+  }
+}

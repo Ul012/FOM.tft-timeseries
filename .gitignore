@@ -47,19 +47,61 @@ lightning_logs/
 # RESULTS - TFT
 # ============================================================================
 
-# Results - selektiv ignorieren
+# Grundregel: Results global ignorieren
 results/*
 !results/tft/
-results/tft/*
+
+# ---------------------------------------------------------------------------
+# RUNS
+# ---------------------------------------------------------------------------
+# Runs grundsätzlich erlauben
 !results/tft/runs/
+
+# Alles in Runs ignorieren …
+results/tft/runs/**/*
+# … außer zusammenfassende Ergebnisse
+!results/tft/runs/**/summary.json
+!results/tft/runs/**/results.json
+!results/tft/runs/**/eval_*.json
+!results/tft/runs/**/eval_*.csv
+
+# Explizit nie versionieren (groß / reproduzierbar)
+results/tft/runs/**/forecasts/
+results/tft/runs/**/models/
+results/tft/runs/**/plots/
+
+# ---------------------------------------------------------------------------
+# EVAL
+# ---------------------------------------------------------------------------
+# Eval-Ordner erlauben
 !results/tft/eval/
 
-# TFT Optuna - selektiv teilen
-results/tft/optuna/*
+# Alles ignorieren …
+results/tft/eval/**/*
+# … außer CSV / JSON Summaries
+!results/tft/eval/**/*.csv
+!results/tft/eval/**/*.json
+
+# ---------------------------------------------------------------------------
+# OPTUNA
+# ---------------------------------------------------------------------------
+# Optuna-Basis erlauben
+!results/tft/optuna/
+
+# Alles ignorieren …
+results/tft/optuna/**/*
+# … außer Dataset-Unterordner
 !results/tft/optuna/*/
-results/tft/optuna/*/*
-!results/tft/optuna/*/study_*.json     # ✅ Study-Zusammenfassungen
-!results/tft/optuna/*/study_*.csv      # ✅ Trial-Übersichten
+
+# … und nur Study-Zusammenfassungen
+!results/tft/optuna/*/study_*.csv
+!results/tft/optuna/*/study_*.json
+
+# Nie versionieren (reproduzierbar durch Scripts)
+results/tft/optuna/**/analysis/
+results/tft/optuna/**/plots/
+results/tft/optuna/**/trial_*/
+results/tft/optuna/**/*.db
 
 # ============================================================================
 # RESULTS - PROPHET

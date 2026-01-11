@@ -359,7 +359,12 @@ if __name__ == "__main__":
     main()
 
 # Aufruf einzeln:
-#   $env:DATASET_CONFIG='configs/datasets/walmart.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/walmart/optuna_walmart_full_best_mel24_es8.yaml
+#   $env:DATASET_CONFIG='configs/datasets/booksales.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/booksales/optuna_tft_newyear_best.yaml
+#
+#   $env:DATASET_CONFIG='configs/datasets/walmart.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/walmart/exploration_batch_small.yaml
+#   $env:DATASET_CONFIG='configs/datasets/walmart.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/walmart/exploration_lr_low.yaml
+#   $env:DATASET_CONFIG='configs/datasets/walmart.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/walmart/exploration_model_large.yaml
+#   $env:DATASET_CONFIG='configs/datasets/walmart.yaml'; python -m src.modeling.trainer_tft --config configs/models/tft/walmart/optuna_walmart_full_best.yaml
 #
 # Via Pipeline (empfohlen):
 #   python -m src.pipeline --dataset configs/datasets/booksales.yaml --model configs/models/tft/booksales/bs_small_lr0003.yaml --steps training

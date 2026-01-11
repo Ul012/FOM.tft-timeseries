@@ -1,2 +1,0 @@
-run_id,checkpoint_path,val_mae,test_mae,val_rmse,test_rmse,val_mape,test_mape,val_smape,test_smape,val_r2,test_r2
-run_20251125_003840_booksales_optuna_tft_day_best,results\tft\runs\run_20251125_003840_booksales_optuna_tft_day_best\checkpoints\tft-03-6.1352.ckpt,12.060346603393555,18.94440269470215,17.49929428100586,33.92445755004883,5.504092216491699,7.0230207443237305,5.5978569984436035,7.370943069458008,0.9795507788658142,0.9409849643707275
