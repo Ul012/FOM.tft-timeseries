@@ -351,6 +351,5 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id <RUN_ID> --split test --history-length 120
-#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id run_20251125_215131_booksales_optuna_tft_day_trial_15 --split test --history-length 120
-#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id run_20251127_135731_walmart_optuna_walmart_full_best_mel24_es8 --split test --history-length 120
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id run_20260111_113916_booksales_optuna_tft_newyear_best --split test --history-length 120
+#   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.visualization.plot_tft_forecast_series --run-id run_20260111_113926_walmart_optuna_walmart_full_best --split test --history-length 120
