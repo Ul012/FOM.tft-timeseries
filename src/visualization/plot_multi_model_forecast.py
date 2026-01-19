@@ -159,28 +159,40 @@ def plot_metric_comparison_fallback(
         output_dir: Path
 ) -> None:
     """
-    Fallback: Zeigt Metric Comparison wenn Predictions fehlen.
+    Zeigt Metrik-Vergleich zwischen allen Modellen.
+    Gruppiert nach Metriken (jede Metrik hat 3 Balken für TFT, Prophet, ARIMA).
+    Wird immer erstellt, unabhängig davon ob Predictions vorhanden sind.
     """
     fig, ax = plt.subplots(figsize=(12, 7))
 
     models = list(best_runs.keys())
-    x = np.arange(len(models))
+    metrics = ['test_mae', 'test_rmse', 'test_smape']
+    metric_labels = ['MAE', 'RMSE', 'SMAPE (%)']
+
+    # Farben für Modelle (nicht Metriken!)
+    model_colors = {
+        'TFT': '#3498db',
+        'Prophet': '#9b59b6',
+        'ARIMA': '#e67e22'
+    }
+
+    x = np.arange(len(metrics))  # X-Achse = Metriken
     width = 0.25
 
-    metrics = ['test_mae', 'test_rmse', 'test_smape']
-    colors = ['#3498db', '#e74c3c', '#2ecc71']
-    labels = ['MAE', 'RMSE', 'SMAPE (%)']
+    # Iteriere über Modelle, jedes Modell bekommt einen Balken pro Metrik
+    for i, model in enumerate(models):
+        values = [best_runs[model][metric] for metric in metrics]
+        ax.bar(x + i * width, values, width,
+               label=model,
+               color=model_colors.get(model, '#95a5a6'),
+               alpha=0.8)
 
-    for i, (metric, color, label) in enumerate(zip(metrics, colors, labels)):
-        values = [best_runs[model][metric] for model in models]
-        ax.bar(x + i * width, values, width, label=label, color=color, alpha=0.8)
-
-    ax.set_xlabel('Model', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Metric Value', fontsize=12, fontweight='bold')
+    ax.set_xlabel('Metric', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Value', fontsize=12, fontweight='bold')
     ax.set_title(f'Model Performance Comparison: {dataset}',
                  fontsize=14, fontweight='bold', pad=15)
     ax.set_xticks(x + width)
-    ax.set_xticklabels(models)
+    ax.set_xticklabels(metric_labels)
     ax.legend(loc='best', fontsize=11)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
 
@@ -189,7 +201,7 @@ def plot_metric_comparison_fallback(
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
 
-    print(f"[plot_multi_model_forecast] Saved fallback plot: {output_path}")
+    print(f"[plot_multi_model_forecast] Saved metric comparison: {output_path}")
 
 
 def plot_multi_model_forecast(
@@ -205,8 +217,6 @@ def plot_multi_model_forecast(
     predictions_data = load_and_normalize_predictions(best_runs, max_points)
 
     if not predictions_data:
-        print(f"  ℹ Keine Predictions gefunden - erstelle Metrik-Vergleich (Fallback)")
-        plot_metric_comparison_fallback(dataset, best_runs, output_dir)
         return
 
     # Setup Plot
@@ -389,13 +399,17 @@ def main() -> None:
             print(f"    {model}: actuals=[{actuals.min():.1f}, {actuals.max():.1f}], "
                   f"predictions=[{predictions.min():.1f}, {predictions.max():.1f}]")
 
+        # Metrik-Vergleich IMMER erstellen
+        print("  ✓ Erstelle Metrik-Vergleich")
+        plot_metric_comparison_fallback(dataset, best_runs, output_dir)
+
+        # Forecast-Plots nur wenn Predictions vorhanden
         if predictions_data:
             print("  ✓ Predictions gefunden - erstelle Forecast-Plots")
             plot_multi_model_forecast(dataset, best_runs, output_dir, max_points=500)
             plot_multi_model_forecast_aggregated(dataset, best_runs, output_dir, n_samples=100)
         else:
-            print("  ℹ Keine Predictions gefunden - erstelle Metrik-Vergleich (Fallback)")
-            plot_metric_comparison_fallback(dataset, best_runs, output_dir)
+            print("  ℹ Keine Predictions gefunden - nur Metrik-Vergleich erstellt")
 
     print("=" * 80)
     print(f"✅ Multi-Model Plots erstellt in: {output_dir}")
@@ -413,12 +427,12 @@ if __name__ == "__main__":
 # Aufruf:
 #   python -m src.visualization.plot_multi_model_forecast
 #
-# Output (mit Predictions):
+# Output (immer):
+#   - results/plots/multi_model_comparison_booksales_metrics.png
+#   - results/plots/multi_model_comparison_walmart_metrics.png
+#
+# Output (zusätzlich, wenn Predictions vorhanden):
 #   - results/plots/multi_model_forecast_booksales.png
 #   - results/plots/multi_model_forecast_walmart.png
 #   - results/plots/multi_model_forecast_booksales_sampled.png
 #   - results/plots/multi_model_forecast_walmart_sampled.png
-#
-# Output (ohne Predictions - Fallback):
-#   - results/plots/multi_model_comparison_booksales_metrics.png
-#   - results/plots/multi_model_comparison_walmart_metrics.png
