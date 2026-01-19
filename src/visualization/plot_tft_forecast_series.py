@@ -47,10 +47,10 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--run-id",
-        required=False, # geändert von True auf False durch Hinzunahme checkpoints
+        required=False,  # geändert von True auf False durch Hinzunahme checkpoints
         help="Run-ID wie in results/tft/runs/<run_id>/",
     )
-    parser.add_argument( # für Erkennung von Checkpoints hinzugefügt
+    parser.add_argument(  # für Erkennung von Checkpoints hinzugefügt
         "--checkpoint",
         required=False,
         help="Direkter Pfad zum Checkpoint (für Optuna-Trials)",
@@ -133,9 +133,9 @@ def _select_first_series(df_split: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str
 
 
 def _apply_history_window(
-    df_series: pd.DataFrame,
-    prediction_length: int,
-    history_length: int | None,
+        df_series: pd.DataFrame,
+        prediction_length: int,
+        history_length: int | None,
 ) -> pd.DataFrame:
     """
     Schneidet optional die Historie zu:
@@ -150,12 +150,12 @@ def _apply_history_window(
     if n <= total_needed:
         return df_series
 
-    return df_series.iloc[n - total_needed :].reset_index(drop=True)
+    return df_series.iloc[n - total_needed:].reset_index(drop=True)
 
 
 def _build_series_forecast_frame(
-    model: TemporalFusionTransformer,
-    df_series: pd.DataFrame,
+        model: TemporalFusionTransformer,
+        df_series: pd.DataFrame,
 ) -> pd.DataFrame:
     """
     Erzeugt ein DataFrame für eine einzelne Serie mit:
@@ -197,11 +197,11 @@ def _build_series_forecast_frame(
 
 
 def _plot_series_forecast(
-    df_series: pd.DataFrame,
-    run_id: str,
-    split: str,
-    series_ids: Dict[str, Any],
-    output_path: Path,
+        df_series: pd.DataFrame,
+        run_id: str,
+        split: str,
+        series_ids: Dict[str, Any],
+        output_path: Path,
 ) -> None:
     """
     Plottet:
@@ -214,12 +214,11 @@ def _plot_series_forecast(
     y_pred = df_series["y_pred"]
     is_forecast = df_series["is_forecast"]
 
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots(figsize=(10, 4.5))
 
     # Historie (ohne Forecast-Bereich)
     hist_mask = ~is_forecast
     if hist_mask.any():
-
         # Füge ersten Forecast-Punkt hinzu für nahtlose Verbindung
         last_hist_idx = hist_mask[hist_mask].index[-1]
         first_fc_idx = is_forecast[is_forecast].index[0]
@@ -227,8 +226,8 @@ def _plot_series_forecast(
         extended_mask.loc[first_fc_idx] = True
 
         ax.plot(
-            time[extended_mask], # time[hist_mask],
-            y_true[extended_mask], # y_true[hist_mask],
+            time[extended_mask],  # time[hist_mask],
+            y_true[extended_mask],  # y_true[hist_mask],
             label="Ist (Historie)",
         )
 
@@ -249,14 +248,37 @@ def _plot_series_forecast(
 
     ax.set_xlabel("Zeit")
     ax.set_ylabel("Verkäufe")
-    title_parts = [f"TFT – Vorhersage vs. Ist ({split})", f"Run: {run_id}"]
+
+    # NEU: Kürze run_id für Titel
+    # von "run_20260111_113916_booksales_optuna_tft_newyear_best"
+    # zu "booksales_optuna_tft"
+    run_parts = run_id.split('_')
+    if len(run_parts) >= 4:
+        # Überspringe "run", Datum, Zeit
+        short_run = '_'.join(run_parts[3:])
+        # Entferne common suffixes
+        short_run = short_run.replace('_newyear_best', '').replace('_best', '')
+    else:
+        short_run = run_id
+
+    # Kompakter Titel
+    ax.set_title(f"TFT - Vorhersage vs. Ist ({split}) | {short_run}")
+
+    # NEU: Details als Untertitel unter der Grafik
+    ax.legend()
+
+    # NEU: Details als Untertitel unter der Grafik
+    detail_parts = [f"Run: {run_id}"]
     if series_ids:
         id_str = ", ".join(f"{k}={v}" for k, v in series_ids.items())
-        title_parts.append(f"Serie: {id_str}")
-    ax.set_title(" | ".join(title_parts))
+        detail_parts.append(f"Serie: {id_str}")
 
-    ax.legend()
+    # Mehr Platz unten schaffen und Text platzieren
     fig.tight_layout()
+    fig.subplots_adjust(bottom=0.18)  # Platz für Text
+    fig.text(0.5, 0.04, " | ".join(detail_parts),
+             ha='center', fontsize=9, style='italic',
+             transform=fig.transFigure)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=150, bbox_inches='tight')
@@ -323,7 +345,8 @@ def main() -> None:
 
     for _, row in df_forecast.iterrows():
         date_str = str(row[TIME_COL])[:10] if hasattr(row[TIME_COL], 'strftime') else str(row[TIME_COL])[:10]
-        print(f"{date_str:<12} {row['y_true']:>10.1f} {row['y_pred']:>10.1f} {row['error']:>+10.1f} {row['pct_error']:>+9.1f}%")
+        print(
+            f"{date_str:<12} {row['y_true']:>10.1f} {row['y_pred']:>10.1f} {row['error']:>+10.1f} {row['pct_error']:>+9.1f}%")
 
     # Zusammenfassung
     mae = df_forecast["abs_error"].mean()
