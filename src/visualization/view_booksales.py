@@ -1,4 +1,4 @@
-# src/visualization/view_data_raw.py
+# src/visualization/view_data_raw_single-group.py
 """
 Visualisiert tägliche Verkaufszahlen pro Produkt/Store/Land (Book Sales Dataset).
 Erstellt 3 separate Plots.
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     main()
 
 # Aufruf:
-#   python -m src.visualization.view_booksales
+#   $env:DATASET_CONFIG='configs/datasets/booksales.yaml'; python -m src.visualization.view_booksales
 #
 # Output:
 #   results/tft/plots/data/raw_by_product.png
