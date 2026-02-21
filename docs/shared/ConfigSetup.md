@@ -1,202 +1,82 @@
-# Konfigurationen – Zusammenspiel von `config.py` und `configs/*.yaml`
+# Konfigurationen – Zusammenspiel von `src/config.py` und `configs/*.yaml`
 
-**Datum:** 2025-11-23  
+**Datum:** 2026-02-21  
 **Script:** —  
-**Ziel & Inhalt:** Beschreibt die Trennung zwischen statischen Projektkonstanten (`config.py`) und variablen Trainingsparametern in YAML-Dateien. Erläutert Pfade, Spalten, Feature-Konfigurationen, Split-Parameter sowie den Ablauf eines Trainingslaufs.
+**Ziel & Inhalt:** Beschreibt die Konfigurationslogik des Projekts mit Fokus auf YAML-first, klare Verantwortlichkeiten und reproduzierbare Runs. Keine konkreten Hyperparameterwerte, keine Ergebnisinterpretation.
 
 ---
 
-## Struktur und Zweck
+## Überblick
 
-- **`src/config.py`**  
-  Enthält **statische Projektkonstanten**: Dateipfade, Spaltennamen, Split-Konfigurationen, Feature-Einstellungen (Lag-Konfigurationen, Sequenzlängen für TFT).  
-  Diese Werte ändern sich selten und dienen als zentrale Referenz für die Daten- und Modellpipeline.
+Die Projektkonfiguration ist konsequent **konfigurationsgetrieben** aufgebaut:
 
-- **`configs/datasets/*.yaml`**  
-  **Dataset-spezifische Konfigurationen**: Schema, Preprocessing-Pipeline, Split-Strategie.  
-  Ermöglicht Multi-Dataset-Support ohne Code-Änderungen.
-
-- **`configs/models/tft/*.yaml`**  
-  **Modell- und Trainingsparameter**: Batch-Größe, Lernrate, Epochenzahl, Modellarchitektur.  
-  Pro Experiment frei wählbar.
-
-**Kurz:**
-- `config.py` → Projekt- und Datenstruktur  
-- `configs/datasets/` → Dataset-Definition  
-- `configs/models/` → Trainingsverhalten
+- `src/config.py` enthält **projektweite Konstanten** und Basis-Pfade (selten geändert).
+- `configs/datasets/*.yaml` definiert **Dataset-Schema und Preprocessing/Split**.
+- `configs/models/*.yaml` definiert **Training und Modellparameter** (experimentabhängig).
+- `dataset_spec.json` ist eine **operative Schnittstelle** (v. a. für TFT), die aus der Pipeline erzeugt und von Training/Evaluation genutzt wird.
 
 ---
 
-## 1. Rolle von `src/config.py`
+## Rollen der Konfigurationsartefakte
 
-### 1.1 Verzeichnisse und Pfade
+### 1) `src/config.py`
+Enthält stabile Projektkonstanten, z. B.:
 
-```python
-BASE_DIR = Path(".")
-DATA_DIR = BASE_DIR / "data"
-RAW_DIR = DATA_DIR / "raw"
-INTERIM_DIR = DATA_DIR / "interim"
-PROCESSED_DIR = DATA_DIR / "processed"
-```
+- Basisverzeichnisse und Default-Pfade
+- Default-Konstanten/Enums (falls genutzt)
+- ggf. projektweite Namenskonventionen
 
-- `RAW_DIR` → Rohdaten  
-- `INTERIM_DIR` → Zwischenergebnisse  
-- `PROCESSED_DIR` → Modellfertige Daten
-
-```python
-FEATURES_TRAIN_PATH = PROCESSED_DIR / "train_features.parquet"
-MODEL_INPUT_PATH = PROCESSED_DIR / "train_features_cyc_lag.parquet"
-```
-
-### 1.2 Schema / Spalten
-
-```python
-DATETIME_COLUMN = "date"
-GROUP_COLS = ["country", "store", "product"]
-TARGET_COL = "num_sold"
-
-TIME_COL = DATETIME_COLUMN
-ID_COLS = GROUP_COLS
-```
-
-Verwendet in: `model_dataset.py`, `dataset_tft.py`, `trainer_tft.py`
-
-### 1.3 Split-Parameter
-
-```python
-VAL_START = None
-TEST_START = None
-SPLIT_RATIOS = (0.80, 0.10, 0.10)
-```
-
-- Wenn `VAL_START`/`TEST_START` gesetzt → feste Grenzen  
-- Wenn `None` → automatisch nach `SPLIT_RATIOS`
-
-### 1.4 Feature-Konfigurationen
-
-```python
-LAG_CONF = {
-    "target_col": TARGET_COL,
-    "lags": [1, 7, 14],
-    "roll_windows": [7],
-    "roll_stats": ["mean"],
-    "prefix": "lag_",
-}
-
-TFT_DATASET = {
-    "max_encoder_length": 120,
-    "max_prediction_length": 7,
-    "known_real_prefixes": ["cyc_"],
-    "lag_prefixes": ["lag_"],
-    "treat_calendar_as_known": True,
-    "flag_cols": ["is_lockdown_period"],
-}
-```
+Wichtig: `config.py` ist **nicht** der primäre Ort für experimentelle Modellparameter.
 
 ---
 
-## 2. Config-Hierarchie
+### 2) Dataset-Configs: `configs/datasets/*.yaml`
+Definieren dataset-spezifisch:
 
-### 2.1 Dataset-Config (`configs/datasets/booksales.yaml`)
+- `paths` (raw/interim/processed)
+- `schema` (time_col, id_cols, target_col)
+- `preprocessing` (Schrittfolge und Parameter)
+- `split` (zeitbasierte Split-Logik)
+- ggf. (TFT) dataset-nahe Einstellungen, die die Datensatzrepräsentation betreffen
 
-```yaml
-name: "booksales"
-paths:
-  raw: "data/raw/booksales"
-  interim: "data/interim/booksales"
-  processed: "data/processed/booksales"
-
-raw_data:
-  type: "single_file"
-  files:
-    - path: "data/raw/booksales/train.csv"
-      role: "main"
-
-schema:
-  time_col: "date"
-  id_cols: ["country", "store", "product"]
-  target_col: "num_sold"
-
-preprocessing:
-  - step: "load_raw"
-    enabled: true
-  - step: "alignment"
-    enabled: true
-  - step: "cleaning"
-    enabled: true
-  # ... weitere Steps
-
-split:
-  method: "ratio"
-  ratios: [0.80, 0.10, 0.10]
-
-tft:
-  max_encoder_length: 120
-  max_prediction_length: 7
-```
-
-### 2.2 Model-Config (`configs/models/tft/baseline.yaml`)
-
-```yaml
-type: "tft"
-name: "baseline_v02"
-
-training:
-  seed: 42
-  max_epochs: 30
-  batch_size: 128
-  learning_rate: 0.001
-  # ...
-
-model:
-  loss: "quantile"
-  hidden_size: 32
-  attention_head_size: 4
-  # ...
-```
+Damit lassen sich mehrere Datensätze ohne Codeänderungen betreiben.
 
 ---
 
-## 3. Aufruf-Beispiele
+### 3) Model-Configs: `configs/models/*.yaml`
+Definieren experiment-/run-spezifisch:
 
-### Via Pipeline (empfohlen):
+- Trainingseinstellungen (z. B. Seed, Epochen, Accelerator)
+- Modellparameter (Architektur-/Loss-Konfiguration)
 
-```bash
-# Kompletter Run
-python -m src.pipeline \
-    --dataset configs/datasets/booksales.yaml \
-    --model configs/models/tft/baseline.yaml
-
-# Nur Training
-python -m src.pipeline \
-    --dataset configs/datasets/booksales.yaml \
-    --model configs/models/tft/baseline.yaml \
-    --steps training
-```
-
-### Einzeln (für Tests):
-
-```bash
-# Preprocessing
-$env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.load_raw
-
-# Training
-python -m src.modeling.trainer_tft \
-    --config configs/models/tft/baseline.yaml
-```
+Ziel: Experimente variieren über YAML, nicht über Code.
 
 ---
 
-## 4. Best Practices
+### 4) `dataset_spec.json` (TFT)
+Wird durch die Pipeline generiert und dient als Schnittstelle zwischen Preprocessing und Modeling.
 
-- Funktionale Namen: `lr_high.yaml`, `bs_small.yaml`, `model_large.yaml`
-- Keine Änderungen in `config.py` für Experimente
-- YAML-Dateien versionieren (Git)
+Typischer Inhalt (konzeptionell):
+
+- Feature-Listen / Merkmalsgruppen für TFT
+- Sequenz-/Fensterlängen (datasetbezogen)
+- Meta-Informationen zum Schema
+
+Hinweis: Die TFT-Evaluation nutzt die im Checkpoint gespeicherten Dataset-Parameter, um exakt die Trainingsbedingungen zu reproduzieren.
 
 ---
 
-Diese Struktur ermöglicht:
-- ✅ Multi-Dataset-Support
-- ✅ Klare Trennung Dataset ↔ Modell
-- ✅ Reproduzierbare Experimente
-- ✅ Einfache Erweiterung (ARIMA, Prophet)
+## Hierarchie und Prioritäten
+
+1. YAML-Konfigurationen (`configs/datasets`, `configs/models`) sind **führend** für Run-Verhalten.  
+2. `src/config.py` liefert projektweite Defaults/Grundlagen, sollte aber nicht zum Experimentieren genutzt werden.  
+3. `dataset_spec.json` ist ein generiertes Artefakt und wird als Input für Training/Evaluation verwendet (TFT).
+
+---
+
+## Nutzen
+
+- Klare Trennung: Projektkonstanten vs. Dataset vs. Modell/Training  
+- Reproduzierbare Runs (Konfiguration + Artefakte)  
+- Multi-Dataset- und Multi-Model-Support ohne Codeänderungen  
+- Saubere Schnittstellen entlang der Pipeline

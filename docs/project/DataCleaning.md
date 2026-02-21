@@ -1,6 +1,6 @@
 # DataCleaning – Bereinigung von Ausreißern und Datenqualitätsproblemen
 
-**Datum:** 2025-11-24 (aktualisiert)  
+**Datum:** 2025-11-24
 **Script:** `src/data/data_cleaning.py`  
 **Ziel & Inhalt:** Bereinigung von Ausreißern, Lockdown-Zeiträumen, negativen Werten und NaN im Target. Universell für verschiedene Datensätze (Booksales, Walmart, etc.).
 

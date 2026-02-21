@@ -1,68 +1,122 @@
 # EvaluatorTFT – Validierungs- und Testauswertung
 
-**Datum:** 2025-11-17  
+**Datum:** 2026-02-21  
 **Script:** `src/evaluation/evaluate_tft.py`  
-**Ziel & Inhalt:** Beschreibung der Auswertung abgeschlossener TFT-Trainingsläufe anhand vorliegender Checkpoints und der Validierungs- und Testdaten.
+**Ziel & Inhalt:** Beschreibung der Auswertung abgeschlossener TFT-Trainingsläufe anhand vorliegender Checkpoints sowie der Validierungs- und Testdaten.
 
 ---
 
 ## Überblick
-Das Evaluationsskript lädt ein trainiertes Modell, wendet es auf die vorbereiteten Datensplits an und berechnet standardisierte Fehlerkennzahlen. Die Ergebnisse werden in einer strukturierten JSON-Datei abgelegt.
+
+`evaluate_tft.py` lädt ein trainiertes TFT-Modell und bewertet dessen Leistung auf Validation- und Testdaten.
+
+Wesentliche Eigenschaft:  
+Die Evaluation verwendet die im **Modell-Checkpoint gespeicherten Dataset-Parameter**.  
+Es werden **nicht** die aktuellen Feature-Listen aus `dataset_spec.json` genutzt.
+
+Dadurch ist sichergestellt, dass die Bewertung exakt mit den Trainingsbedingungen des jeweiligen Runs übereinstimmt.
 
 ---
 
 ## Ziel
-Ziel ist eine konsistente und reproduzierbare Bewertung der Modellleistung eines abgeschlossenen Trainingslaufs.
+
+Ziel ist eine konsistente und reproduzierbare Bewertung eines abgeschlossenen Trainingslaufs unabhängig von späteren Änderungen an der Dataset-Spezifikation.
 
 ---
 
-## Eingaben & Ausgaben
+## Eingaben
 
-### Eingaben
-- Run-ID eines abgeschlossenen Trainings  
-- Checkpoint aus dem Run-Unterordner  
+- Run-ID eines abgeschlossenen Trainings **oder** direkter Pfad zu einem Checkpoint  
 - `val.parquet`  
-- `test.parquet`
+- `test.parquet`  
 
-### Ausgabe
-- `eval_summary.json` im Evaluationsordner des jeweiligen Runs
+Die Datensplits werden aus `data/processed/<dataset>/` geladen.
 
 ---
 
-## Vorgehen
+## Betriebsmodi
 
-### 1. Auswahl des Checkpoints  
-Es wird die Datei mit „best“ im Namen bevorzugt, ansonsten die erste `.ckpt`-Datei im Ordner.
+### 1. Run-ID-basiert
+Checkpoint wird automatisch im Run-Verzeichnis gesucht.
 
-### 2. Laden der Daten  
-Die Validierungs- und Testdaten werden eingelesen.
+### 2. Checkpoint-basiert
+Direkter Pfad zu einer `.ckpt`-Datei (z. B. für Optuna-Trials).
 
-### 3. Ableitung der Zielzeitpunkte  
-Für jede Zeitreihe werden die letzten `max_prediction_length` Schritte bestimmt.
+---
 
-### 4. Modellvorhersage  
-Der TFT erstellt Vorhersagen über das definierte Decoderfenster.
+## Verarbeitungsschritte
 
-### 5. Berechnung der numerischen Kennzahlen  
-Aus Vergleich von Vorhersagen und Zielwerten entstehen die Metriken:
+### 1. Checkpoint-Ermittlung
+- Bevorzugt Datei mit „best“ im Namen  
+- Andernfalls erste `.ckpt`-Datei im Checkpoint-Ordner  
+
+---
+
+### 2. Laden der Daten
+Validation- und Testdaten werden eingelesen und nach Gruppen- und Zeitspalten sortiert.
+
+---
+
+### 3. Dataset-Konstruktion
+- Feature-Listen stammen aus `model.hparams.dataset_parameters`  
+- `GroupNormalizer` wird verwendet  
+- `allow_missing_timesteps=True`  
+- Dataset-Parameter entsprechen denen des Trainings  
+
+---
+
+### 4. Vorhersage
+- Modell wird im Eval-Modus ausgeführt  
+- Quantile-Predictions werden auf den Median reduziert  
+- Ziel- und Prognosewerte werden für die Metrikberechnung geflattet  
+
+Optional: Speicherung von `predictions_<split>.npy` und `actuals_<split>.npy` via `--save-predictions`.
+
+---
+
+### 5. Metrikberechnung
+Unterstützte Kennzahlen (konfigurationsgesteuert):  
 - MAE  
 - RMSE  
 - MAPE  
-- SMAPE
+- SMAPE  
+- R²  
 
-### 6. Schreiben des Evaluationsartefakts  
-Alle Ergebnisse werden in `eval_summary.json` gespeichert.
+---
+
+### 6. Artefakte
+
+Pro Run werden erzeugt:
+
+```
+results/tft/eval/<run_id>/
+├── eval_summary.json
+└── eval_summary.csv
+```
+
+`eval_summary.json` enthält Run-ID, Checkpoint-Pfad, Metriken (Val/Test) und Metainformationen (time_col, id_cols, target_col).  
+`eval_summary.csv` enthält eine tabellarische Zeile pro Run.
 
 ---
 
 ## Beispielaufruf
+
 ```bash
+# Run-ID
 python -m src.evaluation.evaluate_tft --run-id <run_id>
+
+# Direkter Checkpoint
+python -m src.evaluation.evaluate_tft --checkpoint <path_to_ckpt>
+
+# Mit Speicherung der Predictions
+python -m src.evaluation.evaluate_tft --run-id <run_id> --save-predictions
 ```
 
 ---
 
 ## Ergebnis und Nutzen
-- numerische Bewertung eines Runs  
-- strukturierte Speicherung aller Kennzahlen  
-- Grundlage für aggregierte Auswertungen und Modellvergleiche  
+
+- Reproduzierbare Bewertung einzelner Runs  
+- Saubere Trennung von Training und Evaluation  
+- Evaluationsartefakte unabhängig von Trainingslogs  
+- Grundlage für strukturierte Modellvergleiche

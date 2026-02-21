@@ -141,5 +141,6 @@ if __name__ == "__main__":
 
 # Aufruf einzeln:
 #   $env:DATASET_CONFIG="configs/datasets/walmart.yaml"; python -m src.data.load_raw
+#   $env:DATASET_CONFIG="configs/datasets/booksales.yaml"; python -m src.data.load_raw
 # Via Pipeline:
 #   python -m src.pipeline --dataset configs/datasets/walmart.yaml --steps preprocessing

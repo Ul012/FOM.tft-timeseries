@@ -1,4 +1,16 @@
-﻿import optuna
+﻿# src/utils/analyze_tft_optuna.py
+"""
+Analysiert und fasst Optuna-Studien für TFT-Experimente zusammen.
+
+Das Script liest eine bestehende Optuna-Storage-Datei (z. B. SQLite),
+listet enthaltene Studies auf und gibt eine strukturierte Übersicht
+zu Trials, Status-Verteilung und bestem Objective-Wert aus.
+
+Es verändert keine Daten und dient ausschließlich der Auswertung
+und Diagnose bereits durchgeführter Hyperparameter-Suchen.
+"""
+
+import optuna
 from pathlib import Path
 from src.config import BASE_DIR
 from datetime import datetime
