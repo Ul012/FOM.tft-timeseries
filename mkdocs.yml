@@ -47,7 +47,6 @@ nav:
   - 🏠 Übersicht: index.md
 
   - 🚀 Schnelleinstieg:
-      - Script-Übersicht: shared/SCRIPTS.md
       - Projekt-Arbeitsweise: shared/ProjektArbeitsweise.md
 
   - 📊 Modelle:
@@ -56,7 +55,7 @@ nav:
           - Trainer TFT: project/TrainerTFT.md
           - Evaluation TFT: project/EvaluatorTFT.md
       - ARIMA:
-          - Überblick: shared/ArimaIntegration.md
+          - Integration: project/ArimaIntegration.md
       - Prophet:
           - Integration: project/ProphetIntegration.md
 
@@ -64,10 +63,14 @@ nav:
       - Optuna Übersicht: shared/Optuna.md
 
   - 🔄 Pipeline:
+      - Pipeline Orchestrierung: shared/Pipeline.md
       - Pipeline Reihenfolge: shared/PipelineOrder.md
 
   - 📈 Visualisierung:
       - Überblick: shared/PlottingAndVisualization.md
+
+  - 🔌 Integrationen:
+      - n8n: shared/n8n.md
 
   - 📁 Data Processing:
       - Datenqualität:
